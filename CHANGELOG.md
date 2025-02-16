@@ -1,5 +1,11 @@
 ### CHANGELOG
 
+## [v0.2.2]
+
+### Fixed
+
+- Include dist folder for releases
+
 ## [v0.2.1]
 
 ### Fixed
