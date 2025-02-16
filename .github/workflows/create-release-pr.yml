@@ -19,12 +19,16 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: "22.x"
       - name: Install dependencies
-        run: npm install
+        run: bun install
       - name: Set up Git
         run: |
           git config user.name "LucraMcGonigal"
