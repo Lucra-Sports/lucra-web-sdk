@@ -7,7 +7,7 @@ export enum LucraSportsMessageType {
 }
 
 export type LucraSportsOnMessage = {
-  login: (successful: boolean) => void;
+  login: (lucraUserId: string) => void;
   userInfo: (data: UserInfo) => void;
   matchupCreated: (data: { matchupId: string }) => void;
 };

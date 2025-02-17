@@ -1,6 +1,5 @@
 import {
   LucraSportsMessageType,
-  type LucraSportsMessage,
   type LucraSportsOnMessage,
   type LucraSportsSendMessage,
   type UserInfo,
@@ -59,29 +58,33 @@ export class LucraSports {
    * @param onMessage Message Handler for messages from LucraSports
    * @param userInfo User information for pre-populating KYC flow
    * @param destination home, profile, or create-matchup
+   * @param matchupId if `destination` is `home`, you can supply a default matchupId to skip the matchup selection screen
    */
   constructor({
     url,
     onMessage,
     destination,
+    matchupId,
     userInfo,
   }: {
     url: string;
     onMessage: LucraSportsOnMessage;
     destination: "home" | "profile" | "create-matchup";
+    matchupId?: string;
     userInfo?: UserInfo;
   }) {
     const params = new URLSearchParams();
     params.set("iframed", "true");
-    params.set(
-      "redirect",
+    const path =
       destination === "home"
-        ? "/app/home"
+        ? "app/home"
         : destination === "profile"
-        ? "/app/profile"
-        : "/app/create-matchup"
-    );
-    this.url = `${url}?${params.toString()}`;
+        ? "app/profile"
+        : matchupId !== undefined
+        ? `app/create-matchup/${matchupId}/wager`
+        : "app/create-matchup";
+
+    this.url = `${url}/${path}?${params.toString()}`;
     this.userInfo = userInfo;
     this.onMessage = onMessage;
     this.setUpEventListener();

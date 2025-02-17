@@ -1,5 +1,15 @@
 ### CHANGELOG
 
+## [v0.2.3]
+
+### Added
+
+- default `matchupId` parameter to navigate directly to the wager page
+
+### Fixed
+
+- `login` event should the Lucra User Id as the parameter
+
 ## [v0.2.2]
 
 ### Fixed
