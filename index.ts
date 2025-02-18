@@ -20,6 +20,8 @@ export class LucraSports {
     login: NoOp,
     userInfo: NoOp,
     matchupCreated: NoOp,
+    matchupCanceled: NoOp,
+    matchupCompleted: NoOp,
   };
   private controller: AbortController = new AbortController();
   private iframeParentElement?: HTMLElement;
@@ -38,6 +40,12 @@ export class LucraSports {
       case LucraSportsMessageType.userInfo:
         this.onMessage.userInfo(event.data.data);
         break;
+      case LucraSportsMessageType.matchupCanceled:
+        this.onMessage.matchupCanceled(event.data.data);
+        break;
+      case LucraSportsMessageType.matchupCompleted:
+        this.onMessage.matchupCompleted(event.data.data);
+        break;
       default:
         console.log("Unrecognized LucraSportsMessageType", event.data.type);
         break;
@@ -45,7 +53,6 @@ export class LucraSports {
   };
 
   private setUpEventListener() {
-    console.log("addEventListener");
     window.addEventListener("message", this._eventListener, {
       signal: this.controller.signal,
     });

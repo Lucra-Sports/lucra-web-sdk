@@ -1,5 +1,11 @@
 ### CHANGELOG
 
+## [v0.2.4]
+
+### Added
+
+- `matchupCanceled` and `matchupCompleted` events
+
 ## [v0.2.3]
 
 ### Added
