@@ -61,27 +61,35 @@ export class LucraSports {
 
   /**
    * Create a new instance of LucraSports
-   * @param url Url for LucraSports - https://app.lucrasports.com/<tenantId>
+   * @param tenantId Your LucraSports tenantId
+   * @param env sandbox | production
+   * @param hostUrl What URL is hosting LucraSports? Necessary to do `.postMessage` securely
    * @param onMessage Message Handler for messages from LucraSports
    * @param userInfo User information for pre-populating KYC flow
    * @param destination home, profile, or create-matchup
    * @param matchupId if `destination` is `home`, you can supply a default matchupId to skip the matchup selection screen
    */
   constructor({
-    url,
+    tenantId,
+    env,
+    hostUrl,
     onMessage,
     destination,
     matchupId,
     userInfo,
+    __debugUrl,
   }: {
-    url: string;
+    tenantId: string;
+    env: "sandbox" | "production";
+    hostUrl: string;
     onMessage: LucraSportsOnMessage;
     destination: "home" | "profile" | "create-matchup";
     matchupId?: string;
     userInfo?: UserInfo;
+    __debugUrl?: string;
   }) {
     const params = new URLSearchParams();
-    params.set("iframed", "true");
+    params.set("parentUrl", hostUrl);
     const path =
       destination === "home"
         ? "app/home"
@@ -91,7 +99,11 @@ export class LucraSports {
         ? `app/create-matchup/${matchupId}/wager`
         : "app/create-matchup";
 
-    this.url = `${url}/${path}?${params.toString()}`;
+    this.url =
+      `${__debugUrl}/${path}?${params.toString()}` ||
+      `https://${tenantId}.${
+        env === "sandbox" ? "sandbox." : ""
+      }lucrasports.com/${path}?${params.toString()}`;
     this.userInfo = userInfo;
     this.onMessage = onMessage;
     this.setUpEventListener();

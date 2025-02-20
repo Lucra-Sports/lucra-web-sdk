@@ -1,5 +1,11 @@
 ### CHANGELOG
 
+## [0.3.0]
+
+### Changed
+
+- constructor takes new parameters for Lucra url
+
 ## [v0.2.4]
 
 ### Added
