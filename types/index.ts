@@ -1,3 +1,3 @@
 export * from "./states";
-export * from "./user-info";
+export * from "./sdk-user";
 export * from "./message";

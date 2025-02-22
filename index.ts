@@ -1,8 +1,9 @@
 import {
   LucraSportsMessageType,
+  MessageTypeToLucraSports,
   type LucraSportsOnMessage,
   type LucraSportsSendMessage,
-  type UserInfo,
+  type SDKClientUser,
 } from "./types";
 
 export const LucraSportsIframeId = "__lucrasports__";
@@ -12,28 +13,26 @@ function NoOp(data?: any) {
 }
 
 export class LucraSports {
-  private userInfo?: UserInfo;
   private iframe?: HTMLIFrameElement;
-  private url?: string;
+  private url: string = "";
   private messages: string[] = [];
   private onMessage: LucraSportsOnMessage = {
-    login: NoOp,
     userInfo: NoOp,
     matchupCreated: NoOp,
     matchupCanceled: NoOp,
-    matchupCompleted: NoOp,
+    matchupAccepted: NoOp,
   };
   private controller: AbortController = new AbortController();
   private iframeParentElement?: HTMLElement;
 
+  private iframeUrlOrigin() {
+    return new URL(this.url).origin;
+  }
+
   private _eventListener = (event: MessageEvent<any>) => {
-    const iframeUrl = new URL(this.url ?? "");
-    if (event.origin !== iframeUrl.origin) return;
+    if (event.origin !== this.iframeUrlOrigin()) return;
     this.messages.push(event.data);
     switch (event.data.type) {
-      case LucraSportsMessageType.login:
-        this.onMessage.login(event.data.data);
-        break;
       case LucraSportsMessageType.matchupCreated:
         this.onMessage.matchupCreated(event.data.data);
         break;
@@ -43,8 +42,8 @@ export class LucraSports {
       case LucraSportsMessageType.matchupCanceled:
         this.onMessage.matchupCanceled(event.data.data);
         break;
-      case LucraSportsMessageType.matchupCompleted:
-        this.onMessage.matchupCompleted(event.data.data);
+      case LucraSportsMessageType.matchupAccepted:
+        this.onMessage.matchupAccepted(event.data.data);
         break;
       default:
         console.log("Unrecognized LucraSportsMessageType", event.data.type);
@@ -65,9 +64,8 @@ export class LucraSports {
    * @param env sandbox | production
    * @param hostUrl What URL is hosting LucraSports? Necessary to do `.postMessage` securely
    * @param onMessage Message Handler for messages from LucraSports
-   * @param userInfo User information for pre-populating KYC flow
    * @param destination home, profile, or create-matchup
-   * @param matchupId if `destination` is `home`, you can supply a default matchupId to skip the matchup selection screen
+   * @param matchupId if `destination` is `create-matchup`, you can supply a default matchupId to skip the matchup selection screen
    */
   constructor({
     tenantId,
@@ -76,7 +74,6 @@ export class LucraSports {
     onMessage,
     destination,
     matchupId,
-    userInfo,
     __debugUrl,
   }: {
     tenantId: string;
@@ -85,7 +82,6 @@ export class LucraSports {
     onMessage: LucraSportsOnMessage;
     destination: "home" | "profile" | "create-matchup";
     matchupId?: string;
-    userInfo?: UserInfo;
     __debugUrl?: string;
   }) {
     const params = new URLSearchParams();
@@ -104,7 +100,6 @@ export class LucraSports {
       `https://${tenantId}.${
         env === "sandbox" ? "sandbox." : ""
       }lucrasports.com/${path}?${params.toString()}`;
-    this.userInfo = userInfo;
     this.onMessage = onMessage;
     this.setUpEventListener();
   }
@@ -116,13 +111,10 @@ export class LucraSports {
   open(element: HTMLElement) {
     try {
       this.iframeParentElement = element;
-      const searchStateParam = this.userInfo
-        ? `?appState=${btoa(JSON.stringify(this.userInfo))}`
-        : "";
       const iframe = document.createElement("iframe");
       this.iframe = iframe;
       iframe.id = LucraSportsIframeId;
-      iframe.src = this.url + searchStateParam;
+      iframe.src = this.url;
       iframe.style.height = "100%";
       iframe.style.width = "100%";
       iframe.allow = "geolocation *";
@@ -146,7 +138,7 @@ export class LucraSports {
 
   private _sendMessage(message: any) {
     try {
-      this.iframe?.contentWindow?.postMessage(message);
+      this.iframe?.contentWindow?.postMessage(message, this.iframeUrlOrigin());
     } catch (e) {
       console.error("Unable to send message to LucraSports iframe", e);
       throw e;
@@ -159,7 +151,12 @@ export class LucraSports {
    * Send a message to LucraSports
    */
   sendMessage: LucraSportsSendMessage = {
-    userInfo: (data: UserInfo) => this._sendMessage(data),
+    userUpdated: (data: SDKClientUser) => {
+      this._sendMessage({
+        type: MessageTypeToLucraSports.clientUserInfo,
+        body: data,
+      });
+    },
   };
 }
 

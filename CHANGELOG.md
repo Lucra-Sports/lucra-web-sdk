@@ -1,5 +1,11 @@
 ### CHANGELOG
 
+## [0.4.0]
+
+### Changed
+
+- updated to all the supported events and bugfixes
+
 ## [0.3.0]
 
 ### Changed
