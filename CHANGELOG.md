@@ -1,5 +1,11 @@
 ### CHANGELOG
 
+## [0.5.0]
+
+### Updated
+
+- `.open` method now contains the `destination` instead of the constructor, allowing you to determine where to open LucraSports at a later time
+
 ## [0.4.0]
 
 ### Changed

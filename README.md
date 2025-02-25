@@ -23,7 +23,16 @@ const lucraSports = new LucraSports({
   hostUrl: "<url origin of your website that will be hosting the iframe>",
   onMessage: {
     // callback functions for the messages sent to the SDK from Lucra Sports, documented below
-  },
+  }
+})
+```
+
+### Open LucraSports
+
+```
+const lucraSports = new LucraSports(...)
+lucraSports.open({
+  element: <HTMLElement that will contain the iframe for LucraSports>,
   destination: "create-matchup" | "profile" | "home",
   matchupId: "<optional matchupId to skip the matchup selection screen when destination is create-matchup>"
 })

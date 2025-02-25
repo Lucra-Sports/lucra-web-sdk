@@ -1,5 +1,8 @@
 import type { SDKClientUser, SDKLucraUser } from "./sdk-user";
 
+export type LucraSportsDestination = "home" | "profile" | "create-matchup";
+export type LucraSportsEnvironment = "sandbox" | "production";
+
 export enum LucraSportsMessageType {
   userInfo = "userInfo",
   matchupCreated = "matchupCreated",

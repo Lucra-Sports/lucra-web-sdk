@@ -1,6 +1,8 @@
 import {
   LucraSportsMessageType,
   MessageTypeToLucraSports,
+  type LucraSportsDestination,
+  type LucraSportsEnvironment,
   type LucraSportsOnMessage,
   type LucraSportsSendMessage,
   type SDKClientUser,
@@ -14,6 +16,9 @@ function NoOp(data?: any) {
 
 export class LucraSports {
   private iframe?: HTMLIFrameElement;
+  private tenantId: string = "";
+  private env: LucraSportsEnvironment = "production";
+  private hostUrl: string = "";
   private url: string = "";
   private messages: string[] = [];
   private onMessage: LucraSportsOnMessage = {
@@ -64,28 +69,42 @@ export class LucraSports {
    * @param env sandbox | production
    * @param hostUrl What URL is hosting LucraSports? Necessary to do `.postMessage` securely
    * @param onMessage Message Handler for messages from LucraSports
-   * @param destination home, profile, or create-matchup
-   * @param matchupId if `destination` is `create-matchup`, you can supply a default matchupId to skip the matchup selection screen
    */
   constructor({
     tenantId,
     env,
     hostUrl,
     onMessage,
+  }: {
+    tenantId: string;
+    env: LucraSportsEnvironment;
+    hostUrl: string;
+    onMessage: LucraSportsOnMessage;
+  }) {
+    this.hostUrl = hostUrl;
+    this.env = env;
+    this.tenantId = tenantId;
+    this.onMessage = onMessage;
+    this.setUpEventListener();
+  }
+
+  /**
+   * Open LucraSports in an iframe and start listening to messages
+   * @param element parent element to contain the LucraSports iframe
+   * @param destination home, profile, or create-matchup
+   * @param matchupId if `destination` is `create-matchup`, you can supply a default matchupId to skip the matchup selection screen
+   */
+  open({
+    element,
     destination,
     matchupId,
     __debugUrl,
   }: {
-    tenantId: string;
-    env: "sandbox" | "production";
-    hostUrl: string;
-    onMessage: LucraSportsOnMessage;
-    destination: "home" | "profile" | "create-matchup";
+    element: HTMLElement;
+    destination: LucraSportsDestination;
     matchupId?: string;
     __debugUrl?: string;
   }) {
-    const params = new URLSearchParams();
-    params.set("parentUrl", hostUrl);
     const path =
       destination === "home"
         ? "app/home"
@@ -94,21 +113,15 @@ export class LucraSports {
         : matchupId !== undefined
         ? `app/create-matchup/${matchupId}/wager`
         : "app/create-matchup";
+    const params = new URLSearchParams();
+    params.set("parentUrl", this.hostUrl);
 
     this.url =
       `${__debugUrl}/${path}?${params.toString()}` ||
-      `https://${tenantId}.${
-        env === "sandbox" ? "sandbox." : ""
+      `https://${this.tenantId}.${
+        this.env === "sandbox" ? "sandbox." : ""
       }lucrasports.com/${path}?${params.toString()}`;
-    this.onMessage = onMessage;
-    this.setUpEventListener();
-  }
 
-  /**
-   * Open LucraSports in an iframe and start listening to messages
-   * @param element parent element to contain the LucraSports iframe
-   */
-  open(element: HTMLElement) {
     try {
       this.iframeParentElement = element;
       const iframe = document.createElement("iframe");
