@@ -71,12 +71,10 @@ export class LucraSports {
   constructor({
     tenantId,
     env,
-    hostUrl,
     onMessage,
   }: {
     tenantId: string;
     env: LucraSportsEnvironment;
-    hostUrl: string;
     onMessage: LucraSportsOnMessage;
   }) {
     this.env = env;

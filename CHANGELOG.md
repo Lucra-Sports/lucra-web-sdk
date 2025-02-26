@@ -1,5 +1,11 @@
 ### CHANGELOG
 
+## [v0.5.2]
+
+### Updated
+
+- remove hostUrl from the constructor
+
 ## [v0.5.1]
 
 ### Updated
