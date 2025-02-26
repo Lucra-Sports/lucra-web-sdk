@@ -18,7 +18,6 @@ export class LucraSports {
   private iframe?: HTMLIFrameElement;
   private tenantId: string = "";
   private env: LucraSportsEnvironment = "production";
-  private hostUrl: string = "";
   private url: string = "";
   private messages: string[] = [];
   private onMessage: LucraSportsOnMessage = {
@@ -67,7 +66,6 @@ export class LucraSports {
    * Create a new instance of LucraSports
    * @param tenantId Your LucraSports tenantId
    * @param env sandbox | production
-   * @param hostUrl What URL is hosting LucraSports? Necessary to do `.postMessage` securely
    * @param onMessage Message Handler for messages from LucraSports
    */
   constructor({
@@ -81,11 +79,9 @@ export class LucraSports {
     hostUrl: string;
     onMessage: LucraSportsOnMessage;
   }) {
-    this.hostUrl = hostUrl;
     this.env = env;
     this.tenantId = tenantId;
     this.onMessage = onMessage;
-    this.setUpEventListener();
   }
 
   /**
@@ -114,13 +110,14 @@ export class LucraSports {
         ? `app/create-matchup/${matchupId}/wager`
         : "app/create-matchup";
     const params = new URLSearchParams();
-    params.set("parentUrl", this.hostUrl);
+    params.set("parentUrl", window.location.origin);
 
     this.url =
       `${__debugUrl}/${path}?${params.toString()}` ||
       `https://${this.tenantId}.${
         this.env === "sandbox" ? "sandbox." : ""
       }lucrasports.com/${path}?${params.toString()}`;
+    this.setUpEventListener();
 
     try {
       this.iframeParentElement = element;

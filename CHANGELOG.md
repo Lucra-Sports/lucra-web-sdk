@@ -1,5 +1,12 @@
 ### CHANGELOG
 
+## [v0.5.1]
+
+### Updated
+
+- remove need for hostUrl in the constructor
+- fix too early of setting up event listener
+
 ## [0.5.0]
 
 ### Updated

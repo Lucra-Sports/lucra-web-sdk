@@ -20,7 +20,6 @@ The SDK was developed with Typescript in mind. If you are using Typescript, ever
 const lucraSports = new LucraSports({
   tenantId: "<your Lucra tenant id>",
   env: "sandbox" | "production",
-  hostUrl: "<url origin of your website that will be hosting the iframe>",
   onMessage: {
     // callback functions for the messages sent to the SDK from Lucra Sports, documented below
   }
@@ -46,8 +45,6 @@ lucraSports.open({
 `matchupCanceled` - the user successfully canceled the matchup, and contains the id of that matchup
 
 ### Messages you can send to LucraSports
-
-_Note:_ the `hostUrl` must be correct, otherwise LucraSports will ignore the message
 
 `userUpdated` - update the LucraSports user with known information about the current user. This information will be persisted to LucraSports and will be used to pre-fill forms the user will have to fill out for things like Identity Verification
 
