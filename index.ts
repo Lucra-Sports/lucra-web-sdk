@@ -6,6 +6,7 @@ import {
   type LucraClientOnMessage,
   type LucraClientSendMessage,
   type SDKClientUser,
+  type LucraConvertToCreditResponse,
 } from "./types";
 
 export const LucraClientIframeId = "__lucrasports__";
@@ -25,6 +26,7 @@ export class LucraClient {
     matchupCreated: NoOp,
     matchupCanceled: NoOp,
     matchupAccepted: NoOp,
+    convertToCredit: NoOp,
   };
   private controller: AbortController = new AbortController();
   private iframeParentElement?: HTMLElement;
@@ -49,6 +51,9 @@ export class LucraClient {
       case LucraClientMessageType.matchupAccepted:
         this.onMessage.matchupAccepted(event.data.data);
         break;
+      case LucraClientMessageType.convertToCredit:
+        this.onMessage.convertToCredit(event.data.data);
+        break;
       default:
         console.log("Unrecognized LucraClientMessageType", event.data.type);
         break;
@@ -63,7 +68,7 @@ export class LucraClient {
   }
 
   /**
-   * Create a new instance of LucraSports
+   * Create a new instance of LucraClient
    * @param tenantId Your Lucra tenantId
    * @param env sandbox | production
    * @param onMessage Message Handler for messages from LucraClient
@@ -82,37 +87,13 @@ export class LucraClient {
     this.onMessage = onMessage;
   }
 
-  /**
-   * Open LucraSports in an iframe and start listening to messages
-   * @param element parent element to contain the LucraSports iframe
-   * @param destination home, profile, or create-matchup
-   * @param matchupId if `destination` is `create-matchup`, you can supply a default matchupId to skip the matchup selection screen
-   */
-  open({
-    element,
-    destination,
-    matchupId,
-    __debugUrl,
-  }: {
-    element: HTMLElement;
-    destination: LucraDestination;
-    matchupId?: string;
-    __debugUrl?: string;
-  }) {
-    const path =
-      destination === "home"
-        ? "app/home"
-        : destination === "profile"
-        ? "app/profile"
-        : matchupId !== undefined
-        ? `app/create-matchup/${matchupId}/wager`
-        : "app/create-matchup";
+  private _open(element: HTMLElement, path: string, __debugUrl?: string) {
     const params = new URLSearchParams();
     params.set("parentUrl", window.location.origin);
 
     this.url =
       `${__debugUrl}/${path}?${params.toString()}` ||
-      `https://${this.tenantId}.${
+      `https://${this.tenantId.toLowerCase()}.${
         this.env === "sandbox" ? "sandbox." : ""
       }lucrasports.com/${path}?${params.toString()}`;
     this.setUpEventListener();
@@ -135,10 +116,46 @@ export class LucraClient {
   }
 
   /**
-   * Close iframe and stop listening to any messages sent from LucraSports
+   * Open Lucra in an iframe
+   * @param element parent element to contain the LucraClient iframe
+   */
+  open = (element: HTMLElement, __debugUrl?: string) => {
+    return {
+      /**
+       * Open directly to the user's profile page
+       */
+      profile: () => this._open(element, "app/profile", __debugUrl),
+      /**
+       * Open to the home page
+       */
+      home: () => this._open(element, "app/home", __debugUrl),
+      /**
+       * Open directly into add funds
+       */
+      deposit: () => this._open(element, "app/add-funds", __debugUrl),
+      /**
+       * Open directly into withdraw funds
+       */
+      withdraw: () => this._open(element, "app/withdraw-funds", __debugUrl),
+      /**
+       * Open directly into create matchup flow. If matchupId is provided, the matchup selection screen will be skipped.
+       */
+      createMatchup: (matchupId?: string) =>
+        this._open(
+          element,
+          "app/create-matchup" + matchupId !== undefined
+            ? `/${matchupId}/wager`
+            : "",
+          __debugUrl
+        ),
+    };
+  };
+
+  /**
+   * Close iframe and stop listening to any messages sent from LucraClient
    */
   close() {
-    this.controller.abort("Closing LucraSports");
+    this.controller.abort("Closing LucraClient");
     if (this.iframeParentElement) {
       this.iframeParentElement.innerHTML = "";
     }
@@ -148,7 +165,7 @@ export class LucraClient {
     try {
       this.iframe?.contentWindow?.postMessage(message, this.iframeUrlOrigin());
     } catch (e) {
-      console.error("Unable to send message to LucraSports iframe", e);
+      console.error("Unable to send message to LucraClient iframe", e);
       throw e;
     } finally {
       return this;
@@ -156,12 +173,18 @@ export class LucraClient {
   }
 
   /**
-   * Send a message to LucraSports
+   * Send a message to LucraClient
    */
   sendMessage: LucraClientSendMessage = {
     userUpdated: (data: SDKClientUser) => {
       this._sendMessage({
         type: MessageTypeToLucraClient.clientUserInfo,
+        body: data,
+      });
+    },
+    convertToCreditResponse: (data: LucraConvertToCreditResponse) => {
+      this._sendMessage({
+        type: MessageTypeToLucraClient.convertToCreditResponse,
         body: data,
       });
     },

@@ -1,5 +1,12 @@
 ### CHANGELOG
 
+## [v0.7.0]
+
+### Updated
+
+- new `convertToCredit` messages that support withdrawing funds as credit
+- `open` now has typed methods for where to open Lucra
+
 ## [v0.6.1]
 
 ### Updated

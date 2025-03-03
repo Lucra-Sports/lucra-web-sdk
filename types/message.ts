@@ -1,6 +1,11 @@
 import type { SDKClientUser, SDKLucraUser } from "./sdk-user";
 
-export type LucraDestination = "home" | "profile" | "create-matchup";
+export type LucraDestination =
+  | "home"
+  | "profile"
+  | "create-matchup"
+  | "deposit"
+  | "withdraw";
 export type LucraEnvironment = "sandbox" | "production";
 
 export enum LucraClientMessageType {
@@ -8,26 +13,42 @@ export enum LucraClientMessageType {
   matchupCreated = "matchupCreated",
   matchupCanceled = "matchupCanceled",
   matchupAccepted = "matchupAccepted",
+  convertToCredit = "convertToCredit",
 }
 
 export enum MessageTypeToLucraClient {
   clientUserInfo = "clientUserInfo",
+  convertToCreditResponse = "convertToCreditResponse",
 }
+
+export type LucraConvertToCreditResponse = {
+  id: string;
+  iconUrl: string;
+  conversionTerms: string;
+  convertedAmount: number;
+  convertedDisplayAmount: string;
+  shortDescription: string;
+  longDescription: string;
+  metaData: Record<string, string>;
+};
 
 export type LucraUserInfoBody = SDKLucraUser;
 export type LucraMatchupCreatedBody = { matchupId: string };
 export type LucraMatchupCanceledBody = { matchupId: string };
 export type LucraMatchupAcceptedBody = { matchupId: string };
+export type LucraConvertToCreditBody = { amount: number };
 
 export type LucraClientOnMessage = {
   userInfo: (data: LucraUserInfoBody) => void;
   matchupCreated: (data: LucraMatchupCreatedBody) => void;
   matchupAccepted: (data: LucraMatchupAcceptedBody) => void;
   matchupCanceled: (data: LucraMatchupCanceledBody) => void;
+  convertToCredit: (data: LucraConvertToCreditBody) => void;
 };
 
 export type LucraClientSendMessage = {
   userUpdated: (data: SDKClientUser) => void;
+  convertToCreditResponse: (data: LucraConvertToCreditResponse) => void;
 };
 
 export type LucraClientMessage = (body: {
