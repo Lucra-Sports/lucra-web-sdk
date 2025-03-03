@@ -1,5 +1,11 @@
 ### CHANGELOG
 
+## [v0.6.1]
+
+### Updated
+
+- fix typo
+
 ## [v0.6.0]
 
 ### Updated

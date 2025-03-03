@@ -30,7 +30,7 @@ export type LucraClientSendMessage = {
   userUpdated: (data: SDKClientUser) => void;
 };
 
-export type LucraClientessage = (body: {
+export type LucraClientMessage = (body: {
   type: LucraClientMessageType;
   data: any;
 }) => void;
