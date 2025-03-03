@@ -1,26 +1,26 @@
 import {
-  LucraSportsMessageType,
-  MessageTypeToLucraSports,
-  type LucraSportsDestination,
-  type LucraSportsEnvironment,
-  type LucraSportsOnMessage,
-  type LucraSportsSendMessage,
+  LucraClientMessageType,
+  MessageTypeToLucraClient,
+  type LucraEnvironment,
+  type LucraDestination,
+  type LucraClientOnMessage,
+  type LucraClientSendMessage,
   type SDKClientUser,
 } from "./types";
 
-export const LucraSportsIframeId = "__lucrasports__";
+export const LucraClientIframeId = "__lucrasports__";
 
 function NoOp(data?: any) {
   console.log("Not implemented", data);
 }
 
-export class LucraSports {
+export class LucraClient {
   private iframe?: HTMLIFrameElement;
   private tenantId: string = "";
-  private env: LucraSportsEnvironment = "production";
+  private env: LucraEnvironment = "production";
   private url: string = "";
   private messages: string[] = [];
-  private onMessage: LucraSportsOnMessage = {
+  private onMessage: LucraClientOnMessage = {
     userInfo: NoOp,
     matchupCreated: NoOp,
     matchupCanceled: NoOp,
@@ -37,20 +37,20 @@ export class LucraSports {
     if (event.origin !== this.iframeUrlOrigin()) return;
     this.messages.push(event.data);
     switch (event.data.type) {
-      case LucraSportsMessageType.matchupCreated:
+      case LucraClientMessageType.matchupCreated:
         this.onMessage.matchupCreated(event.data.data);
         break;
-      case LucraSportsMessageType.userInfo:
+      case LucraClientMessageType.userInfo:
         this.onMessage.userInfo(event.data.data);
         break;
-      case LucraSportsMessageType.matchupCanceled:
+      case LucraClientMessageType.matchupCanceled:
         this.onMessage.matchupCanceled(event.data.data);
         break;
-      case LucraSportsMessageType.matchupAccepted:
+      case LucraClientMessageType.matchupAccepted:
         this.onMessage.matchupAccepted(event.data.data);
         break;
       default:
-        console.log("Unrecognized LucraSportsMessageType", event.data.type);
+        console.log("Unrecognized LucraClientMessageType", event.data.type);
         break;
     }
   };
@@ -64,9 +64,9 @@ export class LucraSports {
 
   /**
    * Create a new instance of LucraSports
-   * @param tenantId Your LucraSports tenantId
+   * @param tenantId Your Lucra tenantId
    * @param env sandbox | production
-   * @param onMessage Message Handler for messages from LucraSports
+   * @param onMessage Message Handler for messages from LucraClient
    */
   constructor({
     tenantId,
@@ -74,8 +74,8 @@ export class LucraSports {
     onMessage,
   }: {
     tenantId: string;
-    env: LucraSportsEnvironment;
-    onMessage: LucraSportsOnMessage;
+    env: LucraEnvironment;
+    onMessage: LucraClientOnMessage;
   }) {
     this.env = env;
     this.tenantId = tenantId;
@@ -95,7 +95,7 @@ export class LucraSports {
     __debugUrl,
   }: {
     element: HTMLElement;
-    destination: LucraSportsDestination;
+    destination: LucraDestination;
     matchupId?: string;
     __debugUrl?: string;
   }) {
@@ -121,7 +121,7 @@ export class LucraSports {
       this.iframeParentElement = element;
       const iframe = document.createElement("iframe");
       this.iframe = iframe;
-      iframe.id = LucraSportsIframeId;
+      iframe.id = LucraClientIframeId;
       iframe.src = this.url;
       iframe.style.height = "100%";
       iframe.style.width = "100%";
@@ -158,14 +158,14 @@ export class LucraSports {
   /**
    * Send a message to LucraSports
    */
-  sendMessage: LucraSportsSendMessage = {
+  sendMessage: LucraClientSendMessage = {
     userUpdated: (data: SDKClientUser) => {
       this._sendMessage({
-        type: MessageTypeToLucraSports.clientUserInfo,
+        type: MessageTypeToLucraClient.clientUserInfo,
         body: data,
       });
     },
   };
 }
 
-export default LucraSports;
+export default LucraClient;

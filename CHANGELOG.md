@@ -1,5 +1,11 @@
 ### CHANGELOG
 
+## [v0.6.0]
+
+### Updated
+
+- LucraSports -> LucraClient
+
 ## [v0.5.2]
 
 ### Updated

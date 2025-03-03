@@ -1,16 +1,16 @@
 import type { SDKClientUser, SDKLucraUser } from "./sdk-user";
 
-export type LucraSportsDestination = "home" | "profile" | "create-matchup";
-export type LucraSportsEnvironment = "sandbox" | "production";
+export type LucraDestination = "home" | "profile" | "create-matchup";
+export type LucraEnvironment = "sandbox" | "production";
 
-export enum LucraSportsMessageType {
+export enum LucraClientMessageType {
   userInfo = "userInfo",
   matchupCreated = "matchupCreated",
   matchupCanceled = "matchupCanceled",
   matchupAccepted = "matchupAccepted",
 }
 
-export enum MessageTypeToLucraSports {
+export enum MessageTypeToLucraClient {
   clientUserInfo = "clientUserInfo",
 }
 
@@ -19,18 +19,18 @@ export type LucraMatchupCreatedBody = { matchupId: string };
 export type LucraMatchupCanceledBody = { matchupId: string };
 export type LucraMatchupAcceptedBody = { matchupId: string };
 
-export type LucraSportsOnMessage = {
+export type LucraClientOnMessage = {
   userInfo: (data: LucraUserInfoBody) => void;
   matchupCreated: (data: LucraMatchupCreatedBody) => void;
   matchupAccepted: (data: LucraMatchupAcceptedBody) => void;
   matchupCanceled: (data: LucraMatchupCanceledBody) => void;
 };
 
-export type LucraSportsSendMessage = {
+export type LucraClientSendMessage = {
   userUpdated: (data: SDKClientUser) => void;
 };
 
-export type LucraSportsMessage = (body: {
-  type: LucraSportsMessageType;
+export type LucraClientessage = (body: {
+  type: LucraClientMessageType;
   data: any;
 }) => void;
