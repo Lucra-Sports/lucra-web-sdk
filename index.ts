@@ -119,7 +119,16 @@ export class LucraClient {
    * Open Lucra in an iframe
    * @param element parent element to contain the LucraClient iframe
    */
-  open(element: HTMLElement, __debugUrl?: string) {
+  open(
+    element: HTMLElement,
+    __debugUrl?: string
+  ): {
+    profile: () => LucraClient;
+    home: () => LucraClient;
+    deposit: () => LucraClient;
+    withdraw: () => LucraClient;
+    createMatchup: (matchupId?: string) => LucraClient;
+  } {
     return {
       /**
        * Open directly to the user's profile page
