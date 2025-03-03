@@ -119,7 +119,7 @@ export class LucraClient {
    * Open Lucra in an iframe
    * @param element parent element to contain the LucraClient iframe
    */
-  open = (element: HTMLElement, __debugUrl?: string) => {
+  open(element: HTMLElement, __debugUrl?: string) {
     return {
       /**
        * Open directly to the user's profile page
@@ -149,7 +149,7 @@ export class LucraClient {
           __debugUrl
         ),
     };
-  };
+  }
 
   /**
    * Close iframe and stop listening to any messages sent from LucraClient
