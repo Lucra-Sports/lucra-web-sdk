@@ -1,6 +1,12 @@
 ### CHANGELOG
 
-## [v0.7.0]
+## [v0.7.3]
+
+### Updated
+
+- new `enableConvertToCredit` message to send to Lucra
+
+## [v0.7.2]
 
 ### Updated
 

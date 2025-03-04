@@ -19,6 +19,7 @@ export enum LucraClientMessageType {
 export enum MessageTypeToLucraClient {
   clientUserInfo = "clientUserInfo",
   convertToCreditResponse = "convertToCreditResponse",
+  enableConvertToCredit = "enableConvertToCredit",
 }
 
 export type LucraConvertToCreditResponse = {
@@ -49,6 +50,7 @@ export type LucraClientOnMessage = {
 export type LucraClientSendMessage = {
   userUpdated: (data: SDKClientUser) => void;
   convertToCreditResponse: (data: LucraConvertToCreditResponse) => void;
+  enableConvertToCredit: () => void;
 };
 
 export type LucraClientMessage = (body: {

@@ -185,16 +185,33 @@ export class LucraClient {
    * Send a message to LucraClient
    */
   sendMessage: LucraClientSendMessage = {
+    /**
+     * Update the user in Lucra
+     * @param data SDKClientUser
+     */
     userUpdated: (data: SDKClientUser) => {
       this._sendMessage({
         type: MessageTypeToLucraClient.clientUserInfo,
         body: data,
       });
     },
+    /**
+     * Call this method after receiving a `convertToCredit` request message
+     * @param data LucraConvertToCreditResponse
+     */
     convertToCreditResponse: (data: LucraConvertToCreditResponse) => {
       this._sendMessage({
         type: MessageTypeToLucraClient.convertToCreditResponse,
         body: data,
+      });
+    },
+    /**
+     * Let Lucra know there's a credit option for withdrawing funds
+     */
+    enableConvertToCredit: () => {
+      this._sendMessage({
+        type: MessageTypeToLucraClient.enableConvertToCredit,
+        body: null,
       });
     },
   };
