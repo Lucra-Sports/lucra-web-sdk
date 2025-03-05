@@ -1,12 +1,12 @@
 import type { SDKClientUser, SDKLucraUser } from "./sdk-user";
 
-export type LucraDestination =
-  | "home"
-  | "profile"
-  | "create-matchup"
-  | "deposit"
-  | "withdraw";
-export type LucraEnvironment = "sandbox" | "production";
+export type LucraEnvironment =
+  | "local"
+  | "dev1"
+  | "dev2"
+  | "staging"
+  | "sandbox"
+  | "production";
 
 export enum LucraClientMessageType {
   userInfo = "userInfo",

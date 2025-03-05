@@ -36,7 +36,7 @@ lucraSports.open(element: <HTMLElement that will contain the iframe for Lucra>)
   .home()
   .deposit()
   .withdraw()
-  .createMatchup(matchupId?: string)
+  .createMatchup(gameId?: string)
 ```
 
 ### Messages from LucraClient

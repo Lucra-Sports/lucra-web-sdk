@@ -1,5 +1,11 @@
 ### CHANGELOG
 
+## [v0.8.0]
+
+### Updated
+
+- updates to the `.open` method
+
 ## [v0.7.3]
 
 ### Updated

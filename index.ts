@@ -2,7 +2,6 @@ import {
   LucraClientMessageType,
   MessageTypeToLucraClient,
   type LucraEnvironment,
-  type LucraDestination,
   type LucraClientOnMessage,
   type LucraClientSendMessage,
   type SDKClientUser,
@@ -87,15 +86,16 @@ export class LucraClient {
     this.onMessage = onMessage;
   }
 
-  private _open(element: HTMLElement, path: string, __debugUrl?: string) {
+  private _open(element: HTMLElement, path: string) {
     const params = new URLSearchParams();
     params.set("parentUrl", window.location.origin);
 
     this.url =
-      `${__debugUrl}/${path}?${params.toString()}` ||
-      `https://${this.tenantId.toLowerCase()}.${
-        this.env === "sandbox" ? "sandbox." : ""
-      }lucrasports.com/${path}?${params.toString()}`;
+      this.env === "local"
+        ? `http://localhost:3000/${path}?${params.toString()}`
+        : `https://${this.tenantId.toLowerCase()}.${
+            this.env !== "production" ? `${this.env}.` : ""
+          }lucrasports.com/${path}?${params.toString()}`;
     this.setUpEventListener();
 
     try {
@@ -119,43 +119,38 @@ export class LucraClient {
    * Open Lucra in an iframe
    * @param element parent element to contain the LucraClient iframe
    */
-  open(
-    element: HTMLElement,
-    __debugUrl?: string
-  ): {
+  open(element: HTMLElement): {
+    /**
+     * Open directly to the user's profile page
+     */
     profile: () => LucraClient;
+    /**
+     * Open to the home page
+     */
     home: () => LucraClient;
+    /**
+     * Open directly into add funds
+     */
     deposit: () => LucraClient;
+    /**
+     * Open directly into withdraw funds
+     */
     withdraw: () => LucraClient;
-    createMatchup: (matchupId?: string) => LucraClient;
+    /**
+     * Open directly into create matchup flow. If gameId is provided, the game selection screen will be skipped.
+     */
+    createMatchup: (gameId?: string) => LucraClient;
   } {
     return {
-      /**
-       * Open directly to the user's profile page
-       */
-      profile: () => this._open(element, "app/profile", __debugUrl),
-      /**
-       * Open to the home page
-       */
-      home: () => this._open(element, "app/home", __debugUrl),
-      /**
-       * Open directly into add funds
-       */
-      deposit: () => this._open(element, "app/add-funds", __debugUrl),
-      /**
-       * Open directly into withdraw funds
-       */
-      withdraw: () => this._open(element, "app/withdraw-funds", __debugUrl),
-      /**
-       * Open directly into create matchup flow. If matchupId is provided, the matchup selection screen will be skipped.
-       */
-      createMatchup: (matchupId?: string) =>
+      profile: () => this._open(element, "app/profile"),
+      home: () => this._open(element, "app/home"),
+      deposit: () => this._open(element, "app/add-funds"),
+      withdraw: () => this._open(element, "app/withdraw-funds"),
+      createMatchup: (gameId?: string) =>
         this._open(
           element,
-          "app/create-matchup" + matchupId !== undefined
-            ? `/${matchupId}/wager`
-            : "",
-          __debugUrl
+          "app/create-matchup" +
+            (gameId !== undefined ? `/${gameId}/wager` : "")
         ),
     };
   }
