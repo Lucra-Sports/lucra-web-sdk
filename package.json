@@ -1,6 +1,6 @@
 {
   "name": "lucra-web-sdk",
-  "version": "0.7.3",
+  "version": "0.8.0",
   "module": "index.ts",
   "type": "module",
   "files": [
