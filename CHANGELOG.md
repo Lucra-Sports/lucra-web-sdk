@@ -1,5 +1,11 @@
 ### CHANGELOG
 
+## [v0.8.1]
+
+### Updated
+
+- new `matchupDetails` method to navigate to an existing matchup to accept
+
 ## [v0.8.0]
 
 ### Updated

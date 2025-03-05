@@ -86,8 +86,11 @@ export class LucraClient {
     this.onMessage = onMessage;
   }
 
-  private _open(element: HTMLElement, path: string) {
-    const params = new URLSearchParams();
+  private _open(
+    element: HTMLElement,
+    path: string,
+    params: URLSearchParams = new URLSearchParams()
+  ) {
     params.set("parentUrl", window.location.origin);
 
     this.url =
@@ -140,6 +143,10 @@ export class LucraClient {
      * Open directly into create matchup flow. If gameId is provided, the game selection screen will be skipped.
      */
     createMatchup: (gameId?: string) => LucraClient;
+    /**
+     * Open directly to a matchup where the user can accept, cancel, or wager on the matchup.
+     */
+    matchupDetails: (matchupId: string, teamInvitedId?: string) => LucraClient;
   } {
     return {
       profile: () => this._open(element, "app/profile"),
@@ -152,6 +159,14 @@ export class LucraClient {
           "app/create-matchup" +
             (gameId !== undefined ? `/${gameId}/wager` : "")
         ),
+      matchupDetails: (matchupId: string, teamInvitedId?: string) => {
+        const params = new URLSearchParams();
+        if (teamInvitedId) {
+          params.set("teamIdToJoin", teamInvitedId);
+        }
+
+        return this._open(element, `app/matchups/${matchupId}`, params);
+      },
     };
   }
 
