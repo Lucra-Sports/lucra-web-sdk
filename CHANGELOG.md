@@ -1,5 +1,11 @@
 ### CHANGELOG
 
+## [v0.8.3]
+
+### Updated
+
+- `theme` optional on `LucraConvertToCreditResponse`
+
 ## [v0.8.2]
 
 ### Updated

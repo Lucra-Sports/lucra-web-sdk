@@ -26,7 +26,7 @@ export type LucraConvertToCreditResponse = {
   id: string;
   title: string;
   iconUrl?: string;
-  theme: {
+  theme?: {
     cardColor: string;
     cardTextColor: string;
     pillColor: string;
