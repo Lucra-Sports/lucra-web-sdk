@@ -1,5 +1,11 @@
 ### CHANGELOG
 
+## [v0.8.2]
+
+### Updated
+
+- `LucraConvertToCreditResponse` updated
+
 ## [v0.8.1]
 
 ### Updated

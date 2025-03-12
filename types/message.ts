@@ -24,13 +24,20 @@ export enum MessageTypeToLucraClient {
 
 export type LucraConvertToCreditResponse = {
   id: string;
-  iconUrl: string;
+  title: string;
+  iconUrl?: string;
+  theme: {
+    cardColor: string;
+    cardTextColor: string;
+    pillColor: string;
+    pillTextColor: string;
+  };
   conversionTerms: string;
   convertedAmount: number;
   convertedDisplayAmount: string;
   shortDescription: string;
   longDescription: string;
-  metaData: Record<string, string>;
+  metaData?: Record<string, string>;
 };
 
 export type LucraUserInfoBody = SDKLucraUser;
