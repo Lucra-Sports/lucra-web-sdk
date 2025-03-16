@@ -1,5 +1,11 @@
 ### CHANGELOG
 
+## [v0.9.0]
+
+### Updated
+
+- `deepLink` message now accepted
+
 ## [v0.8.3]
 
 ### Updated

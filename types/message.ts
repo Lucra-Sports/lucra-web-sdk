@@ -14,12 +14,14 @@ export enum LucraClientMessageType {
   matchupCanceled = "matchupCanceled",
   matchupAccepted = "matchupAccepted",
   convertToCredit = "convertToCredit",
+  deepLink = "deepLink",
 }
 
 export enum MessageTypeToLucraClient {
   clientUserInfo = "clientUserInfo",
   convertToCreditResponse = "convertToCreditResponse",
   enableConvertToCredit = "enableConvertToCredit",
+  deepLinkResponse = "deepLinkResponse",
 }
 
 export type LucraConvertToCreditResponse = {
@@ -40,11 +42,16 @@ export type LucraConvertToCreditResponse = {
   metaData?: Record<string, string>;
 };
 
+export type LucraDeepLinkResponse = {
+  url: string;
+};
+
 export type LucraUserInfoBody = SDKLucraUser;
 export type LucraMatchupCreatedBody = { matchupId: string };
 export type LucraMatchupCanceledBody = { matchupId: string };
 export type LucraMatchupAcceptedBody = { matchupId: string };
 export type LucraConvertToCreditBody = { amount: number };
+export type LucraDeepLinkBody = { matchupId: string; teamInviteId?: string };
 
 export type LucraClientOnMessage = {
   userInfo: (data: LucraUserInfoBody) => void;
@@ -52,12 +59,14 @@ export type LucraClientOnMessage = {
   matchupAccepted: (data: LucraMatchupAcceptedBody) => void;
   matchupCanceled: (data: LucraMatchupCanceledBody) => void;
   convertToCredit: (data: LucraConvertToCreditBody) => void;
+  deepLink: (data: LucraDeepLinkBody) => void;
 };
 
 export type LucraClientSendMessage = {
   userUpdated: (data: SDKClientUser) => void;
   convertToCreditResponse: (data: LucraConvertToCreditResponse) => void;
   enableConvertToCredit: () => void;
+  deepLinkResponse: (data: LucraDeepLinkResponse) => void;
 };
 
 export type LucraClientMessage = (body: {

@@ -6,6 +6,7 @@ import {
   type LucraClientSendMessage,
   type SDKClientUser,
   type LucraConvertToCreditResponse,
+  type LucraDeepLinkResponse,
 } from "./types";
 
 export const LucraClientIframeId = "__lucrasports__";
@@ -26,6 +27,7 @@ export class LucraClient {
     matchupCanceled: NoOp,
     matchupAccepted: NoOp,
     convertToCredit: NoOp,
+    deepLink: NoOp,
   };
   private controller: AbortController = new AbortController();
   private iframeParentElement?: HTMLElement;
@@ -52,6 +54,9 @@ export class LucraClient {
         break;
       case LucraClientMessageType.convertToCredit:
         this.onMessage.convertToCredit(event.data.data);
+        break;
+      case LucraClientMessageType.deepLink:
+        this.onMessage.deepLink(event.data.data);
         break;
       default:
         console.log("Unrecognized LucraClientMessageType", event.data.type);
@@ -222,6 +227,16 @@ export class LucraClient {
       this._sendMessage({
         type: MessageTypeToLucraClient.enableConvertToCredit,
         body: null,
+      });
+    },
+    /**
+     * Call this method after receiving a `deepLink` request message
+     * @param data LucraDeepLinkResponse
+     */
+    deepLinkResponse: (data: LucraDeepLinkResponse) => {
+      this._sendMessage({
+        type: MessageTypeToLucraClient.deepLinkResponse,
+        body: data,
       });
     },
   };
