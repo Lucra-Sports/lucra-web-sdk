@@ -26,6 +26,38 @@ const lucraClient = new LucraClient({
 })
 ```
 
+### Registering `onMessage` functions
+
+If you need to register a handler function for any of the `onMessage` callbacks, you can do so after instantiation likeso
+
+```
+const lucraClient = new LucraClient(...)
+lucraClient.deepLinkHandler = handleDeepLinkRequest;
+```
+
+The `deepLink` handler is an example of where you might want to do this since the handler of the function probably needs the instance of `LucraClient` to respond. For example, consider this handler function
+
+```
+function generateDeepLink({ matchupId, teamInviteId }: LucraDeepLinkBody) {
+  const searchParams = new URLSearchParams({
+    matchupId: matchupId,
+    teamInviteId: teamInviteId ?? "",
+  });
+  const shareUrl = `${window.location.origin}?${searchParams.toString()}`;
+  lucraClient?.sendMessage.deepLinkResponse({
+    url: shareUrl,
+  });
+}
+```
+
+Note that when you register this function at instantiation, `lucraClient` will be `undefined`. You can later in your code, when `lucraClient` is no longer `undefined`, do:
+
+```
+if (lucraClient) {
+  lucraClient.deepLinkHandler = generateDeepLink;
+}
+```
+
 ### Open Lucra
 
 ```
@@ -47,6 +79,7 @@ lucraSports.open(element: <HTMLElement that will contain the iframe for Lucra>)
 `matchupAccepted` - the user successfully jointed someone else's matchup, and contains the id of that matchup
 `matchupCanceled` - the user successfully canceled the matchup, and contains the id of that matchup
 `convertToCredit` - if Convert to Credit is enabled, Lucra will call this method with the desired amount to convert to credit. Respond with a `convertToCreditResponse` message defined below
+`deepLink` - Lucra is requesting a url that the user of the SDK will open to then open up the LucraClient in the `matchupDetails` providing the `matchupId` and `teamInviteId` (if applicable).
 
 ### Messages you can send to LucraClient
 
@@ -57,8 +90,9 @@ lucraSports.open(element: <HTMLElement that will contain the iframe for Lucra>)
 ```
 const lucraClient = new LucraClient(...)
 lucraClient.sendMessage.userUpdated(...)
-lucraClient.convertToCreditResponse(...)
-lucraClient.enableConvertToCredit()
+lucraClient.sendMessage.convertToCreditResponse(...)
+lucraClient.sendMessage.enableConvertToCredit()
+lucraClient.sendMessage.deepLinkResponse(...)
 ```
 
 ## Local Development

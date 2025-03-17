@@ -1,5 +1,12 @@
 ### CHANGELOG
 
+## [v0.10.0]
+
+### Updated
+
+- New `set` methods for registering handler functions after instantiation of LucraClient
+- iframe now allows for `web-share`
+
 ## [v0.9.0]
 
 ### Updated

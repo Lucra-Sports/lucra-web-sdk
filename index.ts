@@ -7,6 +7,12 @@ import {
   type SDKClientUser,
   type LucraConvertToCreditResponse,
   type LucraDeepLinkResponse,
+  type LucraDeepLinkBody,
+  type LucraUserInfoBody,
+  type LucraMatchupCreatedBody,
+  type LucraMatchupAcceptedBody,
+  type LucraMatchupCanceledBody,
+  type LucraConvertToCreditBody,
 } from "./types";
 
 export const LucraClientIframeId = "__lucrasports__";
@@ -91,6 +97,33 @@ export class LucraClient {
     this.onMessage = onMessage;
   }
 
+  set deepLinkHandler(handlerFn: (data: LucraDeepLinkBody) => void) {
+    this.onMessage.deepLink = handlerFn;
+  }
+  set userInfoHandler(handlerFn: (data: LucraUserInfoBody) => void) {
+    this.onMessage.userInfo = handlerFn;
+  }
+  set matchupCreatedHandler(
+    handlerFn: (data: LucraMatchupCreatedBody) => void
+  ) {
+    this.onMessage.matchupCreated = handlerFn;
+  }
+  set matchupAcceptedHandler(
+    handlerFn: (data: LucraMatchupAcceptedBody) => void
+  ) {
+    this.onMessage.matchupAccepted = handlerFn;
+  }
+  set matchupCanceledHandler(
+    handlerFn: (data: LucraMatchupCanceledBody) => void
+  ) {
+    this.onMessage.matchupCanceled = handlerFn;
+  }
+  set convertToCreditHandler(
+    handlerFn: (data: LucraConvertToCreditBody) => void
+  ) {
+    this.onMessage.convertToCredit = handlerFn;
+  }
+
   private _open(
     element: HTMLElement,
     path: string,
@@ -114,7 +147,7 @@ export class LucraClient {
       iframe.src = this.url;
       iframe.style.height = "100%";
       iframe.style.width = "100%";
-      iframe.allow = "geolocation *";
+      iframe.allow = "geolocation *; web-share";
       element.appendChild(iframe);
     } catch (e) {
       console.error("Error opening up LucraSports", e);
