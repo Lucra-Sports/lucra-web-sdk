@@ -25,6 +25,7 @@ export class LucraClient {
   private iframe?: HTMLIFrameElement;
   private tenantId: string = "";
   private env: LucraEnvironment = "production";
+  private urlOrigin: string = "";
   private url: string = "";
   private messages: string[] = [];
   private onMessage: LucraClientOnMessage = {
@@ -95,6 +96,12 @@ export class LucraClient {
     this.env = env;
     this.tenantId = tenantId;
     this.onMessage = onMessage;
+    this.urlOrigin =
+      this.env === "local"
+        ? `http://localhost:3000`
+        : `https://${this.tenantId.toLowerCase()}.${
+            this.env !== "production" ? `${this.env}.` : ""
+          }lucrasports.com`;
   }
 
   set deepLinkHandler(handlerFn: (data: LucraDeepLinkBody) => void) {
@@ -127,16 +134,14 @@ export class LucraClient {
   private _open(
     element: HTMLElement,
     path: string,
-    params: URLSearchParams = new URLSearchParams()
+    params: URLSearchParams = new URLSearchParams(),
+    deepLinkUrl?: string
   ) {
     params.set("parentUrl", window.location.origin);
 
-    this.url =
-      this.env === "local"
-        ? `http://localhost:3000/${path}?${params.toString()}`
-        : `https://${this.tenantId.toLowerCase()}.${
-            this.env !== "production" ? `${this.env}.` : ""
-          }lucrasports.com/${path}?${params.toString()}`;
+    this.url = deepLinkUrl
+      ? deepLinkUrl
+      : `${this.urlOrigin}/${path}?${params.toString()}`;
     this.setUpEventListener();
 
     try {
@@ -185,6 +190,11 @@ export class LucraClient {
      * Open directly to a matchup where the user can accept, cancel, or wager on the matchup.
      */
     matchupDetails: (matchupId: string, teamInvitedId?: string) => LucraClient;
+    /**
+     * Open directly to the deep link
+     * @param url deepLink url
+     */
+    deepLink: (url: string) => LucraClient;
   } {
     return {
       profile: () => this._open(element, "app/profile"),
@@ -204,6 +214,12 @@ export class LucraClient {
         }
 
         return this._open(element, `app/matchups/${matchupId}`, params);
+      },
+      deepLink: (url: string) => {
+        if (this.urlOrigin === "" || url.indexOf(this.urlOrigin) !== 0) {
+          throw new Error("Cannot open a url not associated with this tenant");
+        }
+        return this._open(element, "", undefined, url);
       },
     };
   }

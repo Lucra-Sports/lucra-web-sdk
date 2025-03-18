@@ -1,5 +1,11 @@
 ### CHANGELOG
 
+## [v0.10.1]
+
+### Updated
+
+- `deepLink` body is now a full URL that can should be passed into the `open.deepLink` method
+
 ## [v0.10.0]
 
 ### Updated

@@ -79,7 +79,7 @@ lucraSports.open(element: <HTMLElement that will contain the iframe for Lucra>)
 `matchupAccepted` - the user successfully jointed someone else's matchup, and contains the id of that matchup
 `matchupCanceled` - the user successfully canceled the matchup, and contains the id of that matchup
 `convertToCredit` - if Convert to Credit is enabled, Lucra will call this method with the desired amount to convert to credit. Respond with a `convertToCreditResponse` message defined below
-`deepLink` - Lucra is requesting a url that the user of the SDK will open to then open up the LucraClient in the `matchupDetails` providing the `matchupId` and `teamInviteId` (if applicable).
+`deepLink` - Lucra is requesting a url that the user of the SDK will open to then open up the LucraClient at where the deepLink url is linking to
 
 ### Messages you can send to LucraClient
 

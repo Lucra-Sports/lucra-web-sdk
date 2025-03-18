@@ -51,7 +51,7 @@ export type LucraMatchupCreatedBody = { matchupId: string };
 export type LucraMatchupCanceledBody = { matchupId: string };
 export type LucraMatchupAcceptedBody = { matchupId: string };
 export type LucraConvertToCreditBody = { amount: number };
-export type LucraDeepLinkBody = { matchupId: string; teamInviteId?: string };
+export type LucraDeepLinkBody = { url: string };
 
 export type LucraClientOnMessage = {
   userInfo: (data: LucraUserInfoBody) => void;
