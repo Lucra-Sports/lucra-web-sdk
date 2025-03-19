@@ -201,12 +201,19 @@ export class LucraClient {
       home: () => this._open(element, "app/home"),
       deposit: () => this._open(element, "app/add-funds"),
       withdraw: () => this._open(element, "app/withdraw-funds"),
-      createMatchup: (gameId?: string) =>
-        this._open(
+      createMatchup: (gameId?: string) => {
+        const params = new URLSearchParams();
+        if (gameId !== undefined) {
+          params.set("hideBackButton", "1");
+        }
+
+        return this._open(
           element,
           "app/create-matchup" +
-            (gameId !== undefined ? `/${gameId}/wager` : "")
-        ),
+            (gameId !== undefined ? `/${gameId}/wager` : ""),
+          params
+        );
+      },
       matchupDetails: (matchupId: string, teamInvitedId?: string) => {
         const params = new URLSearchParams();
         if (teamInvitedId) {

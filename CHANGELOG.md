@@ -1,5 +1,11 @@
 ### CHANGELOG
 
+## [v0.10.2]
+
+### Added
+
+- `hideBackButton` param if there is a `gameId` present when calling the LucraClient's `createMatchup` method
+
 ## [v0.10.1]
 
 ### Updated
