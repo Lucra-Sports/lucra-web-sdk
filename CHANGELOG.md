@@ -1,5 +1,11 @@
 ### CHANGELOG
 
+## [v0.10.3]
+
+### Added
+
+- Updated iframe permissions to allow accelerometer, bluetooth, and gyroscope access
+
 ## [v0.10.2]
 
 ### Added
