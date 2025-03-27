@@ -1,5 +1,11 @@
 ### CHANGELOG
 
+## [v0.10.4]
+
+### Updated
+
+- Deep linking not setting the `parentUrl`
+
 ## [v0.10.3]
 
 ### Added
