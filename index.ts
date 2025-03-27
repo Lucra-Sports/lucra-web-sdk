@@ -137,11 +137,12 @@ export class LucraClient {
     params: URLSearchParams = new URLSearchParams(),
     deepLinkUrl?: string
   ) {
-    params.set("parentUrl", window.location.origin);
+    const url = new URL(
+      deepLinkUrl || `${this.urlOrigin}/${path}?${params.toString()}`
+    );
+    url.searchParams.set("parentUrl", window.location.origin);
 
-    this.url = deepLinkUrl
-      ? deepLinkUrl
-      : `${this.urlOrigin}/${path}?${params.toString()}`;
+    this.url = url.toString();
     this.setUpEventListener();
 
     try {
@@ -152,7 +153,8 @@ export class LucraClient {
       iframe.src = this.url;
       iframe.style.height = "100%";
       iframe.style.width = "100%";
-      iframe.allow = "geolocation *; web-share; accelerometer *; bluetooth *; gyroscope *;";
+      iframe.allow =
+        "geolocation *; web-share; accelerometer *; bluetooth *; gyroscope *;";
       element.appendChild(iframe);
     } catch (e) {
       console.error("Error opening up LucraSports", e);
