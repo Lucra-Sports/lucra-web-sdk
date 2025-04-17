@@ -1,84 +1,110 @@
-import { LucraSportsMessageType, } from "./types";
-export const LucraSportsIframeId = "__lucrasports__";
+import { LucraClientMessageType, MessageTypeToLucraClient, } from "./types";
+export const LucraClientIframeId = "__lucrasports__";
 function NoOp(data) {
     console.log("Not implemented", data);
 }
-export class LucraSports {
-    userInfo;
+export class LucraClient {
     iframe;
-    url;
+    tenantId = "";
+    env = "production";
+    urlOrigin = "";
+    url = "";
     messages = [];
     onMessage = {
-        login: NoOp,
         userInfo: NoOp,
         matchupCreated: NoOp,
+        matchupCanceled: NoOp,
+        matchupAccepted: NoOp,
+        convertToCredit: NoOp,
+        deepLink: NoOp,
     };
     controller = new AbortController();
     iframeParentElement;
+    iframeUrlOrigin() {
+        return new URL(this.url).origin;
+    }
     _eventListener = (event) => {
-        const iframeUrl = new URL(this.url ?? "");
-        if (event.origin !== iframeUrl.origin)
+        if (event.origin !== this.iframeUrlOrigin())
             return;
         this.messages.push(event.data);
         switch (event.data.type) {
-            case LucraSportsMessageType.login:
-                this.onMessage.login(event.data.data);
-                break;
-            case LucraSportsMessageType.matchupCreated:
+            case LucraClientMessageType.matchupCreated:
                 this.onMessage.matchupCreated(event.data.data);
                 break;
-            case LucraSportsMessageType.userInfo:
+            case LucraClientMessageType.userInfo:
                 this.onMessage.userInfo(event.data.data);
                 break;
+            case LucraClientMessageType.matchupCanceled:
+                this.onMessage.matchupCanceled(event.data.data);
+                break;
+            case LucraClientMessageType.matchupAccepted:
+                this.onMessage.matchupAccepted(event.data.data);
+                break;
+            case LucraClientMessageType.convertToCredit:
+                this.onMessage.convertToCredit(event.data.data);
+                break;
+            case LucraClientMessageType.deepLink:
+                this.onMessage.deepLink(event.data.data);
+                break;
             default:
-                console.log("Unrecognized LucraSportsMessageType", event.data.type);
+                console.log("Unrecognized LucraClientMessageType", event.data.type);
                 break;
         }
     };
     setUpEventListener() {
-        console.log("addEventListener");
         window.addEventListener("message", this._eventListener, {
             signal: this.controller.signal,
         });
         return null;
     }
     /**
-     * Create a new instance of LucraSports
-     * @param url Url for LucraSports - https://app.lucrasports.com/<tenantId>
-     * @param onMessage Message Handler for messages from LucraSports
-     * @param userInfo User information for pre-populating KYC flow
-     * @param destination home, profile, or create-matchup
+     * Create a new instance of LucraClient
+     * @param tenantId Your Lucra tenantId
+     * @param env sandbox | production
+     * @param onMessage Message Handler for messages from LucraClient
      */
-    constructor({ url, onMessage, destination, userInfo, }) {
-        const params = new URLSearchParams();
-        params.set("iframed", "true");
-        params.set("redirect", destination === "home"
-            ? "/app/home"
-            : destination === "profile"
-                ? "/app/profile"
-                : "/app/create-matchup");
-        this.url = `${url}?${params.toString()}`;
-        this.userInfo = userInfo;
+    constructor({ tenantId, env, onMessage, }) {
+        this.env = env;
+        this.tenantId = tenantId;
         this.onMessage = onMessage;
-        this.setUpEventListener();
+        this.urlOrigin =
+            this.env === "local"
+                ? `http://localhost:3000`
+                : `https://${this.tenantId.toLowerCase()}.${this.env !== "production" ? `${this.env}.` : ""}lucrasports.com`;
     }
-    /**
-     * Open LucraSports in an iframe and start listening to messages
-     * @param element parent element to contain the LucraSports iframe
-     */
-    open(element) {
+    set deepLinkHandler(handlerFn) {
+        this.onMessage.deepLink = handlerFn;
+    }
+    set userInfoHandler(handlerFn) {
+        this.onMessage.userInfo = handlerFn;
+    }
+    set matchupCreatedHandler(handlerFn) {
+        this.onMessage.matchupCreated = handlerFn;
+    }
+    set matchupAcceptedHandler(handlerFn) {
+        this.onMessage.matchupAccepted = handlerFn;
+    }
+    set matchupCanceledHandler(handlerFn) {
+        this.onMessage.matchupCanceled = handlerFn;
+    }
+    set convertToCreditHandler(handlerFn) {
+        this.onMessage.convertToCredit = handlerFn;
+    }
+    _open(element, path, params = new URLSearchParams(), deepLinkUrl) {
+        const url = new URL(deepLinkUrl || `${this.urlOrigin}/${path}?${params.toString()}`);
+        url.searchParams.set("parentUrl", window.location.origin);
+        this.url = url.toString();
+        this.setUpEventListener();
         try {
             this.iframeParentElement = element;
-            const searchStateParam = this.userInfo
-                ? `?appState=${btoa(JSON.stringify(this.userInfo))}`
-                : "";
             const iframe = document.createElement("iframe");
             this.iframe = iframe;
-            iframe.id = LucraSportsIframeId;
-            iframe.src = this.url + searchStateParam;
+            iframe.id = LucraClientIframeId;
+            iframe.src = this.url;
             iframe.style.height = "100%";
             iframe.style.width = "100%";
-            iframe.allow = "geolocation *";
+            iframe.allow =
+                "geolocation *; web-share; accelerometer *; bluetooth *; gyroscope *;";
             element.appendChild(iframe);
         }
         catch (e) {
@@ -89,20 +115,53 @@ export class LucraSports {
         }
     }
     /**
-     * Close iframe and stop listening to any messages sent from LucraSports
+     * Open Lucra in an iframe
+     * @param element parent element to contain the LucraClient iframe
+     */
+    open(element) {
+        return {
+            profile: () => this._open(element, "app/profile"),
+            home: () => this._open(element, "app/home"),
+            deposit: () => this._open(element, "app/add-funds"),
+            withdraw: () => this._open(element, "app/withdraw-funds"),
+            createMatchup: (gameId) => {
+                const params = new URLSearchParams();
+                if (gameId !== undefined) {
+                    params.set("hideNavigation", "1");
+                }
+                return this._open(element, "app/create-matchup" +
+                    (gameId !== undefined ? `/${gameId}/wager` : ""), params);
+            },
+            matchupDetails: (matchupId, teamInvitedId) => {
+                const params = new URLSearchParams();
+                if (teamInvitedId) {
+                    params.set("teamIdToJoin", teamInvitedId);
+                }
+                return this._open(element, `app/matchups/${matchupId}`, params);
+            },
+            deepLink: (url) => {
+                if (this.urlOrigin === "" || url.indexOf(this.urlOrigin) !== 0) {
+                    throw new Error("Cannot open a url not associated with this tenant");
+                }
+                return this._open(element, "", undefined, url);
+            },
+        };
+    }
+    /**
+     * Close iframe and stop listening to any messages sent from LucraClient
      */
     close() {
-        this.controller.abort("Closing LucraSports");
+        this.controller.abort("Closing LucraClient");
         if (this.iframeParentElement) {
             this.iframeParentElement.innerHTML = "";
         }
     }
     _sendMessage(message) {
         try {
-            this.iframe?.contentWindow?.postMessage(message);
+            this.iframe?.contentWindow?.postMessage(message, this.iframeUrlOrigin());
         }
         catch (e) {
-            console.error("Unable to send message to LucraSports iframe", e);
+            console.error("Unable to send message to LucraClient iframe", e);
             throw e;
         }
         finally {
@@ -110,10 +169,48 @@ export class LucraSports {
         }
     }
     /**
-     * Send a message to LucraSports
+     * Send a message to LucraClient
      */
     sendMessage = {
-        userInfo: (data) => this._sendMessage(data),
+        /**
+         * Update the user in Lucra
+         * @param data SDKClientUser
+         */
+        userUpdated: (data) => {
+            this._sendMessage({
+                type: MessageTypeToLucraClient.clientUserInfo,
+                body: data,
+            });
+        },
+        /**
+         * Call this method after receiving a `convertToCredit` request message
+         * @param data LucraConvertToCreditResponse
+         */
+        convertToCreditResponse: (data) => {
+            this._sendMessage({
+                type: MessageTypeToLucraClient.convertToCreditResponse,
+                body: data,
+            });
+        },
+        /**
+         * Let Lucra know there's a credit option for withdrawing funds
+         */
+        enableConvertToCredit: () => {
+            this._sendMessage({
+                type: MessageTypeToLucraClient.enableConvertToCredit,
+                body: null,
+            });
+        },
+        /**
+         * Call this method after receiving a `deepLink` request message
+         * @param data LucraDeepLinkResponse
+         */
+        deepLinkResponse: (data) => {
+            this._sendMessage({
+                type: MessageTypeToLucraClient.deepLinkResponse,
+                body: data,
+            });
+        },
     };
 }
-export default LucraSports;
+export default LucraClient;

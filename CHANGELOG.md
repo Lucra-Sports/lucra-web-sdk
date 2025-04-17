@@ -1,5 +1,11 @@
 ### CHANGELOG
 
+## [v0.10.5]
+
+### Updated
+
+- Update the `dist` folder
+
 ## [v0.10.4]
 
 ### Updated

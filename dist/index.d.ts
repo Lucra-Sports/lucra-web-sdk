@@ -1,41 +1,79 @@
-import { type LucraSportsOnMessage, type LucraSportsSendMessage, type UserInfo } from "./types";
-export declare const LucraSportsIframeId = "__lucrasports__";
-export declare class LucraSports {
-    private userInfo?;
+import { type LucraEnvironment, type LucraClientOnMessage, type LucraClientSendMessage, type LucraDeepLinkBody, type LucraUserInfoBody, type LucraMatchupCreatedBody, type LucraMatchupAcceptedBody, type LucraMatchupCanceledBody, type LucraConvertToCreditBody } from "./types";
+export declare const LucraClientIframeId = "__lucrasports__";
+export declare class LucraClient {
     private iframe?;
-    private url?;
+    private tenantId;
+    private env;
+    private urlOrigin;
+    private url;
     private messages;
     private onMessage;
     private controller;
     private iframeParentElement?;
+    private iframeUrlOrigin;
     private _eventListener;
     private setUpEventListener;
     /**
-     * Create a new instance of LucraSports
-     * @param url Url for LucraSports - https://app.lucrasports.com/<tenantId>
-     * @param onMessage Message Handler for messages from LucraSports
-     * @param userInfo User information for pre-populating KYC flow
-     * @param destination home, profile, or create-matchup
+     * Create a new instance of LucraClient
+     * @param tenantId Your Lucra tenantId
+     * @param env sandbox | production
+     * @param onMessage Message Handler for messages from LucraClient
      */
-    constructor({ url, onMessage, destination, userInfo, }: {
-        url: string;
-        onMessage: LucraSportsOnMessage;
-        destination: "home" | "profile" | "create-matchup";
-        userInfo?: UserInfo;
+    constructor({ tenantId, env, onMessage, }: {
+        tenantId: string;
+        env: LucraEnvironment;
+        onMessage: LucraClientOnMessage;
     });
+    set deepLinkHandler(handlerFn: (data: LucraDeepLinkBody) => void);
+    set userInfoHandler(handlerFn: (data: LucraUserInfoBody) => void);
+    set matchupCreatedHandler(handlerFn: (data: LucraMatchupCreatedBody) => void);
+    set matchupAcceptedHandler(handlerFn: (data: LucraMatchupAcceptedBody) => void);
+    set matchupCanceledHandler(handlerFn: (data: LucraMatchupCanceledBody) => void);
+    set convertToCreditHandler(handlerFn: (data: LucraConvertToCreditBody) => void);
+    private _open;
     /**
-     * Open LucraSports in an iframe and start listening to messages
-     * @param element parent element to contain the LucraSports iframe
+     * Open Lucra in an iframe
+     * @param element parent element to contain the LucraClient iframe
      */
-    open(element: HTMLElement): this;
+    open(element: HTMLElement): {
+        /**
+         * Open directly to the user's profile page
+         */
+        profile: () => LucraClient;
+        /**
+         * Open to the home page
+         */
+        home: () => LucraClient;
+        /**
+         * Open directly into add funds
+         */
+        deposit: () => LucraClient;
+        /**
+         * Open directly into withdraw funds
+         */
+        withdraw: () => LucraClient;
+        /**
+         * Open directly into create matchup flow. If gameId is provided, the game selection screen will be skipped.
+         */
+        createMatchup: (gameId?: string) => LucraClient;
+        /**
+         * Open directly to a matchup where the user can accept, cancel, or wager on the matchup.
+         */
+        matchupDetails: (matchupId: string, teamInvitedId?: string) => LucraClient;
+        /**
+         * Open directly to the deep link
+         * @param url deepLink url
+         */
+        deepLink: (url: string) => LucraClient;
+    };
     /**
-     * Close iframe and stop listening to any messages sent from LucraSports
+     * Close iframe and stop listening to any messages sent from LucraClient
      */
     close(): void;
     private _sendMessage;
     /**
-     * Send a message to LucraSports
+     * Send a message to LucraClient
      */
-    sendMessage: LucraSportsSendMessage;
+    sendMessage: LucraClientSendMessage;
 }
-export default LucraSports;
+export default LucraClient;
