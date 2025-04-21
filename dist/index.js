@@ -1,6 +1,5 @@
-import { LucraClientMessageType, MessageTypeToLucraClient, } from "./types";
+import { LucraClientMessageType, MessageTypeToLucraClient, } from "./types/index";
 export const LucraClientIframeId = "__lucrasports__";
-export * from "./types";
 function NoOp(data) {
     console.log("Not implemented", data);
 }
