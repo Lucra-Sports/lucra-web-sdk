@@ -1,5 +1,6 @@
 import { type LucraEnvironment, type LucraClientOnMessage, type LucraClientSendMessage, type LucraDeepLinkBody, type LucraUserInfoBody, type LucraMatchupCreatedBody, type LucraMatchupAcceptedBody, type LucraMatchupCanceledBody, type LucraConvertToCreditBody } from "./types";
 export declare const LucraClientIframeId = "__lucrasports__";
+export * from "./types";
 export declare class LucraClient {
     private iframe?;
     private tenantId;
