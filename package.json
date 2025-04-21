@@ -3,7 +3,7 @@
   "version": "0.10.8",
   "exports": {
     ".": {
-      "types": "./dist/types/index.js",
+      "types": "./dist/index.js",
       "default": "./dist/index.js"
     }
   },
