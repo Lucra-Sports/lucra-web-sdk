@@ -1,5 +1,11 @@
 ### CHANGELOG
 
+## [v0.10.6]
+
+### Updated
+
+- Expose typescript types
+
 ## [v0.10.5]
 
 ### Updated
