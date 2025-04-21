@@ -16,7 +16,6 @@ import {
 } from "./types";
 
 export const LucraClientIframeId = "__lucrasports__";
-export * from "./types";
 
 function NoOp(data?: any) {
   console.log("Not implemented", data);
