@@ -1,6 +1,6 @@
 {
   "name": "lucra-web-sdk",
-  "version": "0.10.9",
+  "version": "0.10.10",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
