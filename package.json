@@ -13,13 +13,7 @@
       "default": "./dist/types/index.js"
     }
   },
-  "main": "./index.ts",
-  "module": "index.ts",
   "type": "module",
-  "files": [
-    "dist/index.js"
-  ],
-  "types": "dist/index.d.ts",
   "scripts": {
     "build": "bunx tsc -d --project tsconfig.json"
   },
