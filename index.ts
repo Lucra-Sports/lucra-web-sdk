@@ -1,19 +1,19 @@
 import {
   LucraClientMessageType,
   MessageTypeToLucraClient,
-  type LucraEnvironment,
   type LucraClientOnMessage,
   type LucraClientSendMessage,
-  type SDKClientUser,
+  type LucraConvertToCreditBody,
   type LucraConvertToCreditResponse,
-  type LucraDeepLinkResponse,
   type LucraDeepLinkBody,
-  type LucraUserInfoBody,
-  type LucraMatchupCreatedBody,
+  type LucraDeepLinkResponse,
+  type LucraEnvironment,
   type LucraMatchupAcceptedBody,
   type LucraMatchupCanceledBody,
-  type LucraConvertToCreditBody,
-} from "./types/index";
+  type LucraMatchupCreatedBody,
+  type LucraUserInfoBody,
+} from "./types/message";
+import type { SDKClientUser } from "./types/sdk-user";
 
 export const LucraClientIframeId = "__lucrasports__";
 
