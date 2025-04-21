@@ -8,9 +8,9 @@
       "default": "./dist/index.js"
     },
     "./types": {
-      "types": "./dist/types/index.d.ts",
-      "import": "./dist/types/index.js",
-      "default": "./dist/types/index.js"
+      "types": "./dist/types/message.d.ts",
+      "import": "./dist/types/message.js",
+      "default": "./dist/types/messagex.js"
     }
   },
   "type": "module",
