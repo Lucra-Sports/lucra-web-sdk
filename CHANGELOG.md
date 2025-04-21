@@ -1,5 +1,11 @@
 ### CHANGELOG
 
+## [v0.10.8]
+
+### Updated
+
+- `exports` in package.json
+
 ## [v0.10.7]
 
 ### Updated
