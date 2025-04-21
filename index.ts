@@ -13,7 +13,7 @@ import {
   type LucraMatchupAcceptedBody,
   type LucraMatchupCanceledBody,
   type LucraConvertToCreditBody,
-} from "./types";
+} from "./types/index";
 
 export const LucraClientIframeId = "__lucrasports__";
 
