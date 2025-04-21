@@ -1,5 +1,11 @@
 ### CHANGELOG
 
+## [v0.10.10]
+
+### Updated
+
+- Update to `exports`
+
 ## [v0.10.9]
 
 ### Updated

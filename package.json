@@ -3,10 +3,14 @@
   "version": "0.10.9",
   "exports": {
     ".": {
-      "types": "./dist/index.js",
+      "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./types": {
+      "types": "./dist/types/index.d.ts"
     }
   },
+  "main": "./index.ts",
   "module": "index.ts",
   "type": "module",
   "files": [
