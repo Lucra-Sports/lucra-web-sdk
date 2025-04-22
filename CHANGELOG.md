@@ -1,5 +1,11 @@
 ### CHANGELOG
 
+## [v0.11.0]
+
+### Updated
+
+- Fixed imports for non-Bun packages
+
 ## [v0.10.13]
 
 ### Updated
