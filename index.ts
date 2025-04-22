@@ -12,7 +12,7 @@ import {
   type LucraMatchupCanceledBody,
   type LucraMatchupCreatedBody,
   type LucraUserInfoBody,
-} from "./types/message";
+} from "./types/message.js";
 import type { SDKClientUser } from "./types/sdk-user";
 
 export const LucraClientIframeId = "__lucrasports__";

@@ -1,4 +1,4 @@
-import { type LucraClientOnMessage, type LucraClientSendMessage, type LucraConvertToCreditBody, type LucraDeepLinkBody, type LucraEnvironment, type LucraMatchupAcceptedBody, type LucraMatchupCanceledBody, type LucraMatchupCreatedBody, type LucraUserInfoBody } from "./types/message";
+import { type LucraClientOnMessage, type LucraClientSendMessage, type LucraConvertToCreditBody, type LucraDeepLinkBody, type LucraEnvironment, type LucraMatchupAcceptedBody, type LucraMatchupCanceledBody, type LucraMatchupCreatedBody, type LucraUserInfoBody } from "./types/message.js";
 export declare const LucraClientIframeId = "__lucrasports__";
 export declare class LucraClient {
     private iframe?;
