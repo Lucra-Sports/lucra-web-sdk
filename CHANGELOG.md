@@ -1,5 +1,12 @@
 ### CHANGELOG
 
+## [v0.11.1]
+
+### Updated
+
+- `tournamentJoined` event
+- `tournamentDetails` open method
+
 ## [v0.11.0]
 
 ### Updated

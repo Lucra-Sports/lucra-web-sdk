@@ -11,6 +11,7 @@ import {
   type LucraMatchupAcceptedBody,
   type LucraMatchupCanceledBody,
   type LucraMatchupCreatedBody,
+  type LucraTournamentJoinedBody,
   type LucraUserInfoBody,
 } from "./types/message.js";
 import type { SDKClientUser } from "./types/sdk-user";
@@ -33,6 +34,7 @@ export class LucraClient {
     matchupCreated: NoOp,
     matchupCanceled: NoOp,
     matchupAccepted: NoOp,
+    tournamentJoined: NoOp,
     convertToCredit: NoOp,
     deepLink: NoOp,
   };
@@ -58,6 +60,9 @@ export class LucraClient {
         break;
       case LucraClientMessageType.matchupAccepted:
         this.onMessage.matchupAccepted(event.data.data);
+        break;
+      case LucraClientMessageType.tournamentJoined:
+        this.onMessage.tournamentJoined(event.data.data);
         break;
       case LucraClientMessageType.convertToCredit:
         this.onMessage.convertToCredit(event.data.data);
@@ -124,6 +129,11 @@ export class LucraClient {
     handlerFn: (data: LucraMatchupCanceledBody) => void
   ) {
     this.onMessage.matchupCanceled = handlerFn;
+  }
+  set tournamentJoinedHandler(
+    handlerFn: (data: LucraTournamentJoinedBody) => void
+  ) {
+    this.onMessage.tournamentJoined = handlerFn;
   }
   set convertToCreditHandler(
     handlerFn: (data: LucraConvertToCreditBody) => void
@@ -193,6 +203,10 @@ export class LucraClient {
      */
     matchupDetails: (matchupId: string, teamInvitedId?: string) => LucraClient;
     /**
+     * Open directly to a tournament where the user can join.
+     */
+    tournamentDetails: (matchupId: string) => LucraClient;
+    /**
      * Open directly to the deep link
      * @param url deepLink url
      */
@@ -224,6 +238,8 @@ export class LucraClient {
 
         return this._open(element, `app/matchups/${matchupId}`, params);
       },
+      tournamentDetails: (matchupId: string) =>
+        this._open(element, `app/tournaments/${matchupId}`),
       deepLink: (url: string) => {
         if (this.urlOrigin === "" || url.indexOf(this.urlOrigin) !== 0) {
           throw new Error("Cannot open a url not associated with this tenant");
