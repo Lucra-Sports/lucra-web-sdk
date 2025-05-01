@@ -5,8 +5,10 @@ export declare enum LucraClientMessageType {
     matchupCreated = "matchupCreated",
     matchupCanceled = "matchupCanceled",
     matchupAccepted = "matchupAccepted",
+    tournamentJoined = "tournamentJoined",
     convertToCredit = "convertToCredit",
-    deepLink = "deepLink"
+    deepLink = "deepLink",
+    navigationEvent = "navigationEvent"
 }
 export declare enum MessageTypeToLucraClient {
     clientUserInfo = "clientUserInfo",
@@ -44,10 +46,16 @@ export type LucraMatchupCanceledBody = {
 export type LucraMatchupAcceptedBody = {
     matchupId: string;
 };
+export type LucraTournamentJoinedBody = {
+    matchupId: string;
+};
 export type LucraConvertToCreditBody = {
     amount: number;
 };
 export type LucraDeepLinkBody = {
+    url: string;
+};
+export type LucraNavigationEventBody = {
     url: string;
 };
 export type LucraClientOnMessage = {
@@ -56,7 +64,9 @@ export type LucraClientOnMessage = {
     matchupAccepted: (data: LucraMatchupAcceptedBody) => void;
     matchupCanceled: (data: LucraMatchupCanceledBody) => void;
     convertToCredit: (data: LucraConvertToCreditBody) => void;
+    tournamentJoined: (data: LucraTournamentJoinedBody) => void;
     deepLink: (data: LucraDeepLinkBody) => void;
+    navigationEvent: (data: LucraNavigationEventBody) => void;
 };
 export type LucraClientSendMessage = {
     userUpdated: (data: SDKClientUser) => void;

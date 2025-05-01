@@ -15,8 +15,10 @@ export class LucraClient {
         matchupCreated: NoOp,
         matchupCanceled: NoOp,
         matchupAccepted: NoOp,
+        tournamentJoined: NoOp,
         convertToCredit: NoOp,
         deepLink: NoOp,
+        navigationEvent: NoOp,
     };
     controller = new AbortController();
     iframeParentElement;
@@ -40,11 +42,17 @@ export class LucraClient {
             case LucraClientMessageType.matchupAccepted:
                 this.onMessage.matchupAccepted(event.data.data);
                 break;
+            case LucraClientMessageType.tournamentJoined:
+                this.onMessage.tournamentJoined(event.data.data);
+                break;
             case LucraClientMessageType.convertToCredit:
                 this.onMessage.convertToCredit(event.data.data);
                 break;
             case LucraClientMessageType.deepLink:
                 this.onMessage.deepLink(event.data.data);
+                break;
+            case LucraClientMessageType.navigationEvent:
+                this.onMessage.navigationEvent(event.data.data);
                 break;
             default:
                 console.log("Unrecognized LucraClientMessageType", event.data.type);
@@ -86,6 +94,12 @@ export class LucraClient {
     }
     set matchupCanceledHandler(handlerFn) {
         this.onMessage.matchupCanceled = handlerFn;
+    }
+    set tournamentJoinedHandler(handlerFn) {
+        this.onMessage.tournamentJoined = handlerFn;
+    }
+    set navigationEventHandler(handlerFn) {
+        this.onMessage.navigationEvent = handlerFn;
     }
     set convertToCreditHandler(handlerFn) {
         this.onMessage.convertToCredit = handlerFn;
@@ -139,6 +153,7 @@ export class LucraClient {
                 }
                 return this._open(element, `app/matchups/${matchupId}`, params);
             },
+            tournamentDetails: (matchupId) => this._open(element, `app/tournaments/${matchupId}`),
             deepLink: (url) => {
                 if (this.urlOrigin === "" || url.indexOf(this.urlOrigin) !== 0) {
                     throw new Error("Cannot open a url not associated with this tenant");

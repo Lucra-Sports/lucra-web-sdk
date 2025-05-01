@@ -1,4 +1,4 @@
-import { type LucraClientOnMessage, type LucraClientSendMessage, type LucraConvertToCreditBody, type LucraDeepLinkBody, type LucraEnvironment, type LucraMatchupAcceptedBody, type LucraMatchupCanceledBody, type LucraMatchupCreatedBody, type LucraUserInfoBody } from "./types/message.js";
+import { type LucraClientOnMessage, type LucraClientSendMessage, type LucraConvertToCreditBody, type LucraDeepLinkBody, type LucraEnvironment, type LucraMatchupAcceptedBody, type LucraMatchupCanceledBody, type LucraMatchupCreatedBody, type LucraNavigationEventBody, type LucraTournamentJoinedBody, type LucraUserInfoBody } from "./types/message.js";
 export declare const LucraClientIframeId = "__lucrasports__";
 export declare class LucraClient {
     private iframe?;
@@ -29,6 +29,8 @@ export declare class LucraClient {
     set matchupCreatedHandler(handlerFn: (data: LucraMatchupCreatedBody) => void);
     set matchupAcceptedHandler(handlerFn: (data: LucraMatchupAcceptedBody) => void);
     set matchupCanceledHandler(handlerFn: (data: LucraMatchupCanceledBody) => void);
+    set tournamentJoinedHandler(handlerFn: (data: LucraTournamentJoinedBody) => void);
+    set navigationEventHandler(handlerFn: (data: LucraNavigationEventBody) => void);
     set convertToCreditHandler(handlerFn: (data: LucraConvertToCreditBody) => void);
     private _open;
     /**
@@ -60,6 +62,10 @@ export declare class LucraClient {
          * Open directly to a matchup where the user can accept, cancel, or wager on the matchup.
          */
         matchupDetails: (matchupId: string, teamInvitedId?: string) => LucraClient;
+        /**
+         * Open directly to a tournament where the user can join.
+         */
+        tournamentDetails: (matchupId: string) => LucraClient;
         /**
          * Open directly to the deep link
          * @param url deepLink url
