@@ -1,5 +1,11 @@
 ### CHANGELOG
 
+## [v0.11.2]
+
+### Updated
+
+- `navigationEvent` event with the full url that can be used in the future for deepLinking
+
 ## [v0.11.1]
 
 ### Updated

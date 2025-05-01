@@ -11,6 +11,7 @@ import {
   type LucraMatchupAcceptedBody,
   type LucraMatchupCanceledBody,
   type LucraMatchupCreatedBody,
+  type LucraNavigationEventBody,
   type LucraTournamentJoinedBody,
   type LucraUserInfoBody,
 } from "./types/message.js";
@@ -37,6 +38,7 @@ export class LucraClient {
     tournamentJoined: NoOp,
     convertToCredit: NoOp,
     deepLink: NoOp,
+    navigationEvent: NoOp,
   };
   private controller: AbortController = new AbortController();
   private iframeParentElement?: HTMLElement;
@@ -69,6 +71,9 @@ export class LucraClient {
         break;
       case LucraClientMessageType.deepLink:
         this.onMessage.deepLink(event.data.data);
+        break;
+      case LucraClientMessageType.navigationEvent:
+        this.onMessage.navigationEvent(event.data.data);
         break;
       default:
         console.log("Unrecognized LucraClientMessageType", event.data.type);
@@ -134,6 +139,11 @@ export class LucraClient {
     handlerFn: (data: LucraTournamentJoinedBody) => void
   ) {
     this.onMessage.tournamentJoined = handlerFn;
+  }
+  set navigationEventHandler(
+    handlerFn: (data: LucraNavigationEventBody) => void
+  ) {
+    this.onMessage.navigationEvent = handlerFn;
   }
   set convertToCreditHandler(
     handlerFn: (data: LucraConvertToCreditBody) => void
