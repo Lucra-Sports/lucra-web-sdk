@@ -1,5 +1,9 @@
-import { type LucraClientOnMessage, type LucraClientSendMessage, type LucraConvertToCreditBody, type LucraDeepLinkBody, type LucraEnvironment, type LucraMatchupAcceptedBody, type LucraMatchupCanceledBody, type LucraMatchupCreatedBody, type LucraNavigationEventBody, type LucraTournamentJoinedBody, type LucraUserInfoBody } from "./types/message.js";
+import { type LucraClientOnMessage, type LucraClientSendMessage, type LucraConvertToCreditBody, type LucraDeepLinkBody, type LucraEnvironment, type LucraMatchupAcceptedBody, type LucraMatchupCanceledBody, type LucraMatchupCreatedBody, type LucraNavigationEventBody, type LucraTournamentJoinedBody, type LucraUserInfoBody, type StateCode, type StateFull } from "./types/types.js";
 export declare const LucraClientIframeId = "__lucrasports__";
+export declare const States: {
+    state: StateFull;
+    code: StateCode;
+}[];
 export declare class LucraClient {
     private iframe?;
     private tenantId;
@@ -45,7 +49,7 @@ export declare class LucraClient {
         /**
          * Open to the home page
          */
-        home: () => LucraClient;
+        home: (locationId?: string) => LucraClient;
         /**
          * Open directly into add funds
          */

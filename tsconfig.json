@@ -27,10 +27,5 @@
     "noPropertyAccessFromIndexSignature": false
   },
   "exclude": ["dist"],
-  "files": [
-    "index.ts",
-    "types/message.ts",
-    "types/sdk-user.ts",
-    "types/states.ts"
-  ]
+  "files": ["index.ts", "types/types.ts"]
 }

@@ -14,10 +14,69 @@ import {
   type LucraNavigationEventBody,
   type LucraTournamentJoinedBody,
   type LucraUserInfoBody,
-} from "./types/message.js";
-import type { SDKClientUser } from "./types/sdk-user";
+  type SDKClientUser,
+  type StateCode,
+  type StateFull,
+} from "./types/types.js";
 
 export const LucraClientIframeId = "__lucrasports__";
+
+export const States: {
+  state: StateFull;
+  code: StateCode;
+}[] = [
+  { state: "Alaska", code: "AK" },
+  { state: "Alabama", code: "AL" },
+  { state: "Arkansas", code: "AR" },
+  { state: "Arizona", code: "AZ" },
+  { state: "California", code: "CA" },
+  { state: "Colorado", code: "CO" },
+  { state: "Connecticut", code: "CT" },
+  { state: "District of Columbia", code: "DC" },
+  { state: "Delaware", code: "DE" },
+  { state: "Florida", code: "FL" },
+  { state: "Georgia", code: "GA" },
+  { state: "Hawaii", code: "HI" },
+  { state: "Iowa", code: "IA" },
+  { state: "Idaho", code: "ID" },
+  { state: "Illinois", code: "IL" },
+  { state: "Indiana", code: "IN" },
+  { state: "Kansas", code: "KS" },
+  { state: "Kentucky", code: "KY" },
+  { state: "Louisiana", code: "LA" },
+  { state: "Massachusetts", code: "MA" },
+  { state: "Maryland", code: "MD" },
+  { state: "Maine", code: "ME" },
+  { state: "Michigan", code: "MI" },
+  { state: "Minnesota", code: "MN" },
+  { state: "Missouri", code: "MO" },
+  { state: "Mississippi", code: "MS" },
+  { state: "Montana", code: "MT" },
+  { state: "North Carolina", code: "NC" },
+  { state: "North Dakota", code: "ND" },
+  { state: "Nebraska", code: "NE" },
+  { state: "New Hampshire", code: "NH" },
+  { state: "New Jersey", code: "NJ" },
+  { state: "New Mexico", code: "NM" },
+  { state: "Nevada", code: "NV" },
+  { state: "New York", code: "NY" },
+  { state: "Ohio", code: "OH" },
+  { state: "Oklahoma", code: "OK" },
+  { state: "Oregon", code: "OR" },
+  { state: "Pennsylvania", code: "PA" },
+  { state: "Rhode Island", code: "RI" },
+  { state: "South Carolina", code: "SC" },
+  { state: "South Dakota", code: "SD" },
+  { state: "Tennessee", code: "TN" },
+  { state: "Texas", code: "TX" },
+  { state: "Utah", code: "UT" },
+  { state: "Virginia", code: "VA" },
+  { state: "Vermont", code: "VT" },
+  { state: "Washington", code: "WA" },
+  { state: "Wisconsin", code: "WI" },
+  { state: "West Virginia", code: "WV" },
+  { state: "Wyoming", code: "WY" },
+] as const;
 
 function NoOp(data?: any) {
   console.log("Not implemented", data);
@@ -195,7 +254,7 @@ export class LucraClient {
     /**
      * Open to the home page
      */
-    home: () => LucraClient;
+    home: (locationId?: string) => LucraClient;
     /**
      * Open directly into add funds
      */
@@ -224,7 +283,14 @@ export class LucraClient {
   } {
     return {
       profile: () => this._open(element, "app/profile"),
-      home: () => this._open(element, "app/home"),
+      home: (locationId?: string) => {
+        const params = new URLSearchParams();
+        if (locationId !== undefined) {
+          params.set("locationId", locationId);
+        }
+
+        return this._open(element, "app/home", params);
+      },
       deposit: () => this._open(element, "app/add-funds"),
       withdraw: () => this._open(element, "app/withdraw-funds"),
       createMatchup: (gameId?: string) => {

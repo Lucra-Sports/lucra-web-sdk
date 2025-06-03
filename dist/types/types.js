@@ -1,3 +1,21 @@
+export var LucraClientMessageType;
+(function (LucraClientMessageType) {
+    LucraClientMessageType["userInfo"] = "userInfo";
+    LucraClientMessageType["matchupCreated"] = "matchupCreated";
+    LucraClientMessageType["matchupCanceled"] = "matchupCanceled";
+    LucraClientMessageType["matchupAccepted"] = "matchupAccepted";
+    LucraClientMessageType["tournamentJoined"] = "tournamentJoined";
+    LucraClientMessageType["convertToCredit"] = "convertToCredit";
+    LucraClientMessageType["deepLink"] = "deepLink";
+    LucraClientMessageType["navigationEvent"] = "navigationEvent";
+})(LucraClientMessageType || (LucraClientMessageType = {}));
+export var MessageTypeToLucraClient;
+(function (MessageTypeToLucraClient) {
+    MessageTypeToLucraClient["clientUserInfo"] = "clientUserInfo";
+    MessageTypeToLucraClient["convertToCreditResponse"] = "convertToCreditResponse";
+    MessageTypeToLucraClient["enableConvertToCredit"] = "enableConvertToCredit";
+    MessageTypeToLucraClient["deepLinkResponse"] = "deepLinkResponse";
+})(MessageTypeToLucraClient || (MessageTypeToLucraClient = {}));
 var account_status_types_enum;
 (function (account_status_types_enum) {
     // For free to play sports, a status that indicates they have passed an age assurance check and are verified to play.
@@ -25,4 +43,3 @@ var account_status_types_enum;
     // User has been verified
     account_status_types_enum["VERIFIED"] = "VERIFIED";
 })(account_status_types_enum || (account_status_types_enum = {}));
-export {};

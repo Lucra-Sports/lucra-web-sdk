@@ -1,5 +1,12 @@
 ### CHANGELOG
 
+## [v0.12.0]
+
+### Updated
+
+- `home` now accepts a `locationId` parameter to skip the location picker
+- all types now come from `/types/types.js`
+
 ## [v0.11.2]
 
 ### Updated
