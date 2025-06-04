@@ -15,6 +15,7 @@ export var MessageTypeToLucraClient;
     MessageTypeToLucraClient["convertToCreditResponse"] = "convertToCreditResponse";
     MessageTypeToLucraClient["enableConvertToCredit"] = "enableConvertToCredit";
     MessageTypeToLucraClient["deepLinkResponse"] = "deepLinkResponse";
+    MessageTypeToLucraClient["navigate"] = "navigate";
 })(MessageTypeToLucraClient || (MessageTypeToLucraClient = {}));
 var account_status_types_enum;
 (function (account_status_types_enum) {

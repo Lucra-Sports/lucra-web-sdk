@@ -11,6 +11,7 @@ import {
   type LucraMatchupAcceptedBody,
   type LucraMatchupCanceledBody,
   type LucraMatchupCreatedBody,
+  type LucraNavigateRequest,
   type LucraNavigationEventBody,
   type LucraTournamentJoinedBody,
   type LucraUserInfoBody,
@@ -81,6 +82,42 @@ export const States: {
 function NoOp(data?: any) {
   console.log("Not implemented", data);
 }
+
+type LucraNavigation = {
+  /**
+   * Open directly to the user's profile page
+   */
+  profile: () => LucraClient;
+  /**
+   * Open to the home page
+   */
+  home: (locationId?: string) => LucraClient;
+  /**
+   * Open directly into add funds
+   */
+  deposit: () => LucraClient;
+  /**
+   * Open directly into withdraw funds
+   */
+  withdraw: () => LucraClient;
+  /**
+   * Open directly into create matchup flow. If gameId is provided, the game selection screen will be skipped.
+   */
+  createMatchup: (gameId?: string) => LucraClient;
+  /**
+   * Open directly to a matchup where the user can accept, cancel, or wager on the matchup.
+   */
+  matchupDetails: (matchupId: string, teamInvitedId?: string) => LucraClient;
+  /**
+   * Open directly to a tournament where the user can join.
+   */
+  tournamentDetails: (matchupId: string) => LucraClient;
+  /**
+   * Open directly to the deep link
+   * @param url deepLink url
+   */
+  deepLink: (url: string) => LucraClient;
+};
 
 export class LucraClient {
   private iframe?: HTMLIFrameElement;
@@ -242,45 +279,85 @@ export class LucraClient {
     }
   }
 
+  private _redirect(
+    path: string,
+    params: URLSearchParams = new URLSearchParams(),
+    deepLinkUrl?: string
+  ) {
+    if (!this.iframe) {
+      throw new Error("Cannot redirect. LucraSports is not open.");
+    }
+
+    const url = new URL(
+      deepLinkUrl || `${this.urlOrigin}/${path}?${params.toString()}`
+    );
+    url.searchParams.set("parentUrl", window.location.origin);
+
+    this.url = url.toString();
+
+    try {
+      this.sendMessage.navigate({
+        pathname: `${url.pathname}${url.search}`,
+      });
+    } catch (e) {
+      console.error("Error redirecting LucraSports", e);
+    } finally {
+      return this;
+    }
+  }
+
+  /**
+   * Redirect an open LucraClient
+   */
+  redirect(): LucraNavigation {
+    return {
+      profile: () => this._redirect("app/profile"),
+      home: (locationId?: string) => {
+        const params = new URLSearchParams();
+        if (locationId !== undefined) {
+          params.set("locationId", locationId);
+        }
+
+        return this._redirect("app/home", params);
+      },
+      deposit: () => this._redirect("app/add-funds"),
+      withdraw: () => this._redirect("app/withdraw-funds"),
+      createMatchup: (gameId?: string) => {
+        const params = new URLSearchParams();
+        if (gameId !== undefined) {
+          params.set("hideNavigation", "1");
+        }
+
+        return this._redirect(
+          "app/create-matchup" +
+            (gameId !== undefined ? `/${gameId}/wager` : ""),
+          params
+        );
+      },
+      matchupDetails: (matchupId: string, teamInvitedId?: string) => {
+        const params = new URLSearchParams();
+        if (teamInvitedId) {
+          params.set("teamIdToJoin", teamInvitedId);
+        }
+
+        return this._redirect(`app/matchups/${matchupId}`, params);
+      },
+      tournamentDetails: (matchupId: string) =>
+        this._redirect(`app/tournaments/${matchupId}`),
+      deepLink: (url: string) => {
+        if (this.urlOrigin === "" || url.indexOf(this.urlOrigin) !== 0) {
+          throw new Error("Cannot open a url not associated with this tenant");
+        }
+        return this._redirect("", undefined, url);
+      },
+    };
+  }
+
   /**
    * Open Lucra in an iframe
    * @param element parent element to contain the LucraClient iframe
    */
-  open(element: HTMLElement): {
-    /**
-     * Open directly to the user's profile page
-     */
-    profile: () => LucraClient;
-    /**
-     * Open to the home page
-     */
-    home: (locationId?: string) => LucraClient;
-    /**
-     * Open directly into add funds
-     */
-    deposit: () => LucraClient;
-    /**
-     * Open directly into withdraw funds
-     */
-    withdraw: () => LucraClient;
-    /**
-     * Open directly into create matchup flow. If gameId is provided, the game selection screen will be skipped.
-     */
-    createMatchup: (gameId?: string) => LucraClient;
-    /**
-     * Open directly to a matchup where the user can accept, cancel, or wager on the matchup.
-     */
-    matchupDetails: (matchupId: string, teamInvitedId?: string) => LucraClient;
-    /**
-     * Open directly to a tournament where the user can join.
-     */
-    tournamentDetails: (matchupId: string) => LucraClient;
-    /**
-     * Open directly to the deep link
-     * @param url deepLink url
-     */
-    deepLink: (url: string) => LucraClient;
-  } {
+  open(element: HTMLElement): LucraNavigation {
     return {
       profile: () => this._open(element, "app/profile"),
       home: (locationId?: string) => {
@@ -386,6 +463,16 @@ export class LucraClient {
     deepLinkResponse: (data: LucraDeepLinkResponse) => {
       this._sendMessage({
         type: MessageTypeToLucraClient.deepLinkResponse,
+        body: data,
+      });
+    },
+    /**
+     * Call this method to navigate Lucra to a new page
+     * @param data LucraNavigateRequest
+     */
+    navigate: (data: LucraNavigateRequest) => {
+      this._sendMessage({
+        type: MessageTypeToLucraClient.navigate,
         body: data,
       });
     },
