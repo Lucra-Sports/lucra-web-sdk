@@ -4,6 +4,41 @@ export declare const States: {
     state: StateFull;
     code: StateCode;
 }[];
+type LucraNavigation = {
+    /**
+     * Open directly to the user's profile page
+     */
+    profile: () => LucraClient;
+    /**
+     * Open to the home page
+     */
+    home: (locationId?: string) => LucraClient;
+    /**
+     * Open directly into add funds
+     */
+    deposit: () => LucraClient;
+    /**
+     * Open directly into withdraw funds
+     */
+    withdraw: () => LucraClient;
+    /**
+     * Open directly into create matchup flow. If gameId is provided, the game selection screen will be skipped.
+     */
+    createMatchup: (gameId?: string) => LucraClient;
+    /**
+     * Open directly to a matchup where the user can accept, cancel, or wager on the matchup.
+     */
+    matchupDetails: (matchupId: string, teamInvitedId?: string) => LucraClient;
+    /**
+     * Open directly to a tournament where the user can join.
+     */
+    tournamentDetails: (matchupId: string) => LucraClient;
+    /**
+     * Open directly to the deep link
+     * @param url deepLink url
+     */
+    deepLink: (url: string) => LucraClient;
+};
 export declare class LucraClient {
     private iframe?;
     private tenantId;
@@ -37,45 +72,16 @@ export declare class LucraClient {
     set navigationEventHandler(handlerFn: (data: LucraNavigationEventBody) => void);
     set convertToCreditHandler(handlerFn: (data: LucraConvertToCreditBody) => void);
     private _open;
+    private _redirect;
+    /**
+     * Redirect an open LucraClient
+     */
+    redirect(): LucraNavigation;
     /**
      * Open Lucra in an iframe
      * @param element parent element to contain the LucraClient iframe
      */
-    open(element: HTMLElement): {
-        /**
-         * Open directly to the user's profile page
-         */
-        profile: () => LucraClient;
-        /**
-         * Open to the home page
-         */
-        home: (locationId?: string) => LucraClient;
-        /**
-         * Open directly into add funds
-         */
-        deposit: () => LucraClient;
-        /**
-         * Open directly into withdraw funds
-         */
-        withdraw: () => LucraClient;
-        /**
-         * Open directly into create matchup flow. If gameId is provided, the game selection screen will be skipped.
-         */
-        createMatchup: (gameId?: string) => LucraClient;
-        /**
-         * Open directly to a matchup where the user can accept, cancel, or wager on the matchup.
-         */
-        matchupDetails: (matchupId: string, teamInvitedId?: string) => LucraClient;
-        /**
-         * Open directly to a tournament where the user can join.
-         */
-        tournamentDetails: (matchupId: string) => LucraClient;
-        /**
-         * Open directly to the deep link
-         * @param url deepLink url
-         */
-        deepLink: (url: string) => LucraClient;
-    };
+    open(element: HTMLElement): LucraNavigation;
     /**
      * Close iframe and stop listening to any messages sent from LucraClient
      */

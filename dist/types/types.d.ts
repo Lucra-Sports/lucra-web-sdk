@@ -13,7 +13,8 @@ export declare enum MessageTypeToLucraClient {
     clientUserInfo = "clientUserInfo",
     convertToCreditResponse = "convertToCreditResponse",
     enableConvertToCredit = "enableConvertToCredit",
-    deepLinkResponse = "deepLinkResponse"
+    deepLinkResponse = "deepLinkResponse",
+    navigate = "navigate"
 }
 export type LucraConvertToCreditResponse = {
     id: string;
@@ -34,6 +35,9 @@ export type LucraConvertToCreditResponse = {
 };
 export type LucraDeepLinkResponse = {
     url: string;
+};
+export type LucraNavigateRequest = {
+    pathname: string;
 };
 export type LucraUserInfoBody = SDKLucraUser;
 export type LucraMatchupCreatedBody = {
@@ -72,6 +76,7 @@ export type LucraClientSendMessage = {
     convertToCreditResponse: (data: LucraConvertToCreditResponse) => void;
     enableConvertToCredit: () => void;
     deepLinkResponse: (data: LucraDeepLinkResponse) => void;
+    navigate: (data: LucraNavigateRequest) => void;
 };
 export type LucraClientMessage = (body: {
     type: LucraClientMessageType;
