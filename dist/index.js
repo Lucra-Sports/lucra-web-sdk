@@ -70,6 +70,7 @@ function validatePhoneNumber(phoneNumber) {
     // Regex for exactly 10 digits
     const phoneNumberRegex = /^[0-9]{10}$/;
     if (!phoneNumberRegex.test(phoneNumber)) {
+        console.error('Phone number not valid, must be exactly 10 digits', phoneNumber);
         return undefined;
     }
     return phoneNumber;
