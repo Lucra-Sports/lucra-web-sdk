@@ -22,6 +22,7 @@ export enum MessageTypeToLucraClient {
   convertToCreditResponse = "convertToCreditResponse",
   enableConvertToCredit = "enableConvertToCredit",
   deepLinkResponse = "deepLinkResponse",
+  navigate = "navigate",
 }
 
 export type LucraConvertToCreditResponse = {
@@ -44,6 +45,9 @@ export type LucraConvertToCreditResponse = {
 
 export type LucraDeepLinkResponse = {
   url: string;
+};
+export type LucraNavigateRequest = {
+  pathname: string;
 };
 
 export type LucraUserInfoBody = SDKLucraUser;
@@ -77,6 +81,7 @@ export type LucraClientSendMessage = {
   convertToCreditResponse: (data: LucraConvertToCreditResponse) => void;
   enableConvertToCredit: () => void;
   deepLinkResponse: (data: LucraDeepLinkResponse) => void;
+  navigate: (data: LucraNavigateRequest) => void;
 };
 
 export type LucraClientMessage = (body: {

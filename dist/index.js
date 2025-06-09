@@ -210,6 +210,64 @@ export class LucraClient {
             return this;
         }
     }
+    _redirect(path, params = new URLSearchParams(), deepLinkUrl) {
+        if (!this.iframe) {
+            throw new Error("Cannot redirect. LucraSports is not open.");
+        }
+        const url = new URL(deepLinkUrl || `${this.urlOrigin}/${path}?${params.toString()}`);
+        url.searchParams.set("parentUrl", window.location.origin);
+        this.url = url.toString();
+        try {
+            this.sendMessage.navigate({
+                pathname: `${url.pathname}${url.search}`,
+            });
+        }
+        catch (e) {
+            console.error("Error redirecting LucraSports", e);
+        }
+        finally {
+            return this;
+        }
+    }
+    /**
+     * Redirect an open LucraClient
+     */
+    redirect() {
+        return {
+            profile: () => this._redirect("app/profile"),
+            home: (locationId) => {
+                const params = new URLSearchParams();
+                if (locationId !== undefined) {
+                    params.set("locationId", locationId);
+                }
+                return this._redirect("app/home", params);
+            },
+            deposit: () => this._redirect("app/add-funds"),
+            withdraw: () => this._redirect("app/withdraw-funds"),
+            createMatchup: (gameId) => {
+                const params = new URLSearchParams();
+                if (gameId !== undefined) {
+                    params.set("hideNavigation", "1");
+                }
+                return this._redirect("app/create-matchup" +
+                    (gameId !== undefined ? `/${gameId}/wager` : ""), params);
+            },
+            matchupDetails: (matchupId, teamInvitedId) => {
+                const params = new URLSearchParams();
+                if (teamInvitedId) {
+                    params.set("teamIdToJoin", teamInvitedId);
+                }
+                return this._redirect(`app/matchups/${matchupId}`, params);
+            },
+            tournamentDetails: (matchupId) => this._redirect(`app/tournaments/${matchupId}`),
+            deepLink: (url) => {
+                if (this.urlOrigin === "" || url.indexOf(this.urlOrigin) !== 0) {
+                    throw new Error("Cannot open a url not associated with this tenant");
+                }
+                return this._redirect("", undefined, url);
+            },
+        };
+    }
     /**
      * Open Lucra in an iframe
      * @param element parent element to contain the LucraClient iframe
@@ -354,6 +412,16 @@ export class LucraClient {
         deepLinkResponse: (data) => {
             this._sendMessage({
                 type: MessageTypeToLucraClient.deepLinkResponse,
+                body: data,
+            });
+        },
+        /**
+         * Call this method to navigate Lucra to a new page
+         * @param data LucraNavigateRequest
+         */
+        navigate: (data) => {
+            this._sendMessage({
+                type: MessageTypeToLucraClient.navigate,
                 body: data,
             });
         },

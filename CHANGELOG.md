@@ -1,5 +1,11 @@
 ### CHANGELOG
 
+## [v0.12.1]
+
+### Updated
+
+- `redirect` method to redirect an already opened LucraClient
+
 ## [v0.12.0]
 
 ### Updated

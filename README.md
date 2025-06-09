@@ -12,7 +12,7 @@ bun install Lucra-Sports/lucra-web-sdk
 
 ### Typescript
 
-The SDK was developed with Typescript in mind. If you are using Typescript, everything should be typed including the class constructor and the available methods and arguments on the LucraSports class.
+The SDK was developed with Typescript in mind. If you are using Typescript, everything should be typed including the class constructor and the available methods and arguments on the LucraClient class.
 
 ### Create an instance of LucraClient
 
@@ -62,10 +62,26 @@ if (lucraClient) {
 
 ```
 const lucraClient = new LucraClient(...)
-lucraSports.open(element: <HTMLElement that will contain the iframe for Lucra>)
+lucraClient.open(element: <HTMLElement that will contain the iframe for Lucra>)
   // and one of the below
   .profile()
-  .home()
+  .home(locationId?: string)
+  .deposit()
+  .withdraw()
+  .createMatchup(gameId?: string)
+  .matchupDetails(matchupId: string, teamInviteId?: string)
+  .tournamentDetails(matchupId: string)
+  .deepLink(url: string)
+```
+
+### Redirect Lucra
+
+```
+// use an existing LucraClient that's open
+lucraClient.redirect()
+  // and one of the below
+  .profile()
+  .home(locationId?: string)
   .deposit()
   .withdraw()
   .createMatchup(gameId?: string)
