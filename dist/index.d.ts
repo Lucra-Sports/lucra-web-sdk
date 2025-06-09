@@ -76,6 +76,7 @@ export declare class LucraClient {
     /**
      * Open Lucra in an iframe
      * @param element parent element to contain the LucraClient iframe
+     * @param phoneNumber optional phone number to prefill and auto-send verification SMS
      */
     open(element: HTMLElement, phoneNumber?: string): LucraNavigation;
     /**
