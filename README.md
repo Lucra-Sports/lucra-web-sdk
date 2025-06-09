@@ -62,7 +62,7 @@ if (lucraClient) {
 
 ```
 const lucraClient = new LucraClient(...)
-lucraClient.open(element: <HTMLElement that will contain the iframe for Lucra>)
+lucraClient.open(element: <HTMLElement that will contain the iframe for Lucra>, phoneNumber?: string)
   // and one of the below
   .profile()
   .home(locationId?: string)
@@ -73,6 +73,8 @@ lucraClient.open(element: <HTMLElement that will contain the iframe for Lucra>)
   .tournamentDetails(matchupId: string)
   .deepLink(url: string)
 ```
+
+Where phone number (if valid) will automatically send the SMS verification code, skipping the step where the user must enter phone number manually.
 
 ### Redirect Lucra
 
