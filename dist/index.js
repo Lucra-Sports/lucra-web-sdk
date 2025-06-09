@@ -53,6 +53,27 @@ export const States = [
     { state: "West Virginia", code: "WV" },
     { state: "Wyoming", code: "WY" },
 ];
+function createDefinedSearchParams(params) {
+    const urlParams = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+        // Require both to be set to avoid setting undefined values
+        if (key && value) {
+            urlParams.set(key, value);
+        }
+    }
+    return urlParams;
+}
+function validatePhoneNumber(phoneNumber) {
+    if (!phoneNumber) {
+        return undefined;
+    }
+    // Regex for exactly 10 digits
+    const phoneNumberRegex = /^[0-9]{10}$/;
+    if (!phoneNumberRegex.test(phoneNumber)) {
+        return undefined;
+    }
+    return phoneNumber;
+}
 function NoOp(data) {
     console.log("Not implemented", data);
 }
@@ -124,7 +145,7 @@ export class LucraClient {
      * @param env sandbox | production
      * @param onMessage Message Handler for messages from LucraClient
      */
-    constructor({ tenantId, env, onMessage, }) {
+    constructor({ tenantId, env, onMessage }) {
         this.env = env;
         this.tenantId = tenantId;
         this.onMessage = onMessage;
@@ -157,7 +178,15 @@ export class LucraClient {
     set convertToCreditHandler(handlerFn) {
         this.onMessage.convertToCredit = handlerFn;
     }
-    _open(element, path, params = new URLSearchParams(), deepLinkUrl) {
+    _open({ element, path = "", params = new URLSearchParams(), deepLinkUrl, }) {
+        const validatedPhoneNumber = validatePhoneNumber(params.get("phoneNumber"));
+        if (validatedPhoneNumber) {
+            console.log("Valid phone number", validatedPhoneNumber);
+            params.set("loginHint", validatedPhoneNumber);
+        }
+        else {
+            console.log("Invalid phone number", params.get("phoneNumber"));
+        }
         const url = new URL(deepLinkUrl || `${this.urlOrigin}/${path}?${params.toString()}`);
         url.searchParams.set("parentUrl", window.location.origin);
         this.url = url.toString();
@@ -185,39 +214,82 @@ export class LucraClient {
      * Open Lucra in an iframe
      * @param element parent element to contain the LucraClient iframe
      */
-    open(element) {
+    open(element, phoneNumber) {
         return {
-            profile: () => this._open(element, "app/profile"),
+            profile: () => {
+                const params = createDefinedSearchParams({ phoneNumber });
+                console.log("Profile page: setting params", params.forEach((value, key) => {
+                    console.log(key, value);
+                }));
+                return this._open({ element, path: "app/profile", params });
+            },
             home: (locationId) => {
-                const params = new URLSearchParams();
-                if (locationId !== undefined) {
-                    params.set("locationId", locationId);
-                }
-                return this._open(element, "app/home", params);
+                const params = createDefinedSearchParams({
+                    locationId,
+                    phoneNumber,
+                });
+                return this._open({ element, path: "app/home", params });
             },
-            deposit: () => this._open(element, "app/add-funds"),
-            withdraw: () => this._open(element, "app/withdraw-funds"),
+            deposit: () => {
+                const params = createDefinedSearchParams({ phoneNumber });
+                return this._open({
+                    element,
+                    path: "app/add-funds",
+                    params,
+                });
+            },
+            withdraw: () => {
+                const params = createDefinedSearchParams({ phoneNumber });
+                return this._open({
+                    element,
+                    path: "app/withdraw-funds",
+                    params,
+                });
+            },
             createMatchup: (gameId) => {
-                const params = new URLSearchParams();
-                if (gameId !== undefined) {
-                    params.set("hideNavigation", "1");
-                }
-                return this._open(element, "app/create-matchup" +
-                    (gameId !== undefined ? `/${gameId}/wager` : ""), params);
+                const params = createDefinedSearchParams({
+                    hideNavigation: gameId !== undefined ? "1" : undefined,
+                    phoneNumber,
+                });
+                return this._open({
+                    element,
+                    path: "app/create-matchup" +
+                        (gameId !== undefined ? `/${gameId}/wager` : ""),
+                    params,
+                });
             },
-            matchupDetails: (matchupId, teamInvitedId) => {
-                const params = new URLSearchParams();
-                if (teamInvitedId) {
-                    params.set("teamIdToJoin", teamInvitedId);
-                }
-                return this._open(element, `app/matchups/${matchupId}`, params);
+            matchupDetails: (matchupId, teamIdToJoin) => {
+                const params = createDefinedSearchParams({
+                    teamIdToJoin,
+                    phoneNumber,
+                });
+                return this._open({
+                    element,
+                    path: `app/matchups/${matchupId}`,
+                    params,
+                });
             },
-            tournamentDetails: (matchupId) => this._open(element, `app/tournaments/${matchupId}`),
+            tournamentDetails: (matchupId) => {
+                const params = createDefinedSearchParams({
+                    phoneNumber,
+                });
+                return this._open({
+                    element,
+                    path: `app/tournaments/${matchupId}`,
+                    params,
+                });
+            },
             deepLink: (url) => {
                 if (this.urlOrigin === "" || url.indexOf(this.urlOrigin) !== 0) {
                     throw new Error("Cannot open a url not associated with this tenant");
                 }
-                return this._open(element, "", undefined, url);
+                return this._open({
+                    element,
+                    deepLinkUrl: url,
+                    params: createDefinedSearchParams({
+                        phoneNumber,
+                    }),
+                });
             },
         };
     }
