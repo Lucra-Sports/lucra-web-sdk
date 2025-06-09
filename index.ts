@@ -103,7 +103,10 @@ function validatePhoneNumber(phoneNumber: string | null): string | undefined {
   const phoneNumberRegex = /^[0-9]{10}$/;
 
   if (!phoneNumberRegex.test(phoneNumber)) {
-    console.error('Phone number not valid, must be exactly 10 digits', phoneNumber)
+    console.error(
+      "Phone number not valid, must be exactly 10 digits",
+      phoneNumber
+    );
     return undefined;
   }
 
@@ -280,15 +283,15 @@ export class LucraClient {
     params?: URLSearchParams;
     deepLinkUrl?: string;
   }) {
-    const validatedPhoneNumber = validatePhoneNumber(params.get("phoneNumber"));
-
-    if (validatedPhoneNumber) {
-      params.set("loginHint", validatedPhoneNumber);
-    }
-
     const url = new URL(
       deepLinkUrl || `${this.urlOrigin}/${path}?${params.toString()}`
     );
+
+    const validatedPhoneNumber = validatePhoneNumber(params.get("phoneNumber"));
+
+    if (validatedPhoneNumber) {
+      url.searchParams.set("loginHint", validatedPhoneNumber);
+    }
 
     url.searchParams.set("parentUrl", window.location.origin);
 
