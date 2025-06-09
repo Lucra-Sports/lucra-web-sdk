@@ -94,7 +94,7 @@ function addDefinedSearchParams(
   return urlParams;
 }
 
-function validatePhoneNumber(phoneNumber: string | null) {
+function validatePhoneNumber(phoneNumber: string | null): string | undefined {
   if (!phoneNumber) {
     return undefined;
   }

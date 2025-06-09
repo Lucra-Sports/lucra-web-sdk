@@ -65,7 +65,6 @@ export type LucraClientConstructor = {
     tenantId: string;
     env: LucraEnvironment;
     onMessage: LucraClientOnMessage;
-    phoneNumber?: string;
 };
 export type LucraClientOnMessage = {
     userInfo: (data: LucraUserInfoBody) => void;

@@ -53,7 +53,7 @@ export const States = [
     { state: "West Virginia", code: "WV" },
     { state: "Wyoming", code: "WY" },
 ];
-function createDefinedSearchParams(params) {
+function addDefinedSearchParams(params) {
     const urlParams = new URLSearchParams();
     for (const [key, value] of Object.entries(params)) {
         // Require both to be set to avoid setting undefined values
@@ -181,11 +181,7 @@ export class LucraClient {
     _open({ element, path = "", params = new URLSearchParams(), deepLinkUrl, }) {
         const validatedPhoneNumber = validatePhoneNumber(params.get("phoneNumber"));
         if (validatedPhoneNumber) {
-            console.log("Valid phone number", validatedPhoneNumber);
             params.set("loginHint", validatedPhoneNumber);
-        }
-        else {
-            console.log("Invalid phone number", params.get("phoneNumber"));
         }
         const url = new URL(deepLinkUrl || `${this.urlOrigin}/${path}?${params.toString()}`);
         url.searchParams.set("parentUrl", window.location.origin);
@@ -275,21 +271,18 @@ export class LucraClient {
     open(element, phoneNumber) {
         return {
             profile: () => {
-                const params = createDefinedSearchParams({ phoneNumber });
-                console.log("Profile page: setting params", params.forEach((value, key) => {
-                    console.log(key, value);
-                }));
+                const params = addDefinedSearchParams({ phoneNumber });
                 return this._open({ element, path: "app/profile", params });
             },
             home: (locationId) => {
-                const params = createDefinedSearchParams({
+                const params = addDefinedSearchParams({
                     locationId,
                     phoneNumber,
                 });
                 return this._open({ element, path: "app/home", params });
             },
             deposit: () => {
-                const params = createDefinedSearchParams({ phoneNumber });
+                const params = addDefinedSearchParams({ phoneNumber });
                 return this._open({
                     element,
                     path: "app/add-funds",
@@ -297,7 +290,7 @@ export class LucraClient {
                 });
             },
             withdraw: () => {
-                const params = createDefinedSearchParams({ phoneNumber });
+                const params = addDefinedSearchParams({ phoneNumber });
                 return this._open({
                     element,
                     path: "app/withdraw-funds",
@@ -305,7 +298,7 @@ export class LucraClient {
                 });
             },
             createMatchup: (gameId) => {
-                const params = createDefinedSearchParams({
+                const params = addDefinedSearchParams({
                     hideNavigation: gameId !== undefined ? "1" : undefined,
                     phoneNumber,
                 });
@@ -317,7 +310,7 @@ export class LucraClient {
                 });
             },
             matchupDetails: (matchupId, teamIdToJoin) => {
-                const params = createDefinedSearchParams({
+                const params = addDefinedSearchParams({
                     teamIdToJoin,
                     phoneNumber,
                 });
@@ -328,7 +321,7 @@ export class LucraClient {
                 });
             },
             tournamentDetails: (matchupId) => {
-                const params = createDefinedSearchParams({
+                const params = addDefinedSearchParams({
                     phoneNumber,
                 });
                 return this._open({
@@ -344,7 +337,7 @@ export class LucraClient {
                 return this._open({
                     element,
                     deepLinkUrl: url,
-                    params: createDefinedSearchParams({
+                    params: addDefinedSearchParams({
                         phoneNumber,
                     }),
                 });
