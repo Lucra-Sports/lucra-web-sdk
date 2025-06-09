@@ -61,6 +61,11 @@ export type LucraDeepLinkBody = {
 export type LucraNavigationEventBody = {
     url: string;
 };
+export type LucraClientConstructor = {
+    tenantId: string;
+    env: LucraEnvironment;
+    onMessage: LucraClientOnMessage;
+};
 export type LucraClientOnMessage = {
     userInfo: (data: LucraUserInfoBody) => void;
     matchupCreated: (data: LucraMatchupCreatedBody) => void;

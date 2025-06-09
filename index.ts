@@ -18,6 +18,7 @@ import {
   type SDKClientUser,
   type StateCode,
   type StateFull,
+  type LucraClientConstructor,
 } from "./types/types.js";
 
 export const LucraClientIframeId = "__lucrasports__";
@@ -79,6 +80,36 @@ export const States: {
   { state: "Wyoming", code: "WY" },
 ] as const;
 
+function addDefinedSearchParams(
+  params: Record<string, string | undefined>
+): URLSearchParams {
+  const urlParams = new URLSearchParams();
+
+  for (const [key, value] of Object.entries(params)) {
+    // Require both to be set to avoid setting undefined values
+    if (key && value) {
+      urlParams.set(key, value);
+    }
+  }
+  return urlParams;
+}
+
+function validatePhoneNumber(phoneNumber: string | null): string | undefined {
+  if (!phoneNumber) {
+    return undefined;
+  }
+
+  // Regex for exactly 10 digits
+  const phoneNumberRegex = /^[0-9]{10}$/;
+
+  if (!phoneNumberRegex.test(phoneNumber)) {
+    console.error('Phone number not valid, must be exactly 10 digits', phoneNumber)
+    return undefined;
+  }
+
+  return phoneNumber;
+}
+
 function NoOp(data?: any) {
   console.log("Not implemented", data);
 }
@@ -138,7 +169,6 @@ export class LucraClient {
   };
   private controller: AbortController = new AbortController();
   private iframeParentElement?: HTMLElement;
-
   private iframeUrlOrigin() {
     return new URL(this.url).origin;
   }
@@ -190,15 +220,7 @@ export class LucraClient {
    * @param env sandbox | production
    * @param onMessage Message Handler for messages from LucraClient
    */
-  constructor({
-    tenantId,
-    env,
-    onMessage,
-  }: {
-    tenantId: string;
-    env: LucraEnvironment;
-    onMessage: LucraClientOnMessage;
-  }) {
+  constructor({ tenantId, env, onMessage }: LucraClientConstructor) {
     this.env = env;
     this.tenantId = tenantId;
     this.onMessage = onMessage;
@@ -247,15 +269,27 @@ export class LucraClient {
     this.onMessage.convertToCredit = handlerFn;
   }
 
-  private _open(
-    element: HTMLElement,
-    path: string,
-    params: URLSearchParams = new URLSearchParams(),
-    deepLinkUrl?: string
-  ) {
+  private _open({
+    element,
+    path = "",
+    params = new URLSearchParams(),
+    deepLinkUrl,
+  }: {
+    element: HTMLElement;
+    path?: string;
+    params?: URLSearchParams;
+    deepLinkUrl?: string;
+  }) {
+    const validatedPhoneNumber = validatePhoneNumber(params.get("phoneNumber"));
+
+    if (validatedPhoneNumber) {
+      params.set("loginHint", validatedPhoneNumber);
+    }
+
     const url = new URL(
       deepLinkUrl || `${this.urlOrigin}/${path}?${params.toString()}`
     );
+
     url.searchParams.set("parentUrl", window.location.origin);
 
     this.url = url.toString();
@@ -357,47 +391,87 @@ export class LucraClient {
    * Open Lucra in an iframe
    * @param element parent element to contain the LucraClient iframe
    */
-  open(element: HTMLElement): LucraNavigation {
+  open(element: HTMLElement, phoneNumber?: string): LucraNavigation {
     return {
-      profile: () => this._open(element, "app/profile"),
+      profile: () => {
+        const params = addDefinedSearchParams({ phoneNumber });
+
+        return this._open({ element, path: "app/profile", params });
+      },
       home: (locationId?: string) => {
-        const params = new URLSearchParams();
-        if (locationId !== undefined) {
-          params.set("locationId", locationId);
-        }
+        const params = addDefinedSearchParams({
+          locationId,
+          phoneNumber,
+        });
 
-        return this._open(element, "app/home", params);
+        return this._open({ element, path: "app/home", params });
       },
-      deposit: () => this._open(element, "app/add-funds"),
-      withdraw: () => this._open(element, "app/withdraw-funds"),
-      createMatchup: (gameId?: string) => {
-        const params = new URLSearchParams();
-        if (gameId !== undefined) {
-          params.set("hideNavigation", "1");
-        }
+      deposit: () => {
+        const params = addDefinedSearchParams({ phoneNumber });
 
-        return this._open(
+        return this._open({
           element,
-          "app/create-matchup" +
-            (gameId !== undefined ? `/${gameId}/wager` : ""),
-          params
-        );
+          path: "app/add-funds",
+          params,
+        });
       },
-      matchupDetails: (matchupId: string, teamInvitedId?: string) => {
-        const params = new URLSearchParams();
-        if (teamInvitedId) {
-          params.set("teamIdToJoin", teamInvitedId);
-        }
+      withdraw: () => {
+        const params = addDefinedSearchParams({ phoneNumber });
 
-        return this._open(element, `app/matchups/${matchupId}`, params);
+        return this._open({
+          element,
+          path: "app/withdraw-funds",
+          params,
+        });
       },
-      tournamentDetails: (matchupId: string) =>
-        this._open(element, `app/tournaments/${matchupId}`),
+      createMatchup: (gameId?: string) => {
+        const params = addDefinedSearchParams({
+          hideNavigation: gameId !== undefined ? "1" : undefined,
+          phoneNumber,
+        });
+
+        return this._open({
+          element,
+          path:
+            "app/create-matchup" +
+            (gameId !== undefined ? `/${gameId}/wager` : ""),
+          params,
+        });
+      },
+      matchupDetails: (matchupId: string, teamIdToJoin?: string) => {
+        const params = addDefinedSearchParams({
+          teamIdToJoin,
+          phoneNumber,
+        });
+
+        return this._open({
+          element,
+          path: `app/matchups/${matchupId}`,
+          params,
+        });
+      },
+      tournamentDetails: (matchupId: string) => {
+        const params = addDefinedSearchParams({
+          phoneNumber,
+        });
+
+        return this._open({
+          element,
+          path: `app/tournaments/${matchupId}`,
+          params,
+        });
+      },
       deepLink: (url: string) => {
         if (this.urlOrigin === "" || url.indexOf(this.urlOrigin) !== 0) {
           throw new Error("Cannot open a url not associated with this tenant");
         }
-        return this._open(element, "", undefined, url);
+        return this._open({
+          element,
+          deepLinkUrl: url,
+          params: addDefinedSearchParams({
+            phoneNumber,
+          }),
+        });
       },
     };
   }

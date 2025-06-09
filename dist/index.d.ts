@@ -1,4 +1,4 @@
-import { type LucraClientOnMessage, type LucraClientSendMessage, type LucraConvertToCreditBody, type LucraDeepLinkBody, type LucraEnvironment, type LucraMatchupAcceptedBody, type LucraMatchupCanceledBody, type LucraMatchupCreatedBody, type LucraNavigationEventBody, type LucraTournamentJoinedBody, type LucraUserInfoBody, type StateCode, type StateFull } from "./types/types.js";
+import { type LucraClientSendMessage, type LucraConvertToCreditBody, type LucraDeepLinkBody, type LucraMatchupAcceptedBody, type LucraMatchupCanceledBody, type LucraMatchupCreatedBody, type LucraNavigationEventBody, type LucraTournamentJoinedBody, type LucraUserInfoBody, type StateCode, type StateFull, type LucraClientConstructor } from "./types/types.js";
 export declare const LucraClientIframeId = "__lucrasports__";
 export declare const States: {
     state: StateFull;
@@ -58,11 +58,7 @@ export declare class LucraClient {
      * @param env sandbox | production
      * @param onMessage Message Handler for messages from LucraClient
      */
-    constructor({ tenantId, env, onMessage, }: {
-        tenantId: string;
-        env: LucraEnvironment;
-        onMessage: LucraClientOnMessage;
-    });
+    constructor({ tenantId, env, onMessage }: LucraClientConstructor);
     set deepLinkHandler(handlerFn: (data: LucraDeepLinkBody) => void);
     set userInfoHandler(handlerFn: (data: LucraUserInfoBody) => void);
     set matchupCreatedHandler(handlerFn: (data: LucraMatchupCreatedBody) => void);
@@ -81,7 +77,7 @@ export declare class LucraClient {
      * Open Lucra in an iframe
      * @param element parent element to contain the LucraClient iframe
      */
-    open(element: HTMLElement): LucraNavigation;
+    open(element: HTMLElement, phoneNumber?: string): LucraNavigation;
     /**
      * Close iframe and stop listening to any messages sent from LucraClient
      */

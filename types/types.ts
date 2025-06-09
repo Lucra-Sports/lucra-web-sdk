@@ -59,6 +59,12 @@ export type LucraConvertToCreditBody = { amount: number };
 export type LucraDeepLinkBody = { url: string };
 export type LucraNavigationEventBody = { url: string };
 
+export type LucraClientConstructor = {
+  tenantId: string;
+  env: LucraEnvironment;
+  onMessage: LucraClientOnMessage;
+};
+
 export type LucraClientOnMessage = {
   userInfo: (data: LucraUserInfoBody) => void;
   matchupCreated: (data: LucraMatchupCreatedBody) => void;
