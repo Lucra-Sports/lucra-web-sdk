@@ -1,6 +1,6 @@
 ### CHANGELOG
 
-## [v0.12.2]
+## [v0.12.3]
 - add support for passing a 10-digit phone number to prefill and auto-send verification SMS
 
 ## [v0.12.1]
