@@ -69,7 +69,7 @@ lucraClient.open(element: <HTMLElement that will contain the iframe for Lucra>, 
   .deposit()
   .withdraw()
   .createMatchup(gameId?: string)
-  .matchupDetails(matchupId: string, teamInviteId?: string)
+  .matchupDetails(matchupId: string)
   .tournamentDetails(matchupId: string)
   .deepLink(url: string)
 ```
@@ -102,6 +102,7 @@ lucraClient.redirect()
 `deepLink` - Lucra is requesting a url that the user of the SDK will open to then open up the LucraClient at where the deepLink url is linking to
 `tournamentJoined` - the user successfully joined a tournament, and contains the id of the tournament
 `navigationEvent` - the user has navigated somewhere in Lucra, contains the full url that you can use later when doing `.open().deepLink(url)`
+`claimReward` - the user is redeeming a Free To Play reward
 
 ### Messages you can send to LucraClient
 
@@ -115,6 +116,7 @@ lucraClient.sendMessage.userUpdated(...)
 lucraClient.sendMessage.convertToCreditResponse(...)
 lucraClient.sendMessage.enableConvertToCredit()
 lucraClient.sendMessage.deepLinkResponse(...)
+lucraClient.sendMessage.availableRewards(...)
 ```
 
 ## Local Development

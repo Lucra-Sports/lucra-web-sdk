@@ -94,6 +94,7 @@ export class LucraClient {
         convertToCredit: NoOp,
         deepLink: NoOp,
         navigationEvent: NoOp,
+        claimReward: NoOp,
     };
     controller = new AbortController();
     iframeParentElement;
@@ -128,6 +129,9 @@ export class LucraClient {
                 break;
             case LucraClientMessageType.navigationEvent:
                 this.onMessage.navigationEvent(event.data.data);
+                break;
+            case LucraClientMessageType.claimReward:
+                this.onMessage.claimReward(event.data.data);
                 break;
             default:
                 console.log("Unrecognized LucraClientMessageType", event.data.type);
@@ -179,6 +183,9 @@ export class LucraClient {
     set convertToCreditHandler(handlerFn) {
         this.onMessage.convertToCredit = handlerFn;
     }
+    set claimReward(handlerFn) {
+        this.onMessage.claimReward = handlerFn;
+    }
     _open({ element, path = "", params = new URLSearchParams(), deepLinkUrl, }) {
         const url = new URL(deepLinkUrl || `${this.urlOrigin}/${path}?${params.toString()}`);
         const validatedPhoneNumber = validatePhoneNumber(params.get("phoneNumber"));
@@ -197,7 +204,7 @@ export class LucraClient {
             iframe.style.height = "100%";
             iframe.style.width = "100%";
             iframe.allow =
-                "geolocation *; web-share; accelerometer *; bluetooth *; gyroscope *;";
+                "geolocation *; web-share; accelerometer *; bluetooth *; gyroscope *; clipboard-write *;";
             element.appendChild(iframe);
         }
         catch (e) {
@@ -249,12 +256,8 @@ export class LucraClient {
                 return this._redirect("app/create-matchup" +
                     (gameId !== undefined ? `/${gameId}/wager` : ""), params);
             },
-            matchupDetails: (matchupId, teamInvitedId) => {
-                const params = new URLSearchParams();
-                if (teamInvitedId) {
-                    params.set("teamIdToJoin", teamInvitedId);
-                }
-                return this._redirect(`app/matchups/${matchupId}`, params);
+            matchupDetails: (matchupId) => {
+                return this._redirect(`app/matchups/${matchupId}`);
             },
             tournamentDetails: (matchupId) => this._redirect(`app/tournaments/${matchupId}`),
             deepLink: (url) => {
@@ -311,9 +314,8 @@ export class LucraClient {
                     params,
                 });
             },
-            matchupDetails: (matchupId, teamIdToJoin) => {
+            matchupDetails: (matchupId) => {
                 const params = addDefinedSearchParams({
-                    teamIdToJoin,
                     phoneNumber,
                 });
                 return this._open({
@@ -417,6 +419,16 @@ export class LucraClient {
         navigate: (data) => {
             this._sendMessage({
                 type: MessageTypeToLucraClient.navigate,
+                body: data,
+            });
+        },
+        /**
+         * If free to play is enabled, call this method to show the tenant reward options to the user
+         * @param data LucraAvailableRewards
+         */
+        availableRewards: (data) => {
+            this._sendMessage({
+                type: MessageTypeToLucraClient.availableRewards,
                 body: data,
             });
         },

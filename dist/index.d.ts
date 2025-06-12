@@ -1,4 +1,4 @@
-import { type LucraClientSendMessage, type LucraConvertToCreditBody, type LucraDeepLinkBody, type LucraMatchupAcceptedBody, type LucraMatchupCanceledBody, type LucraMatchupCreatedBody, type LucraNavigationEventBody, type LucraTournamentJoinedBody, type LucraUserInfoBody, type StateCode, type StateFull, type LucraClientConstructor } from "./types/types.js";
+import { type LucraClientSendMessage, type LucraConvertToCreditBody, type LucraDeepLinkBody, type LucraMatchupAcceptedBody, type LucraMatchupCanceledBody, type LucraMatchupCreatedBody, type LucraNavigationEventBody, type LucraTournamentJoinedBody, type LucraUserInfoBody, type StateCode, type StateFull, type LucraClientConstructor, type LucraClaimRewardBody } from "./types/types.js";
 export declare const LucraClientIframeId = "__lucrasports__";
 export declare const States: {
     state: StateFull;
@@ -28,7 +28,7 @@ type LucraNavigation = {
     /**
      * Open directly to a matchup where the user can accept, cancel, or wager on the matchup.
      */
-    matchupDetails: (matchupId: string, teamInvitedId?: string) => LucraClient;
+    matchupDetails: (matchupId: string) => LucraClient;
     /**
      * Open directly to a tournament where the user can join.
      */
@@ -67,6 +67,7 @@ export declare class LucraClient {
     set tournamentJoinedHandler(handlerFn: (data: LucraTournamentJoinedBody) => void);
     set navigationEventHandler(handlerFn: (data: LucraNavigationEventBody) => void);
     set convertToCreditHandler(handlerFn: (data: LucraConvertToCreditBody) => void);
+    set claimReward(handlerFn: (data: LucraClaimRewardBody) => void);
     private _open;
     private _redirect;
     /**

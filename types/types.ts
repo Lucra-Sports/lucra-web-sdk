@@ -15,6 +15,7 @@ export enum LucraClientMessageType {
   convertToCredit = "convertToCredit",
   deepLink = "deepLink",
   navigationEvent = "navigationEvent",
+  claimReward = "claimReward",
 }
 
 export enum MessageTypeToLucraClient {
@@ -23,6 +24,7 @@ export enum MessageTypeToLucraClient {
   enableConvertToCredit = "enableConvertToCredit",
   deepLinkResponse = "deepLinkResponse",
   navigate = "navigate",
+  availableRewards = "availableRewards",
 }
 
 export type LucraConvertToCreditResponse = {
@@ -50,6 +52,10 @@ export type LucraNavigateRequest = {
   pathname: string;
 };
 
+export type LucraAvailableRewards = {
+  rewards: LucraReward[];
+};
+
 export type LucraUserInfoBody = SDKLucraUser;
 export type LucraMatchupCreatedBody = { matchupId: string };
 export type LucraMatchupCanceledBody = { matchupId: string };
@@ -58,6 +64,7 @@ export type LucraTournamentJoinedBody = { matchupId: string };
 export type LucraConvertToCreditBody = { amount: number };
 export type LucraDeepLinkBody = { url: string };
 export type LucraNavigationEventBody = { url: string };
+export type LucraClaimRewardBody = { reward: LucraReward };
 
 export type LucraClientConstructor = {
   tenantId: string;
@@ -74,6 +81,7 @@ export type LucraClientOnMessage = {
   tournamentJoined: (data: LucraTournamentJoinedBody) => void;
   deepLink: (data: LucraDeepLinkBody) => void;
   navigationEvent: (data: LucraNavigationEventBody) => void;
+  claimReward: (data: LucraClaimRewardBody) => void;
 };
 
 export type LucraClientSendMessage = {
@@ -82,6 +90,7 @@ export type LucraClientSendMessage = {
   enableConvertToCredit: () => void;
   deepLinkResponse: (data: LucraDeepLinkResponse) => void;
   navigate: (data: LucraNavigateRequest) => void;
+  availableRewards: (data: LucraAvailableRewards) => void;
 };
 
 export type LucraClientMessage = (body: {
@@ -251,4 +260,14 @@ export type SDKClientUser = {
   firstName?: string;
   lastName?: string;
   address?: SDKLucraAddress;
+};
+
+export type LucraReward = {
+  rewardId: string;
+  title: string;
+  descriptor: string;
+  iconUrl: string;
+  bannerIconUrl: string;
+  disclaimer: string;
+  metadata: unknown;
 };

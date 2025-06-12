@@ -8,6 +8,7 @@ export var LucraClientMessageType;
     LucraClientMessageType["convertToCredit"] = "convertToCredit";
     LucraClientMessageType["deepLink"] = "deepLink";
     LucraClientMessageType["navigationEvent"] = "navigationEvent";
+    LucraClientMessageType["claimReward"] = "claimReward";
 })(LucraClientMessageType || (LucraClientMessageType = {}));
 export var MessageTypeToLucraClient;
 (function (MessageTypeToLucraClient) {
@@ -16,6 +17,7 @@ export var MessageTypeToLucraClient;
     MessageTypeToLucraClient["enableConvertToCredit"] = "enableConvertToCredit";
     MessageTypeToLucraClient["deepLinkResponse"] = "deepLinkResponse";
     MessageTypeToLucraClient["navigate"] = "navigate";
+    MessageTypeToLucraClient["availableRewards"] = "availableRewards";
 })(MessageTypeToLucraClient || (MessageTypeToLucraClient = {}));
 var account_status_types_enum;
 (function (account_status_types_enum) {

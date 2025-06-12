@@ -1,6 +1,15 @@
 ### CHANGELOG
 
+## [v0.13.0]
+
+### Updated
+
+- `availableRewards` message to send to Lucra if Free To Play is enabled
+- `claimReward` message from Lucra if a user is redeeming a Free To Play reward
+- `matchupDetails` navigation method no longers accepts a `teamInviteId` as the updated models allow for the user to select their team
+
 ## [v0.12.3]
+
 - add support for passing a 10-digit phone number to prefill and auto-send verification SMS
 
 ## [v0.12.1]

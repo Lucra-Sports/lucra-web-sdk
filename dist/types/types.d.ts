@@ -7,14 +7,16 @@ export declare enum LucraClientMessageType {
     tournamentJoined = "tournamentJoined",
     convertToCredit = "convertToCredit",
     deepLink = "deepLink",
-    navigationEvent = "navigationEvent"
+    navigationEvent = "navigationEvent",
+    claimReward = "claimReward"
 }
 export declare enum MessageTypeToLucraClient {
     clientUserInfo = "clientUserInfo",
     convertToCreditResponse = "convertToCreditResponse",
     enableConvertToCredit = "enableConvertToCredit",
     deepLinkResponse = "deepLinkResponse",
-    navigate = "navigate"
+    navigate = "navigate",
+    availableRewards = "availableRewards"
 }
 export type LucraConvertToCreditResponse = {
     id: string;
@@ -39,6 +41,9 @@ export type LucraDeepLinkResponse = {
 export type LucraNavigateRequest = {
     pathname: string;
 };
+export type LucraAvailableRewards = {
+    rewards: LucraReward[];
+};
 export type LucraUserInfoBody = SDKLucraUser;
 export type LucraMatchupCreatedBody = {
     matchupId: string;
@@ -61,6 +66,9 @@ export type LucraDeepLinkBody = {
 export type LucraNavigationEventBody = {
     url: string;
 };
+export type LucraClaimRewardBody = {
+    reward: LucraReward;
+};
 export type LucraClientConstructor = {
     tenantId: string;
     env: LucraEnvironment;
@@ -75,6 +83,7 @@ export type LucraClientOnMessage = {
     tournamentJoined: (data: LucraTournamentJoinedBody) => void;
     deepLink: (data: LucraDeepLinkBody) => void;
     navigationEvent: (data: LucraNavigationEventBody) => void;
+    claimReward: (data: LucraClaimRewardBody) => void;
 };
 export type LucraClientSendMessage = {
     userUpdated: (data: SDKClientUser) => void;
@@ -82,6 +91,7 @@ export type LucraClientSendMessage = {
     enableConvertToCredit: () => void;
     deepLinkResponse: (data: LucraDeepLinkResponse) => void;
     navigate: (data: LucraNavigateRequest) => void;
+    availableRewards: (data: LucraAvailableRewards) => void;
 };
 export type LucraClientMessage = (body: {
     type: LucraClientMessageType;
@@ -130,5 +140,14 @@ export type SDKClientUser = {
     firstName?: string;
     lastName?: string;
     address?: SDKLucraAddress;
+};
+export type LucraReward = {
+    rewardId: string;
+    title: string;
+    descriptor: string;
+    iconUrl: string;
+    bannerIconUrl: string;
+    disclaimer: string;
+    metadata: unknown;
 };
 export {};
