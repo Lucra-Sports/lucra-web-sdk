@@ -22,7 +22,8 @@ const lucraClient = new LucraClient({
   env: "sandbox" | "production",
   onMessage: {
     // callback functions for the messages sent to the SDK from Lucra, documented below
-  }
+  },
+  useTestUsers: true | false // optional property to use test users. Not recommended for production.
 })
 ```
 
@@ -40,8 +41,7 @@ The `deepLink` handler is an example of where you might want to do this since th
 ```
 function generateDeepLink({ matchupId, teamInviteId }: LucraDeepLinkBody) {
   const searchParams = new URLSearchParams({
-    matchupId: matchupId,
-    teamInviteId: teamInviteId ?? "",
+    matchupId: matchupId
   });
   const shareUrl = `${window.location.origin}?${searchParams.toString()}`;
   lucraClient?.sendMessage.deepLinkResponse({

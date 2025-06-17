@@ -1,5 +1,11 @@
 ### CHANGELOG
 
+## [v0.13.1]
+
+#### Updated
+
+- `LucraClientConstructor` now allows for using test users via `useTestUsers` property
+
 ## [v0.13.0]
 
 ### Updated

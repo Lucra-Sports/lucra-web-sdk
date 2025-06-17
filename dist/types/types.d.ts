@@ -73,6 +73,7 @@ export type LucraClientConstructor = {
     tenantId: string;
     env: LucraEnvironment;
     onMessage: LucraClientOnMessage;
+    useTestUsers?: boolean;
 };
 export type LucraClientOnMessage = {
     userInfo: (data: LucraUserInfoBody) => void;
