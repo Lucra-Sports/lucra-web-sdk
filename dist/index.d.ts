@@ -45,6 +45,7 @@ export declare class LucraClient {
     private env;
     private urlOrigin;
     private url;
+    private useTestUsers;
     private messages;
     private onMessage;
     private controller;
@@ -58,7 +59,7 @@ export declare class LucraClient {
      * @param env sandbox | production
      * @param onMessage Message Handler for messages from LucraClient
      */
-    constructor({ tenantId, env, onMessage }: LucraClientConstructor);
+    constructor({ tenantId, env, onMessage, useTestUsers, }: LucraClientConstructor);
     set deepLinkHandler(handlerFn: (data: LucraDeepLinkBody) => void);
     set userInfoHandler(handlerFn: (data: LucraUserInfoBody) => void);
     set matchupCreatedHandler(handlerFn: (data: LucraMatchupCreatedBody) => void);

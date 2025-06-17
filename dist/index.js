@@ -84,6 +84,7 @@ export class LucraClient {
     env = "production";
     urlOrigin = "";
     url = "";
+    useTestUsers = false;
     messages = [];
     onMessage = {
         userInfo: NoOp,
@@ -150,7 +151,7 @@ export class LucraClient {
      * @param env sandbox | production
      * @param onMessage Message Handler for messages from LucraClient
      */
-    constructor({ tenantId, env, onMessage }) {
+    constructor({ tenantId, env, onMessage, useTestUsers, }) {
         this.env = env;
         this.tenantId = tenantId;
         this.onMessage = onMessage;
@@ -158,6 +159,7 @@ export class LucraClient {
             this.env === "local"
                 ? `http://localhost:3000`
                 : `https://${this.tenantId.toLowerCase()}.${this.env !== "production" ? `${this.env}.` : ""}lucrasports.com`;
+        this.useTestUsers = useTestUsers || false;
     }
     set deepLinkHandler(handlerFn) {
         this.onMessage.deepLink = handlerFn;
@@ -191,6 +193,9 @@ export class LucraClient {
         const validatedPhoneNumber = validatePhoneNumber(params.get("phoneNumber"));
         if (validatedPhoneNumber) {
             url.searchParams.set("loginHint", validatedPhoneNumber);
+        }
+        if (this.useTestUsers) {
+            url.searchParams.set("connection", "SDK-Test-Users");
         }
         url.searchParams.set("parentUrl", window.location.origin);
         this.url = url.toString();
