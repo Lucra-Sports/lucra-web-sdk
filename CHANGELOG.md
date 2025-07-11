@@ -1,5 +1,11 @@
 ### CHANGELOG
 
+## [v0.14.0]
+
+### Updated
+
+- `logout` method now available on the LucraClient
+
 ## [v0.13.1]
 
 #### Updated

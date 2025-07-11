@@ -72,6 +72,10 @@ export declare class LucraClient {
     private _open;
     private _redirect;
     /**
+     * Force a user to logout
+     */
+    logout(): LucraClient;
+    /**
      * Redirect an open LucraClient
      */
     redirect(): LucraNavigation;

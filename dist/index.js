@@ -239,6 +239,12 @@ export class LucraClient {
         }
     }
     /**
+     * Force a user to logout
+     */
+    logout() {
+        return this._redirect("logout");
+    }
+    /**
      * Redirect an open LucraClient
      */
     redirect() {
