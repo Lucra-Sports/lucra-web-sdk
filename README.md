@@ -96,6 +96,7 @@ lucraClient.redirect()
 
 `userInfo` - whenever an update happens to the user, the callback to this function will receive the newest version of that user
 `matchupCreated` - the user successfully created a matchup, and contains the id of that matchup
+`matchupStarted` - the matchup owner started the matchup, and contains the id of that matchup
 `matchupAccepted` - the user successfully joined someone else's matchup, and contains the id of that matchup
 `matchupCanceled` - the user successfully canceled the matchup, and contains the id of that matchup
 `convertToCredit` - if Convert to Credit is enabled, Lucra will call this method with the desired amount to convert to credit. Respond with a `convertToCreditResponse` message defined below

@@ -2,6 +2,7 @@ export var LucraClientMessageType;
 (function (LucraClientMessageType) {
     LucraClientMessageType["userInfo"] = "userInfo";
     LucraClientMessageType["matchupCreated"] = "matchupCreated";
+    LucraClientMessageType["matchupStarted"] = "matchupStarted";
     LucraClientMessageType["matchupCanceled"] = "matchupCanceled";
     LucraClientMessageType["matchupAccepted"] = "matchupAccepted";
     LucraClientMessageType["tournamentJoined"] = "tournamentJoined";

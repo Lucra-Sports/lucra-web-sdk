@@ -9,6 +9,7 @@ export type LucraEnvironment =
 export enum LucraClientMessageType {
   userInfo = "userInfo",
   matchupCreated = "matchupCreated",
+  matchupStarted = "matchupStarted",
   matchupCanceled = "matchupCanceled",
   matchupAccepted = "matchupAccepted",
   tournamentJoined = "tournamentJoined",
@@ -57,6 +58,7 @@ export type LucraAvailableRewards = {
 };
 
 export type LucraUserInfoBody = SDKLucraUser;
+export type LucraMatchupStartedBody = { matchupId: string };
 export type LucraMatchupCreatedBody = { matchupId: string };
 export type LucraMatchupCanceledBody = { matchupId: string };
 export type LucraMatchupAcceptedBody = { matchupId: string };
@@ -76,6 +78,7 @@ export type LucraClientConstructor = {
 export type LucraClientOnMessage = {
   userInfo: (data: LucraUserInfoBody) => void;
   matchupCreated: (data: LucraMatchupCreatedBody) => void;
+  matchupStarted: (data: LucraMatchupStartedBody) => void;
   matchupAccepted: (data: LucraMatchupAcceptedBody) => void;
   matchupCanceled: (data: LucraMatchupCanceledBody) => void;
   convertToCredit: (data: LucraConvertToCreditBody) => void;

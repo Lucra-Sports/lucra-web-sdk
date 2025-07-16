@@ -1,5 +1,11 @@
 ### CHANGELOG
 
+## [v0.15.0]
+
+### Updated
+
+- `matchupStarted` new onMessage event that fires when the matchup owner starts a GYP matchup
+
 ## [v0.14.0]
 
 ### Updated

@@ -1,4 +1,4 @@
-import { type LucraClientSendMessage, type LucraConvertToCreditBody, type LucraDeepLinkBody, type LucraMatchupAcceptedBody, type LucraMatchupCanceledBody, type LucraMatchupCreatedBody, type LucraNavigationEventBody, type LucraTournamentJoinedBody, type LucraUserInfoBody, type StateCode, type StateFull, type LucraClientConstructor, type LucraClaimRewardBody } from "./types/types.js";
+import { type LucraClientSendMessage, type LucraConvertToCreditBody, type LucraDeepLinkBody, type LucraMatchupAcceptedBody, type LucraMatchupCanceledBody, type LucraMatchupCreatedBody, type LucraNavigationEventBody, type LucraTournamentJoinedBody, type LucraUserInfoBody, type StateCode, type StateFull, type LucraClientConstructor, type LucraClaimRewardBody, type LucraMatchupStartedBody } from "./types/types.js";
 export declare const LucraClientIframeId = "__lucrasports__";
 export declare const States: {
     state: StateFull;
@@ -63,6 +63,7 @@ export declare class LucraClient {
     set deepLinkHandler(handlerFn: (data: LucraDeepLinkBody) => void);
     set userInfoHandler(handlerFn: (data: LucraUserInfoBody) => void);
     set matchupCreatedHandler(handlerFn: (data: LucraMatchupCreatedBody) => void);
+    set matchupStartedHandler(handlerFn: (data: LucraMatchupStartedBody) => void);
     set matchupAcceptedHandler(handlerFn: (data: LucraMatchupAcceptedBody) => void);
     set matchupCanceledHandler(handlerFn: (data: LucraMatchupCanceledBody) => void);
     set tournamentJoinedHandler(handlerFn: (data: LucraTournamentJoinedBody) => void);

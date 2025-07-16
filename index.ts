@@ -21,6 +21,7 @@ import {
   type LucraClientConstructor,
   type LucraClaimRewardBody,
   type LucraAvailableRewards,
+  type LucraMatchupStartedBody,
 } from "./types/types.js";
 
 export const LucraClientIframeId = "__lucrasports__";
@@ -166,6 +167,7 @@ export class LucraClient {
   private onMessage: LucraClientOnMessage = {
     userInfo: NoOp,
     matchupCreated: NoOp,
+    matchupStarted: NoOp,
     matchupCanceled: NoOp,
     matchupAccepted: NoOp,
     tournamentJoined: NoOp,
@@ -186,6 +188,9 @@ export class LucraClient {
     switch (event.data.type) {
       case LucraClientMessageType.matchupCreated:
         this.onMessage.matchupCreated(event.data.data);
+        break;
+      case LucraClientMessageType.matchupStarted:
+        this.onMessage.matchupStarted(event.data.data);
         break;
       case LucraClientMessageType.userInfo:
         this.onMessage.userInfo(event.data.data);
@@ -258,6 +263,11 @@ export class LucraClient {
     handlerFn: (data: LucraMatchupCreatedBody) => void
   ) {
     this.onMessage.matchupCreated = handlerFn;
+  }
+  set matchupStartedHandler(
+    handlerFn: (data: LucraMatchupStartedBody) => void
+  ) {
+    this.onMessage.matchupStarted = handlerFn;
   }
   set matchupAcceptedHandler(
     handlerFn: (data: LucraMatchupAcceptedBody) => void
