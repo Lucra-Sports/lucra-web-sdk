@@ -1,5 +1,11 @@
 ### CHANGELOG
 
+## [v0.15.1]
+
+### Updated
+
+- allow payment on iframe
+
 ## [v0.15.0]
 
 ### Updated

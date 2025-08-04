@@ -337,7 +337,7 @@ export class LucraClient {
       iframe.style.height = "100%";
       iframe.style.width = "100%";
       iframe.allow =
-        "geolocation *; web-share; accelerometer *; bluetooth *; gyroscope *; clipboard-write *;";
+        "geolocation *; web-share; accelerometer *; bluetooth *; gyroscope *; clipboard-write *; payment;";
       element.appendChild(iframe);
     } catch (e) {
       console.error("Error opening up LucraSports", e);
