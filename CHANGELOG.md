@@ -1,5 +1,14 @@
 ### CHANGELOG
 
+## [v0.16.0]
+
+### Updated
+
+- LucraClient constructor now accepts `locationId` to set the location without having to navigate to `home`
+- LucraClient constructor has deprecated `useTestUsers` as its now no longer needed to log in with test users
+- Calling `.open` on the LucraClient when it's already open will perform a `redirect` instead of incorrectly adding another iframe
+- New `loginSuccess` callback that receives the user info. Wait for this callback to fire before sending any messages to LucraClient
+
 ## [v0.15.1]
 
 ### Updated

@@ -9,7 +9,8 @@ export declare enum LucraClientMessageType {
     convertToCredit = "convertToCredit",
     deepLink = "deepLink",
     navigationEvent = "navigationEvent",
-    claimReward = "claimReward"
+    claimReward = "claimReward",
+    loginSuccess = "loginSuccess"
 }
 export declare enum MessageTypeToLucraClient {
     clientUserInfo = "clientUserInfo",
@@ -69,15 +70,19 @@ export type LucraDeepLinkBody = {
 };
 export type LucraNavigationEventBody = {
     url: string;
+    page?: LucraPage;
 };
 export type LucraClaimRewardBody = {
     reward: LucraReward;
 };
+export type LucraLoginSuccessBody = SDKLucraUser;
 export type LucraClientConstructor = {
     tenantId: string;
     env: LucraEnvironment;
     onMessage: LucraClientOnMessage;
+    /** @deprecated This is no longer utilized and will be removed in the next version */
     useTestUsers?: boolean;
+    locationId?: string;
 };
 export type LucraClientOnMessage = {
     userInfo: (data: LucraUserInfoBody) => void;
@@ -90,6 +95,7 @@ export type LucraClientOnMessage = {
     deepLink: (data: LucraDeepLinkBody) => void;
     navigationEvent: (data: LucraNavigationEventBody) => void;
     claimReward: (data: LucraClaimRewardBody) => void;
+    loginSuccess: (data: LucraLoginSuccessBody) => void;
 };
 export type LucraClientSendMessage = {
     userUpdated: (data: SDKClientUser) => void;
@@ -103,6 +109,7 @@ export type LucraClientMessage = (body: {
     type: LucraClientMessageType;
     data: any;
 }) => void;
+export type LucraPage = "add-funds" | "create-matchup" | "home" | "id-scan-complete" | "kyc" | "logout" | "matchup-details" | "profile" | "search" | "tournament-details" | "transactions" | "withdraw-funds";
 export type StateFull = "Alaska" | "Alabama" | "Arkansas" | "Arizona" | "California" | "Colorado" | "Connecticut" | "District of Columbia" | "Delaware" | "Florida" | "Georgia" | "Hawaii" | "Iowa" | "Idaho" | "Illinois" | "Indiana" | "Kansas" | "Kentucky" | "Louisiana" | "Massachusetts" | "Maryland" | "Maine" | "Michigan" | "Minnesota" | "Missouri" | "Mississippi" | "Montana" | "North Carolina" | "North Dakota" | "Nebraska" | "New Hampshire" | "New Jersey" | "New Mexico" | "Nevada" | "New York" | "Ohio" | "Oklahoma" | "Oregon" | "Pennsylvania" | "Rhode Island" | "South Carolina" | "South Dakota" | "Tennessee" | "Texas" | "Utah" | "Virginia" | "Vermont" | "Washington" | "Wisconsin" | "West Virginia" | "Wyoming";
 export type StateCode = "AK" | "AL" | "AR" | "AZ" | "CA" | "CO" | "CT" | "DC" | "DE" | "FL" | "GA" | "HI" | "IA" | "ID" | "IL" | "IN" | "KS" | "KY" | "LA" | "MA" | "MD" | "ME" | "MI" | "MN" | "MO" | "MS" | "MT" | "NC" | "ND" | "NE" | "NH" | "NJ" | "NM" | "NV" | "NY" | "OH" | "OK" | "OR" | "PA" | "RI" | "SC" | "SD" | "TN" | "TX" | "UT" | "VA" | "VT" | "WA" | "WI" | "WV" | "WY";
 declare enum account_status_types_enum {

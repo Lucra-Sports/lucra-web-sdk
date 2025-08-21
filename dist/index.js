@@ -84,8 +84,8 @@ export class LucraClient {
     env = "production";
     urlOrigin = "";
     url = "";
-    useTestUsers = false;
     messages = [];
+    locationId = "";
     onMessage = {
         userInfo: NoOp,
         matchupCreated: NoOp,
@@ -97,6 +97,7 @@ export class LucraClient {
         deepLink: NoOp,
         navigationEvent: NoOp,
         claimReward: NoOp,
+        loginSuccess: NoOp,
     };
     controller = new AbortController();
     iframeParentElement;
@@ -138,6 +139,9 @@ export class LucraClient {
             case LucraClientMessageType.claimReward:
                 this.onMessage.claimReward(event.data.data);
                 break;
+            case LucraClientMessageType.loginSuccess:
+                this.onMessage.loginSuccess(event.data.data);
+                break;
             default:
                 console.log("Unrecognized LucraClientMessageType", event.data.type);
                 break;
@@ -155,7 +159,7 @@ export class LucraClient {
      * @param env sandbox | production
      * @param onMessage Message Handler for messages from LucraClient
      */
-    constructor({ tenantId, env, onMessage, useTestUsers, }) {
+    constructor({ tenantId, env, onMessage, locationId, }) {
         this.env = env;
         this.tenantId = tenantId;
         this.onMessage = onMessage;
@@ -163,7 +167,10 @@ export class LucraClient {
             this.env === "local"
                 ? `http://localhost:3000`
                 : `https://${this.tenantId.toLowerCase()}.${this.env !== "production" ? `${this.env}.` : ""}lucrasports.com`;
-        this.useTestUsers = useTestUsers || false;
+        this.locationId = locationId ?? "";
+    }
+    set loginSuccessHandler(handlerFn) {
+        this.onMessage.loginSuccess = handlerFn;
     }
     set deepLinkHandler(handlerFn) {
         this.onMessage.deepLink = handlerFn;
@@ -196,13 +203,18 @@ export class LucraClient {
         this.onMessage.claimReward = handlerFn;
     }
     _open({ element, path = "", params = new URLSearchParams(), deepLinkUrl, }) {
+        // .open() is being called again but the iframe is already there so just redirect
+        if (this.iframe) {
+            return this._redirect(path, params, deepLinkUrl);
+        }
         const url = new URL(deepLinkUrl || `${this.urlOrigin}/${path}?${params.toString()}`);
         const validatedPhoneNumber = validatePhoneNumber(params.get("phoneNumber"));
         if (validatedPhoneNumber) {
             url.searchParams.set("loginHint", validatedPhoneNumber);
         }
-        if (this.useTestUsers) {
-            url.searchParams.set("connection", "SDK-Test-Users");
+        // locationId was passed into the constructor, but if locationId was passed into the `home` method, use that one
+        if (this.locationId && !params.get("locationId")) {
+            url.searchParams.set("locationId", this.locationId);
         }
         url.searchParams.set("parentUrl", window.location.origin);
         this.url = url.toString();
@@ -228,7 +240,7 @@ export class LucraClient {
     }
     _redirect(path, params = new URLSearchParams(), deepLinkUrl) {
         if (!this.iframe) {
-            throw new Error("Cannot redirect. LucraSports is not open.");
+            throw new Error("Cannot redirect. LucraClient is not open.");
         }
         const url = new URL(deepLinkUrl || `${this.urlOrigin}/${path}?${params.toString()}`);
         url.searchParams.set("parentUrl", window.location.origin);

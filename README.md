@@ -23,7 +23,7 @@ const lucraClient = new LucraClient({
   onMessage: {
     // callback functions for the messages sent to the SDK from Lucra, documented below
   },
-  useTestUsers: true | false // optional property to use test users. Not recommended for production.
+  locationId?: "<locationId>" // set the locationId without having to navigate to `home` with the `locationId`
 })
 ```
 
@@ -87,13 +87,14 @@ lucraClient.redirect()
   .deposit()
   .withdraw()
   .createMatchup(gameId?: string)
-  .matchupDetails(matchupId: string, teamInviteId?: string)
+  .matchupDetails(matchupId: string)
   .tournamentDetails(matchupId: string)
   .deepLink(url: string)
 ```
 
 ### Messages from LucraClient
 
+`loginSuccess` - the user has logged into Lucra
 `userInfo` - whenever an update happens to the user, the callback to this function will receive the newest version of that user
 `matchupCreated` - the user successfully created a matchup, and contains the id of that matchup
 `matchupStarted` - the matchup owner started the matchup, and contains the id of that matchup

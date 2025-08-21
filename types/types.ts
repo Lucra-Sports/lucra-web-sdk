@@ -17,6 +17,7 @@ export enum LucraClientMessageType {
   deepLink = "deepLink",
   navigationEvent = "navigationEvent",
   claimReward = "claimReward",
+  loginSuccess = "loginSuccess",
 }
 
 export enum MessageTypeToLucraClient {
@@ -65,14 +66,17 @@ export type LucraMatchupAcceptedBody = { matchupId: string };
 export type LucraTournamentJoinedBody = { matchupId: string };
 export type LucraConvertToCreditBody = { amount: number };
 export type LucraDeepLinkBody = { url: string };
-export type LucraNavigationEventBody = { url: string };
+export type LucraNavigationEventBody = { url: string; page?: LucraPage };
 export type LucraClaimRewardBody = { reward: LucraReward };
+export type LucraLoginSuccessBody = SDKLucraUser;
 
 export type LucraClientConstructor = {
   tenantId: string;
   env: LucraEnvironment;
   onMessage: LucraClientOnMessage;
+  /** @deprecated This is no longer utilized and will be removed in the next version */
   useTestUsers?: boolean;
+  locationId?: string;
 };
 
 export type LucraClientOnMessage = {
@@ -86,6 +90,7 @@ export type LucraClientOnMessage = {
   deepLink: (data: LucraDeepLinkBody) => void;
   navigationEvent: (data: LucraNavigationEventBody) => void;
   claimReward: (data: LucraClaimRewardBody) => void;
+  loginSuccess: (data: LucraLoginSuccessBody) => void;
 };
 
 export type LucraClientSendMessage = {
@@ -101,6 +106,20 @@ export type LucraClientMessage = (body: {
   type: LucraClientMessageType;
   data: any;
 }) => void;
+
+export type LucraPage =
+  | "add-funds"
+  | "create-matchup"
+  | "home"
+  | "id-scan-complete"
+  | "kyc"
+  | "logout"
+  | "matchup-details"
+  | "profile"
+  | "search"
+  | "tournament-details"
+  | "transactions"
+  | "withdraw-funds";
 
 export type StateFull =
   | "Alaska"
