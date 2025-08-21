@@ -10,6 +10,7 @@ export var LucraClientMessageType;
     LucraClientMessageType["deepLink"] = "deepLink";
     LucraClientMessageType["navigationEvent"] = "navigationEvent";
     LucraClientMessageType["claimReward"] = "claimReward";
+    LucraClientMessageType["loginSuccess"] = "loginSuccess";
 })(LucraClientMessageType || (LucraClientMessageType = {}));
 export var MessageTypeToLucraClient;
 (function (MessageTypeToLucraClient) {
