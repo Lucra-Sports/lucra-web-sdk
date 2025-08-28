@@ -177,6 +177,7 @@ export class LucraClient {
     navigationEvent: NoOp,
     claimReward: NoOp,
     loginSuccess: NoOp,
+    exitLucra: NoOp,
   };
   private controller: AbortController = new AbortController();
   private iframeParentElement?: HTMLElement;
@@ -304,6 +305,9 @@ export class LucraClient {
   }
   set claimReward(handlerFn: (data: LucraClaimRewardBody) => void) {
     this.onMessage.claimReward = handlerFn;
+  }
+  set exitLucraHandler(handlerFn: () => void) {
+    this.onMessage.exitLucra = handlerFn;
   }
 
   private _open({

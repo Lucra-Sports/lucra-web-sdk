@@ -91,6 +91,7 @@ export type LucraClientOnMessage = {
   navigationEvent: (data: LucraNavigationEventBody) => void;
   claimReward: (data: LucraClaimRewardBody) => void;
   loginSuccess: (data: LucraLoginSuccessBody) => void;
+  exitLucra: () => void;
 };
 
 export type LucraClientSendMessage = {
