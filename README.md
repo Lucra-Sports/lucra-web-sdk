@@ -29,7 +29,7 @@ const lucraClient = new LucraClient({
 
 ### Registering `onMessage` functions
 
-If you need to register a handler function for any of the `onMessage` callbacks, you can do so after instantiation likeso
+If you need to register a handler function for any of the `onMessage` callbacks, you can do so after instantiation like so:
 
 ```
 const lucraClient = new LucraClient(...)
@@ -57,6 +57,17 @@ if (lucraClient) {
   lucraClient.deepLinkHandler = generateDeepLink;
 }
 ```
+
+### Registering `exitLucraHandler` function
+
+To determine when a user has attempted to exit the Lucra experience, you may register a handler function after successful login like so:
+
+  // Register the exit lucra handler after we're subscribed
+  lucraClient.exitLucraHandler = () => {
+    console.log("User attempted to exit Lucra!");
+  };
+
+An example of where to register this would be in the `loginSuccessHandler` (or after the login event has fired) to ensure the user's Lucra experience is fully ready.
 
 ### Open Lucra
 

@@ -1,5 +1,11 @@
 ### CHANGELOG
 
+## [v0.17.0]
+
+### Updated
+
+- LucraClient now allows registering a custom `exitLucraHandler` to know when a user has attempted to exit the Lucra experience
+
 ## [v0.16.0]
 
 ### Updated
