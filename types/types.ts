@@ -18,6 +18,7 @@ export enum LucraClientMessageType {
   navigationEvent = "navigationEvent",
   claimReward = "claimReward",
   loginSuccess = "loginSuccess",
+  exitLucra = "exitLucra",
 }
 
 export enum MessageTypeToLucraClient {
@@ -27,6 +28,7 @@ export enum MessageTypeToLucraClient {
   deepLinkResponse = "deepLinkResponse",
   navigate = "navigate",
   availableRewards = "availableRewards",
+  enableExitLucra = "enableExitLucra",
 }
 
 export type LucraConvertToCreditResponse = {
@@ -77,6 +79,7 @@ export type LucraClientConstructor = {
   /** @deprecated This is no longer utilized and will be removed in the next version */
   useTestUsers?: boolean;
   locationId?: string;
+  onExitLucra?: () => void;
 };
 
 export type LucraClientOnMessage = {

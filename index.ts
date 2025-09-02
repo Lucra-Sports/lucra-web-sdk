@@ -165,6 +165,7 @@ export class LucraClient {
   private url: string = "";
   private messages: string[] = [];
   private locationId: string = "";
+  private onExitLucra: () => void = NoOp;
   private onMessage: LucraClientOnMessage = {
     userInfo: NoOp,
     matchupCreated: NoOp,
@@ -186,6 +187,7 @@ export class LucraClient {
 
   private _eventListener = (event: MessageEvent<any>) => {
     if (event.origin !== this.iframeUrlOrigin()) return;
+
     this.messages.push(event.data);
     switch (event.data.type) {
       case LucraClientMessageType.matchupCreated:
@@ -221,6 +223,9 @@ export class LucraClient {
       case LucraClientMessageType.loginSuccess:
         this.onMessage.loginSuccess(event.data.data);
         break;
+      case LucraClientMessageType.exitLucra:
+        this.onExitLucra();
+        break;
       default:
         console.log("Unrecognized LucraClientMessageType", event.data.type);
         break;
@@ -241,21 +246,22 @@ export class LucraClient {
    * @param onMessage Message Handler for messages from LucraClient
    */
   constructor({
-    tenantId,
     env,
-    onMessage,
     locationId,
+    onMessage,
+    tenantId,
   }: LucraClientConstructor) {
     this.env = env;
-    this.tenantId = tenantId;
+    this.locationId = locationId ?? "";
+    this.onExitLucra = NoOp;
     this.onMessage = onMessage;
+    this.tenantId = tenantId;
     this.urlOrigin =
       this.env === "local"
         ? `http://localhost:3000`
         : `https://${this.tenantId.toLowerCase()}.${
             this.env !== "production" ? `${this.env}.` : ""
           }lucrasports.com`;
-    this.locationId = locationId ?? "";
   }
 
   set loginSuccessHandler(handlerFn: (data: LucraLoginSuccessBody) => void) {
@@ -304,6 +310,13 @@ export class LucraClient {
   }
   set claimReward(handlerFn: (data: LucraClaimRewardBody) => void) {
     this.onMessage.claimReward = handlerFn;
+  }
+  set exitLucraHandler(handlerFn: () => void) {
+    this.onExitLucra = handlerFn;
+    this._sendMessage({
+      type: MessageTypeToLucraClient.enableExitLucra,
+      body: true,
+    });
   }
 
   private _open({

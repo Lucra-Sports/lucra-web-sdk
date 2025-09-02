@@ -11,6 +11,7 @@ export var LucraClientMessageType;
     LucraClientMessageType["navigationEvent"] = "navigationEvent";
     LucraClientMessageType["claimReward"] = "claimReward";
     LucraClientMessageType["loginSuccess"] = "loginSuccess";
+    LucraClientMessageType["exitLucra"] = "exitLucra";
 })(LucraClientMessageType || (LucraClientMessageType = {}));
 export var MessageTypeToLucraClient;
 (function (MessageTypeToLucraClient) {
@@ -20,6 +21,7 @@ export var MessageTypeToLucraClient;
     MessageTypeToLucraClient["deepLinkResponse"] = "deepLinkResponse";
     MessageTypeToLucraClient["navigate"] = "navigate";
     MessageTypeToLucraClient["availableRewards"] = "availableRewards";
+    MessageTypeToLucraClient["enableExitLucra"] = "enableExitLucra";
 })(MessageTypeToLucraClient || (MessageTypeToLucraClient = {}));
 var account_status_types_enum;
 (function (account_status_types_enum) {
