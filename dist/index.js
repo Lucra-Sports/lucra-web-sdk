@@ -86,6 +86,7 @@ export class LucraClient {
     url = "";
     messages = [];
     locationId = "";
+    onExitLucra = NoOp;
     onMessage = {
         userInfo: NoOp,
         matchupCreated: NoOp,
@@ -142,6 +143,9 @@ export class LucraClient {
             case LucraClientMessageType.loginSuccess:
                 this.onMessage.loginSuccess(event.data.data);
                 break;
+            case LucraClientMessageType.exitLucra:
+                this.onExitLucra();
+                break;
             default:
                 console.log("Unrecognized LucraClientMessageType", event.data.type);
                 break;
@@ -159,15 +163,16 @@ export class LucraClient {
      * @param env sandbox | production
      * @param onMessage Message Handler for messages from LucraClient
      */
-    constructor({ tenantId, env, onMessage, locationId, }) {
+    constructor({ env, locationId, onMessage, tenantId, }) {
         this.env = env;
-        this.tenantId = tenantId;
+        this.locationId = locationId ?? "";
+        this.onExitLucra = NoOp;
         this.onMessage = onMessage;
+        this.tenantId = tenantId;
         this.urlOrigin =
             this.env === "local"
                 ? `http://localhost:3000`
                 : `https://${this.tenantId.toLowerCase()}.${this.env !== "production" ? `${this.env}.` : ""}lucrasports.com`;
-        this.locationId = locationId ?? "";
     }
     set loginSuccessHandler(handlerFn) {
         this.onMessage.loginSuccess = handlerFn;
@@ -201,6 +206,13 @@ export class LucraClient {
     }
     set claimReward(handlerFn) {
         this.onMessage.claimReward = handlerFn;
+    }
+    set exitLucraHandler(handlerFn) {
+        this.onExitLucra = handlerFn;
+        this._sendMessage({
+            type: MessageTypeToLucraClient.enableExitLucra,
+            body: true,
+        });
     }
     _open({ element, path = "", params = new URLSearchParams(), deepLinkUrl, }) {
         // .open() is being called again but the iframe is already there so just redirect

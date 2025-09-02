@@ -47,6 +47,7 @@ export declare class LucraClient {
     private url;
     private messages;
     private locationId;
+    private onExitLucra;
     private onMessage;
     private controller;
     private iframeParentElement?;
@@ -59,7 +60,7 @@ export declare class LucraClient {
      * @param env sandbox | production
      * @param onMessage Message Handler for messages from LucraClient
      */
-    constructor({ tenantId, env, onMessage, locationId, }: LucraClientConstructor);
+    constructor({ env, locationId, onMessage, tenantId, }: LucraClientConstructor);
     set loginSuccessHandler(handlerFn: (data: LucraLoginSuccessBody) => void);
     set deepLinkHandler(handlerFn: (data: LucraDeepLinkBody) => void);
     set userInfoHandler(handlerFn: (data: LucraUserInfoBody) => void);
@@ -71,6 +72,7 @@ export declare class LucraClient {
     set navigationEventHandler(handlerFn: (data: LucraNavigationEventBody) => void);
     set convertToCreditHandler(handlerFn: (data: LucraConvertToCreditBody) => void);
     set claimReward(handlerFn: (data: LucraClaimRewardBody) => void);
+    set exitLucraHandler(handlerFn: () => void);
     private _open;
     private _redirect;
     /**
