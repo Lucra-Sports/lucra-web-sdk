@@ -1,5 +1,11 @@
 ### CHANGELOG
 
+## [v0.18.0]
+
+### Updated
+
+- LucraClient now allows registering a custom `activeMatchupStarted` handler to know when (non-creator) matchup participants have seen the matchup start in real time while viewing the matchup details page
+
 ## [v0.17.0]
 
 ### Updated
