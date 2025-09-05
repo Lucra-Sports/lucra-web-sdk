@@ -1,26 +1,27 @@
 export type LucraEnvironment = "local" | "dev1" | "dev2" | "staging" | "sandbox" | "production";
 export declare enum LucraClientMessageType {
-    userInfo = "userInfo",
-    matchupCreated = "matchupCreated",
-    matchupStarted = "matchupStarted",
-    matchupCanceled = "matchupCanceled",
-    matchupAccepted = "matchupAccepted",
-    tournamentJoined = "tournamentJoined",
+    activeMatchupStarted = "activeMatchupStarted",
+    claimReward = "claimReward",
     convertToCredit = "convertToCredit",
     deepLink = "deepLink",
-    navigationEvent = "navigationEvent",
-    claimReward = "claimReward",
+    exitLucra = "exitLucra",
     loginSuccess = "loginSuccess",
-    exitLucra = "exitLucra"
+    matchupAccepted = "matchupAccepted",
+    matchupCanceled = "matchupCanceled",
+    matchupCreated = "matchupCreated",
+    matchupStarted = "matchupStarted",
+    navigationEvent = "navigationEvent",
+    tournamentJoined = "tournamentJoined",
+    userInfo = "userInfo"
 }
 export declare enum MessageTypeToLucraClient {
+    availableRewards = "availableRewards",
     clientUserInfo = "clientUserInfo",
     convertToCreditResponse = "convertToCreditResponse",
-    enableConvertToCredit = "enableConvertToCredit",
     deepLinkResponse = "deepLinkResponse",
-    navigate = "navigate",
-    availableRewards = "availableRewards",
-    enableExitLucra = "enableExitLucra"
+    enableConvertToCredit = "enableConvertToCredit",
+    enableExitLucra = "enableExitLucra",
+    navigate = "navigate"
 }
 export type LucraConvertToCreditResponse = {
     id: string;
@@ -49,6 +50,9 @@ export type LucraAvailableRewards = {
     rewards: LucraReward[];
 };
 export type LucraUserInfoBody = SDKLucraUser;
+export type LucraActiveMatchupStartedBody = {
+    matchupId: string;
+};
 export type LucraMatchupStartedBody = {
     matchupId: string;
 };
@@ -90,6 +94,7 @@ export type LucraClientConstructor = {
 export type LucraClientOnMessage = {
     userInfo: (data: LucraUserInfoBody) => void;
     matchupCreated: (data: LucraMatchupCreatedBody) => void;
+    activeMatchupStarted: (data: LucraActiveMatchupStartedBody) => void;
     matchupStarted: (data: LucraMatchupStartedBody) => void;
     matchupAccepted: (data: LucraMatchupAcceptedBody) => void;
     matchupCanceled: (data: LucraMatchupCanceledBody) => void;

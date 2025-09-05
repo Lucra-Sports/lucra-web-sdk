@@ -90,6 +90,7 @@ export class LucraClient {
     onMessage = {
         userInfo: NoOp,
         matchupCreated: NoOp,
+        activeMatchupStarted: NoOp,
         matchupStarted: NoOp,
         matchupCanceled: NoOp,
         matchupAccepted: NoOp,
@@ -112,6 +113,9 @@ export class LucraClient {
         switch (event.data.type) {
             case LucraClientMessageType.matchupCreated:
                 this.onMessage.matchupCreated(event.data.data);
+                break;
+            case LucraClientMessageType.activeMatchupStarted:
+                this.onMessage.activeMatchupStarted(event.data.data);
                 break;
             case LucraClientMessageType.matchupStarted:
                 this.onMessage.matchupStarted(event.data.data);
@@ -185,6 +189,9 @@ export class LucraClient {
     }
     set matchupCreatedHandler(handlerFn) {
         this.onMessage.matchupCreated = handlerFn;
+    }
+    set activeMatchupStartedHandler(handlerFn) {
+        this.onMessage.activeMatchupStarted = handlerFn;
     }
     set matchupStartedHandler(handlerFn) {
         this.onMessage.matchupStarted = handlerFn;

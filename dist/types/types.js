@@ -1,27 +1,28 @@
 export var LucraClientMessageType;
 (function (LucraClientMessageType) {
-    LucraClientMessageType["userInfo"] = "userInfo";
-    LucraClientMessageType["matchupCreated"] = "matchupCreated";
-    LucraClientMessageType["matchupStarted"] = "matchupStarted";
-    LucraClientMessageType["matchupCanceled"] = "matchupCanceled";
-    LucraClientMessageType["matchupAccepted"] = "matchupAccepted";
-    LucraClientMessageType["tournamentJoined"] = "tournamentJoined";
+    LucraClientMessageType["activeMatchupStarted"] = "activeMatchupStarted";
+    LucraClientMessageType["claimReward"] = "claimReward";
     LucraClientMessageType["convertToCredit"] = "convertToCredit";
     LucraClientMessageType["deepLink"] = "deepLink";
-    LucraClientMessageType["navigationEvent"] = "navigationEvent";
-    LucraClientMessageType["claimReward"] = "claimReward";
-    LucraClientMessageType["loginSuccess"] = "loginSuccess";
     LucraClientMessageType["exitLucra"] = "exitLucra";
+    LucraClientMessageType["loginSuccess"] = "loginSuccess";
+    LucraClientMessageType["matchupAccepted"] = "matchupAccepted";
+    LucraClientMessageType["matchupCanceled"] = "matchupCanceled";
+    LucraClientMessageType["matchupCreated"] = "matchupCreated";
+    LucraClientMessageType["matchupStarted"] = "matchupStarted";
+    LucraClientMessageType["navigationEvent"] = "navigationEvent";
+    LucraClientMessageType["tournamentJoined"] = "tournamentJoined";
+    LucraClientMessageType["userInfo"] = "userInfo";
 })(LucraClientMessageType || (LucraClientMessageType = {}));
 export var MessageTypeToLucraClient;
 (function (MessageTypeToLucraClient) {
+    MessageTypeToLucraClient["availableRewards"] = "availableRewards";
     MessageTypeToLucraClient["clientUserInfo"] = "clientUserInfo";
     MessageTypeToLucraClient["convertToCreditResponse"] = "convertToCreditResponse";
-    MessageTypeToLucraClient["enableConvertToCredit"] = "enableConvertToCredit";
     MessageTypeToLucraClient["deepLinkResponse"] = "deepLinkResponse";
-    MessageTypeToLucraClient["navigate"] = "navigate";
-    MessageTypeToLucraClient["availableRewards"] = "availableRewards";
+    MessageTypeToLucraClient["enableConvertToCredit"] = "enableConvertToCredit";
     MessageTypeToLucraClient["enableExitLucra"] = "enableExitLucra";
+    MessageTypeToLucraClient["navigate"] = "navigate";
 })(MessageTypeToLucraClient || (MessageTypeToLucraClient = {}));
 var account_status_types_enum;
 (function (account_status_types_enum) {
