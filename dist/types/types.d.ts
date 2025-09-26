@@ -152,6 +152,7 @@ export type SDKLucraUser = {
     address?: SDKLucraAddress;
     balance?: number;
     accountStatus?: account_status_types_enum;
+    metadata?: Record<string, string> | null;
 };
 export type SDKClientUser = {
     username?: string;
@@ -161,6 +162,7 @@ export type SDKClientUser = {
     firstName?: string;
     lastName?: string;
     address?: SDKLucraAddress;
+    metadata?: Record<string, string> | null;
 };
 export type LucraReward = {
     rewardId: string;

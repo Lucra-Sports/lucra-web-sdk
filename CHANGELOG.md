@@ -1,5 +1,11 @@
 ### CHANGELOG
 
+## [v0.19.0]
+
+### Updated
+
+- The `sendMessage.userUpdated` method can now include valid JSON as part of the `metadata` property on the payload. This `metadata` will be returned on the user object (see SDKLucraUser/SDKClientUser types).
+
 ## [v0.18.0]
 
 ### Updated
