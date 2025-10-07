@@ -8,13 +8,11 @@
 - New `matchupInviteUrl` message type in `LucraClientMessageType` enum for specific matchup invitation handling
 - New `LucraMatchupInviteUrlBody` type containing the `matchupId` for invite URL generation
 
-### Deprecated
+- `deepLinkHandler` setter is not preferred for matchup invitations. Please migrate to `matchupDeepLinkHandler` for better clarity when handling matchup invitations. The old method will continue to work but matchup invitations should be handled with the new approach.
 
-- `deepLinkHandler` setter is now deprecated. Please migrate to `matchupDeepLinkHandler` for better clarity when handling matchup invitations. The old method will continue to work but matchup invitations should be handled with the new approach.
+### Matchup Invitation - Migration Guide
 
-### Migration Guide
-
-**Before (Deprecated):**
+**Before:**
 ```typescript
 lucraClient.deepLinkHandler = ({ url }) => {
   // Had to parse the Lucra URL to extract matchupId

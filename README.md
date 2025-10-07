@@ -77,7 +77,7 @@ if (matchupId) {
 }
 ```
 
-#### Migration from deprecated `deepLinkHandler`
+#### Migration from deprecated `deepLinkHandler` for matchup invitations
 
 **Key Differences:**
 
@@ -91,7 +91,7 @@ if (matchupId) {
 **Migration Example:**
 
 ```typescript
-// OLD APPROACH (Deprecated)
+// OLD APPROACH
 lucraClient.deepLinkHandler = ({ url }) => {
   // Had to parse the Lucra URL to extract matchupId
   const lucraUrl = new URL(url);
@@ -165,7 +165,7 @@ lucraClient.redirect()
 - `matchupCanceled` - the user successfully canceled the matchup, and contains the id of that matchup
 - `matchupInviteUrl` - Lucra is requesting an invite URL for a specific matchup. Use `matchupDeepLinkHandler` to handle this. Your handler receives the `matchupId` and must call `sendMessage.deepLinkResponse()` with the generated URL.
 - `convertToCredit` - if Convert to Credit is enabled, Lucra will call this method with the desired amount to convert to credit. Respond with a `convertToCreditResponse` message defined below
-- `deepLink` - ⚠️ **DEPRECATED** - Use `matchupDeepLinkHandler` instead. Lucra is requesting a url that the user of the SDK will open to then open up the LucraClient at where the deepLink url is linking to
+- `deepLink` - Lucra is requesting a url that the user of the SDK will open to then open up the LucraClient at where the deepLink url is linking to. For matchup invitations, use `matchupDeepLinkHandler`.
 - `tournamentJoined` - the user successfully joined a tournament, and contains the id of the tournament
 - `navigationEvent` - the user has navigated somewhere in Lucra, contains the full url that you can use later when doing `.open().deepLink(url)`
 - `claimReward` - the user is redeeming a Free To Play reward
