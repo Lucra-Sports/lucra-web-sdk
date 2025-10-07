@@ -1,5 +1,49 @@
 ### CHANGELOG
 
+## [v0.20.0]
+
+### Added
+
+- New `matchupDeepLinkHandler` setter to configure how matchup invite URLs are generated for sharing. This provides a cleaner API specifically for matchup invitations.
+- New `matchupInviteUrl` message type in `LucraClientMessageType` enum for specific matchup invitation handling
+- New `LucraMatchupInviteUrlBody` type containing the `matchupId` for invite URL generation
+
+### Deprecated
+
+- `deepLinkHandler` setter is now deprecated. Please migrate to `matchupDeepLinkHandler` for better clarity when handling matchup invitations. The old method will continue to work but matchup invitations should be handled with the new approach.
+
+### Migration Guide
+
+**Before (Deprecated):**
+```typescript
+lucraClient.deepLinkHandler = ({ url }) => {
+  // Had to parse the Lucra URL to extract matchupId
+  const lucraUrl = new URL(url);
+  const matchupId = lucraUrl.pathname.split('/').pop();
+  
+  const shareUrl = `${window.location.origin}?matchupId=${matchupId}`;
+  lucraClient.sendMessage.deepLinkResponse({ url: shareUrl });
+};
+```
+
+**After (Recommended):**
+```typescript
+lucraClient.matchupDeepLinkHandler = (matchupId) => {
+  // Receive matchupId directly, just return the URL
+  return `${window.location.origin}?matchupId=${matchupId}`;
+};
+```
+
+**Key Benefits:**
+- Receive `matchupId` string directly without URL parsing
+- Simply return the URL string - response sent automatically
+- No need to manually call `deepLinkResponse()`
+- More explicit method name for matchup invitations
+- Cleaner, more maintainable code
+- Better TypeScript support
+
+See README.md for complete migration guide and usage examples.
+
 ## [v0.19.0]
 
 ### Updated

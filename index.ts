@@ -24,6 +24,7 @@ import {
   type LucraMatchupStartedBody,
   type LucraLoginSuccessBody,
   type LucraActiveMatchupStartedBody,
+  type MatchupInviteUrlTransformer,
 } from "./types/types.js";
 
 export const LucraClientIframeId = "__lucrasports__";
@@ -118,8 +119,9 @@ function validatePhoneNumber(phoneNumber: string | null): string | undefined {
   return phoneNumber;
 }
 
-function NoOp(data?: any) {
+function NoOp(data?: any): undefined {
   console.log("Not implemented", data);
+  return undefined;
 }
 
 type LucraNavigation = {
@@ -177,6 +179,7 @@ export class LucraClient {
     tournamentJoined: NoOp,
     convertToCredit: NoOp,
     deepLink: NoOp,
+    matchupInviteUrl: async () => NoOp(),
     navigationEvent: NoOp,
     claimReward: NoOp,
     loginSuccess: NoOp,
@@ -187,7 +190,7 @@ export class LucraClient {
     return new URL(this.url).origin;
   }
 
-  private _eventListener = (event: MessageEvent<any>) => {
+  private _eventListener = async (event: MessageEvent<any>) => {
     if (event.origin !== this.iframeUrlOrigin()) return;
 
     this.messages.push(event.data);
@@ -218,6 +221,21 @@ export class LucraClient {
         break;
       case LucraClientMessageType.deepLink:
         this.onMessage.deepLink(event.data.data);
+        break;
+      case LucraClientMessageType.matchupInviteUrl:
+        const urlResult = await this.onMessage.matchupInviteUrl(
+          event.data.data.matchupId
+        );
+        if (!urlResult || urlResult.trim() === "") {
+          console.warn(
+            "matchupDeepLinkHandler not configured or returned empty, falling back to deepLink"
+          );
+          break;
+        }
+
+        this._matchupInviteUrlResponse({
+          url: urlResult,
+        });
         break;
       case LucraClientMessageType.navigationEvent:
         this.onMessage.navigationEvent(event.data.data);
@@ -272,8 +290,17 @@ export class LucraClient {
   set loginSuccessHandler(handlerFn: (data: LucraLoginSuccessBody) => void) {
     this.onMessage.loginSuccess = handlerFn;
   }
+
+  /**
+   * @deprecated Use matchupDeepLinkHandler instead.
+   * The deepLinkHandler method is being phased out in favor of the more specific
+   * matchupDeepLinkHandler which provides better clarity for matchup invitations.
+   */
   set deepLinkHandler(handlerFn: (data: LucraDeepLinkBody) => void) {
     this.onMessage.deepLink = handlerFn;
+  }
+  set matchupDeepLinkHandler(transformer: MatchupInviteUrlTransformer) {
+    this.onMessage.matchupInviteUrl = transformer;
   }
   set userInfoHandler(handlerFn: (data: LucraUserInfoBody) => void) {
     this.onMessage.userInfo = handlerFn;
@@ -569,6 +596,13 @@ export class LucraClient {
     }
   }
 
+  private _matchupInviteUrlResponse(data: LucraDeepLinkResponse) {
+    this._sendMessage({
+      type: MessageTypeToLucraClient.matchupInviteUrlResponse,
+      body: data,
+    });
+  }
+
   /**
    * Send a message to LucraClient
    */
@@ -605,6 +639,7 @@ export class LucraClient {
     /**
      * Call this method after receiving a `deepLink` request message
      * @param data LucraDeepLinkResponse
+     * @deprecated Use matchupInviteUrlResponse for new matchup invite flows
      */
     deepLinkResponse: (data: LucraDeepLinkResponse) => {
       this._sendMessage({
