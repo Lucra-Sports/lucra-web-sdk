@@ -1,4 +1,4 @@
-import { type LucraClientSendMessage, type LucraConvertToCreditBody, type LucraDeepLinkBody, type LucraMatchupAcceptedBody, type LucraMatchupCanceledBody, type LucraMatchupCreatedBody, type LucraNavigationEventBody, type LucraTournamentJoinedBody, type LucraUserInfoBody, type StateCode, type StateFull, type LucraClientConstructor, type LucraClaimRewardBody, type LucraMatchupStartedBody, type LucraLoginSuccessBody, type LucraActiveMatchupStartedBody } from "./types/types.js";
+import { type LucraClientSendMessage, type LucraConvertToCreditBody, type LucraDeepLinkBody, type LucraMatchupAcceptedBody, type LucraMatchupCanceledBody, type LucraMatchupCreatedBody, type LucraNavigationEventBody, type LucraTournamentJoinedBody, type LucraUserInfoBody, type StateCode, type StateFull, type LucraClientConstructor, type LucraClaimRewardBody, type LucraMatchupStartedBody, type LucraLoginSuccessBody, type LucraActiveMatchupStartedBody, type LucraMatchupInviteUrlTransformer } from "./types/types.js";
 export declare const LucraClientIframeId = "__lucrasports__";
 export declare const States: {
     state: StateFull;
@@ -62,7 +62,13 @@ export declare class LucraClient {
      */
     constructor({ env, locationId, onMessage, tenantId, }: LucraClientConstructor);
     set loginSuccessHandler(handlerFn: (data: LucraLoginSuccessBody) => void);
+    /**
+     * @deprecated Use matchupDeepLinkHandler instead.
+     * The deepLinkHandler method is being phased out in favor of the more specific
+     * matchupDeepLinkHandler which provides better clarity for matchup invitations.
+     */
     set deepLinkHandler(handlerFn: (data: LucraDeepLinkBody) => void);
+    set matchupDeepLinkHandler(transformer: LucraMatchupInviteUrlTransformer);
     set userInfoHandler(handlerFn: (data: LucraUserInfoBody) => void);
     set matchupCreatedHandler(handlerFn: (data: LucraMatchupCreatedBody) => void);
     set activeMatchupStartedHandler(handlerFn: (data: LucraActiveMatchupStartedBody) => void);
@@ -95,6 +101,7 @@ export declare class LucraClient {
      */
     close(): void;
     private _sendMessage;
+    private _matchupInviteUrlResponse;
     /**
      * Send a message to LucraClient
      */

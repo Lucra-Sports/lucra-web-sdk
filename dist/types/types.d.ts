@@ -9,6 +9,7 @@ export declare enum LucraClientMessageType {
     matchupAccepted = "matchupAccepted",
     matchupCanceled = "matchupCanceled",
     matchupCreated = "matchupCreated",
+    matchupInviteUrl = "matchupInviteUrl",
     matchupStarted = "matchupStarted",
     navigationEvent = "navigationEvent",
     tournamentJoined = "tournamentJoined",
@@ -19,6 +20,7 @@ export declare enum MessageTypeToLucraClient {
     clientUserInfo = "clientUserInfo",
     convertToCreditResponse = "convertToCreditResponse",
     deepLinkResponse = "deepLinkResponse",
+    matchupInviteUrlResponse = "matchupInviteUrlResponse",
     enableConvertToCredit = "enableConvertToCredit",
     enableExitLucra = "enableExitLucra",
     navigate = "navigate"
@@ -74,6 +76,10 @@ export type LucraConvertToCreditBody = {
 export type LucraDeepLinkBody = {
     url: string;
 };
+export type LucraMatchupInviteUrlBody = {
+    matchupId: string;
+};
+export type LucraMatchupInviteUrlTransformer = (matchupId: string) => Promise<string | undefined>;
 export type LucraNavigationEventBody = {
     url: string;
     page?: LucraPage;
@@ -101,6 +107,7 @@ export type LucraClientOnMessage = {
     convertToCredit: (data: LucraConvertToCreditBody) => void;
     tournamentJoined: (data: LucraTournamentJoinedBody) => void;
     deepLink: (data: LucraDeepLinkBody) => void;
+    matchupInviteUrl: LucraMatchupInviteUrlTransformer;
     navigationEvent: (data: LucraNavigationEventBody) => void;
     claimReward: (data: LucraClaimRewardBody) => void;
     loginSuccess: (data: LucraLoginSuccessBody) => void;
