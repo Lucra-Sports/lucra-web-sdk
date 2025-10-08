@@ -79,7 +79,7 @@ export type LucraDeepLinkBody = {
 export type LucraMatchupInviteUrlBody = {
     matchupId: string;
 };
-export type MatchupInviteUrlTransformer = (matchupId: string) => Promise<string | undefined>;
+export type LucraMatchupInviteUrlTransformer = (matchupId: string) => Promise<string | undefined>;
 export type LucraNavigationEventBody = {
     url: string;
     page?: LucraPage;
@@ -107,7 +107,7 @@ export type LucraClientOnMessage = {
     convertToCredit: (data: LucraConvertToCreditBody) => void;
     tournamentJoined: (data: LucraTournamentJoinedBody) => void;
     deepLink: (data: LucraDeepLinkBody) => void;
-    matchupInviteUrl: MatchupInviteUrlTransformer;
+    matchupInviteUrl: LucraMatchupInviteUrlTransformer;
     navigationEvent: (data: LucraNavigationEventBody) => void;
     claimReward: (data: LucraClaimRewardBody) => void;
     loginSuccess: (data: LucraLoginSuccessBody) => void;

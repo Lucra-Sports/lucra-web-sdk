@@ -24,7 +24,7 @@ import {
   type LucraMatchupStartedBody,
   type LucraLoginSuccessBody,
   type LucraActiveMatchupStartedBody,
-  type MatchupInviteUrlTransformer,
+  type LucraMatchupInviteUrlTransformer,
 } from "./types/types.js";
 
 export const LucraClientIframeId = "__lucrasports__";
@@ -299,7 +299,7 @@ export class LucraClient {
   set deepLinkHandler(handlerFn: (data: LucraDeepLinkBody) => void) {
     this.onMessage.deepLink = handlerFn;
   }
-  set matchupDeepLinkHandler(transformer: MatchupInviteUrlTransformer) {
+  set matchupDeepLinkHandler(transformer: LucraMatchupInviteUrlTransformer) {
     this.onMessage.matchupInviteUrl = transformer;
   }
   set userInfoHandler(handlerFn: (data: LucraUserInfoBody) => void) {

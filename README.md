@@ -51,7 +51,7 @@ const lucraClient = new LucraClient({
 
 // Configure the transformer to generate invite URLs
 lucraClient.matchupDeepLinkHandler = (matchupId) => {
-  return `${window.location.origin}?matchupId=${matchupId}`;
+  return Promise.resolve(`${window.location.origin}?matchupId=${matchupId}`);
 };
 ```
 
@@ -68,12 +68,8 @@ const urlParams = new URLSearchParams(window.location.search);
 const matchupId = urlParams.get("matchupId");
 
 if (matchupId) {
-  // Open Lucra to the home screen first
-  lucraClient.open(containerElement).home();
-
-  // Then navigate to the specific matchup after load
-  // You may want to delay this slightly or wait for loginSuccess
-  lucraClient.redirect().matchupDetails(matchupId);
+  // Open Lucra to the home screen first then navigate to matchup details
+  lucraClient.open(containerElement).matchupDetails(matchupId);
 }
 ```
 
@@ -104,7 +100,7 @@ lucraClient.deepLinkHandler = ({ url }) => {
 // NEW APPROACH (Recommended)
 lucraClient.matchupDeepLinkHandler = (matchupId) => {
   // Receive matchupId directly, just return the URL
-  return `${window.location.origin}?matchupId=${matchupId}`;
+  return Promise.resolve(`${window.location.origin}?matchupId=${matchupId}`);
 };
 ```
 
