@@ -193,11 +193,7 @@ export class LucraClient {
     set loginSuccessHandler(handlerFn) {
         this.onMessage.loginSuccess = handlerFn;
     }
-    /**
-     * @deprecated Use matchupDeepLinkHandler instead.
-     * The deepLinkHandler method is being phased out in favor of the more specific
-     * matchupDeepLinkHandler which provides better clarity for matchup invitations.
-     */
+    // For matchup invitation URL generation, use matchupDeepLinkHandler instead.
     set deepLinkHandler(handlerFn) {
         this.onMessage.deepLink = handlerFn;
     }

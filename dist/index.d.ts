@@ -62,11 +62,6 @@ export declare class LucraClient {
      */
     constructor({ env, locationId, onMessage, tenantId, }: LucraClientConstructor);
     set loginSuccessHandler(handlerFn: (data: LucraLoginSuccessBody) => void);
-    /**
-     * @deprecated Use matchupDeepLinkHandler instead.
-     * The deepLinkHandler method is being phased out in favor of the more specific
-     * matchupDeepLinkHandler which provides better clarity for matchup invitations.
-     */
     set deepLinkHandler(handlerFn: (data: LucraDeepLinkBody) => void);
     set matchupDeepLinkHandler(transformer: LucraMatchupInviteUrlTransformer);
     set userInfoHandler(handlerFn: (data: LucraUserInfoBody) => void);
