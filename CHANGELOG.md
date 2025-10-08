@@ -1,5 +1,8 @@
 ### CHANGELOG
 
+## [v0.20.1]
+Removed deprecation warning for `deepLinkHandler`
+
 ## [v0.20.0]
 
 ### Added
