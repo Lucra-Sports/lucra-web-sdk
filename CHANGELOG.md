@@ -28,7 +28,7 @@ lucraClient.deepLinkHandler = ({ url }) => {
 ```typescript
 lucraClient.matchupDeepLinkHandler = (matchupId) => {
   // Receive matchupId directly, just return the URL
-  return `${window.location.origin}?matchupId=${matchupId}`;
+  return Promise.resolve(`${window.location.origin}?matchupId=${matchupId}`);
 };
 ```
 
