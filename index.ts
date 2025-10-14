@@ -119,6 +119,42 @@ function validatePhoneNumber(phoneNumber: string | null): string | undefined {
   return phoneNumber;
 }
 
+function validateMetadata(
+  metadata: Record<string, string> | null | undefined
+): boolean {
+  if (metadata === null || metadata === undefined) {
+    return true;
+  }
+
+  if (typeof metadata !== "object" || Array.isArray(metadata)) {
+    console.error(
+      "Metadata must be an object with string keys and string values, or null",
+      metadata
+    );
+    return false;
+  }
+
+  for (const [key, value] of Object.entries(metadata)) {
+    if (typeof key !== "string") {
+      console.error(
+        `Metadata key must be a string, received ${typeof key}:`,
+        key
+      );
+      return false;
+    }
+
+    if (typeof value !== "string") {
+      console.error(
+        `Metadata value for key "${key}" must be a string, received ${typeof value}:`,
+        value
+      );
+      return false;
+    }
+  }
+
+  return true;
+}
+
 function NoOp(data?: any): undefined {
   console.log("Not implemented", data);
   return undefined;
@@ -607,6 +643,8 @@ export class LucraClient {
      * @param data SDKClientUser
      */
     userUpdated: (data: SDKClientUser) => {
+      validateMetadata(data.metadata);
+
       this._sendMessage({
         type: MessageTypeToLucraClient.clientUserInfo,
         body: data,
