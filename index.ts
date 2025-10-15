@@ -643,7 +643,11 @@ export class LucraClient {
      * @param data SDKClientUser
      */
     userUpdated: (data: SDKClientUser) => {
-      validateMetadata(data.metadata);
+      if (!validateMetadata(data.metadata)) {
+        throw new Error(
+          "Invalid metadata: must be an object with string keys and string values, or null"
+        );
+      }
 
       this._sendMessage({
         type: MessageTypeToLucraClient.clientUserInfo,
