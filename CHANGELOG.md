@@ -1,5 +1,8 @@
 ### CHANGELOG
 
+## [v0.20.2]
+Added validation for metadata to ensure key/value pairs are of type string.
+
 ## [v0.20.1]
 Removed deprecation warning for `deepLinkHandler`
 
