@@ -198,6 +198,7 @@ type LucraNavigation = {
 
 export class LucraClient {
   private iframe?: HTMLIFrameElement;
+  private apiKey: string = "";
   private tenantId: string = "";
   private env: LucraEnvironment = "production";
   private urlOrigin: string = "";
@@ -305,15 +306,23 @@ export class LucraClient {
    * @param onMessage Message Handler for messages from LucraClient
    */
   constructor({
+    apiKey,
+    tenantId,
     env,
     locationId,
     onMessage,
-    tenantId,
   }: LucraClientConstructor) {
+    if (!apiKey || !tenantId) {
+      throw new Error(
+        "Both apiKey and tenantId must be provided to create LucraClient"
+      );
+    }
+
     this.env = env;
     this.locationId = locationId ?? "";
     this.onExitLucra = NoOp;
     this.onMessage = onMessage;
+    this.apiKey = apiKey;
     this.tenantId = tenantId;
     this.urlOrigin =
       this.env === "local"
@@ -406,6 +415,10 @@ export class LucraClient {
     const url = new URL(
       deepLinkUrl || `${this.urlOrigin}/${path}?${params.toString()}`
     );
+
+    // Pass both apiKey and tenantId to lucra-web-app
+    url.searchParams.set("apiKey", this.apiKey);
+    url.searchParams.set("tenantId", this.tenantId);
 
     const validatedPhoneNumber = validatePhoneNumber(params.get("phoneNumber"));
 

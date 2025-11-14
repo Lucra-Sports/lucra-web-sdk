@@ -1,5 +1,10 @@
 ### CHANGELOG
 
+## [v0.21.0]
+- `apiKey` is a new required parameter used for SDK initialization
+- `tenantId` remains a required parameter; both must be provided when instantiating `LucraClient`
+- Corrected reference from `external_id` to `externalId` in README.md as it relates to metadata
+
 ## [v0.20.2]
 Added validation for metadata to ensure key/value pairs are of type string.
 
