@@ -101,6 +101,7 @@ function NoOp(data) {
 }
 export class LucraClient {
     iframe;
+    apiKey = "";
     tenantId = "";
     env = "production";
     urlOrigin = "";
@@ -199,11 +200,15 @@ export class LucraClient {
      * @param env sandbox | production
      * @param onMessage Message Handler for messages from LucraClient
      */
-    constructor({ env, locationId, onMessage, tenantId, }) {
+    constructor({ apiKey, tenantId, env, locationId, onMessage, }) {
+        if (!apiKey || !tenantId) {
+            throw new Error("Both apiKey and tenantId must be provided to create LucraClient");
+        }
         this.env = env;
         this.locationId = locationId ?? "";
         this.onExitLucra = NoOp;
         this.onMessage = onMessage;
+        this.apiKey = apiKey;
         this.tenantId = tenantId;
         this.urlOrigin =
             this.env === "local"
@@ -263,6 +268,7 @@ export class LucraClient {
             return this._redirect(path, params, deepLinkUrl);
         }
         const url = new URL(deepLinkUrl || `${this.urlOrigin}/${path}?${params.toString()}`);
+        url.searchParams.set("apiKey", this.apiKey);
         const validatedPhoneNumber = validatePhoneNumber(params.get("phoneNumber"));
         if (validatedPhoneNumber) {
             url.searchParams.set("loginHint", validatedPhoneNumber);
