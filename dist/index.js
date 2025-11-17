@@ -268,9 +268,7 @@ export class LucraClient {
             return this._redirect(path, params, deepLinkUrl);
         }
         const url = new URL(deepLinkUrl || `${this.urlOrigin}/${path}?${params.toString()}`);
-        // Pass both apiKey and tenantId to lucra-web-app
         url.searchParams.set("apiKey", this.apiKey);
-        url.searchParams.set("tenantId", this.tenantId);
         const validatedPhoneNumber = validatePhoneNumber(params.get("phoneNumber"));
         if (validatedPhoneNumber) {
             url.searchParams.set("loginHint", validatedPhoneNumber);
