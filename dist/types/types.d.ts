@@ -29,12 +29,6 @@ export type LucraConvertToCreditResponse = {
     id: string;
     title: string;
     iconUrl?: string;
-    theme?: {
-        cardColor: string;
-        cardTextColor: string;
-        pillColor: string;
-        pillTextColor: string;
-    };
     conversionTerms: string;
     convertedAmount: number;
     convertedDisplayAmount: string;
