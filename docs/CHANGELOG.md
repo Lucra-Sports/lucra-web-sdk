@@ -1,9 +1,11 @@
-### CHANGELOG
+# CHANGELOG
 
 ## [v0.20.2]
+
 Added validation for metadata to ensure key/value pairs are of type string.
 
 ## [v0.20.1]
+
 Removed deprecation warning for `deepLinkHandler`
 
 ## [v0.20.0]
@@ -19,18 +21,20 @@ Removed deprecation warning for `deepLinkHandler`
 ### Matchup Invitation - Migration Guide
 
 **Before:**
+
 ```typescript
 lucraClient.deepLinkHandler = ({ url }) => {
   // Had to parse the Lucra URL to extract matchupId
   const lucraUrl = new URL(url);
-  const matchupId = lucraUrl.pathname.split('/').pop();
-  
+  const matchupId = lucraUrl.pathname.split("/").pop();
+
   const shareUrl = `${window.location.origin}?matchupId=${matchupId}`;
   lucraClient.sendMessage.deepLinkResponse({ url: shareUrl });
 };
 ```
 
 **After (Recommended):**
+
 ```typescript
 lucraClient.matchupDeepLinkHandler = (matchupId) => {
   // Receive matchupId directly, just return the URL
@@ -39,6 +43,7 @@ lucraClient.matchupDeepLinkHandler = (matchupId) => {
 ```
 
 **Key Benefits:**
+
 - Receive `matchupId` string directly without URL parsing
 - Simply return the URL string - response sent automatically
 - No need to manually call `deepLinkResponse()`
