@@ -1,4 +1,4 @@
-### CHANGELOG
+# CHANGELOG
 
 ## [v0.20.2]
 Added validation for metadata to ensure key/value pairs are of type string.
