@@ -83,6 +83,7 @@ export type LucraClaimRewardBody = {
 };
 export type LucraLoginSuccessBody = SDKLucraUser;
 export type LucraClientConstructor = {
+    apiKey: string;
     tenantId: string;
     env: LucraEnvironment;
     onMessage: LucraClientOnMessage;

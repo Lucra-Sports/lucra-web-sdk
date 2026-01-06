@@ -41,6 +41,7 @@ type LucraNavigation = {
 };
 export declare class LucraClient {
     private iframe?;
+    private apiKey;
     private tenantId;
     private env;
     private urlOrigin;
@@ -60,7 +61,7 @@ export declare class LucraClient {
      * @param env sandbox | production
      * @param onMessage Message Handler for messages from LucraClient
      */
-    constructor({ env, locationId, onMessage, tenantId, }: LucraClientConstructor);
+    constructor({ apiKey, tenantId, env, locationId, onMessage, }: LucraClientConstructor);
     set loginSuccessHandler(handlerFn: (data: LucraLoginSuccessBody) => void);
     set deepLinkHandler(handlerFn: (data: LucraDeepLinkBody) => void);
     set matchupDeepLinkHandler(transformer: LucraMatchupInviteUrlTransformer);
