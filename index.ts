@@ -686,8 +686,8 @@ export class LucraClient {
     },
     /**
      * Call this method after receiving a `deepLink` request message
+     * Note: Use matchupInviteUrlResponse for new matchup invite flows
      * @param data LucraDeepLinkResponse
-     * @deprecated Use matchupInviteUrlResponse for new matchup invite flows
      */
     deepLinkResponse: (data: LucraDeepLinkResponse) => {
       this._sendMessage({
