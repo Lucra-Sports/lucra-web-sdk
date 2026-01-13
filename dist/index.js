@@ -342,10 +342,9 @@ export class LucraClient {
             createMatchup: (gameId) => {
                 const params = new URLSearchParams();
                 if (gameId !== undefined) {
-                    params.set("hideNavigation", "1");
+                    params.set("openGameId", gameId);
                 }
-                return this._redirect("app/create-matchup" +
-                    (gameId !== undefined ? `/${gameId}/wager` : ""), params);
+                return this._redirect("app/home", params);
             },
             matchupDetails: (matchupId) => {
                 return this._redirect(`app/matchups/${matchupId}`);
@@ -395,13 +394,12 @@ export class LucraClient {
             },
             createMatchup: (gameId) => {
                 const params = addDefinedSearchParams({
-                    hideNavigation: gameId !== undefined ? "1" : undefined,
+                    openGameId: gameId,
                     phoneNumber,
                 });
                 return this._open({
                     element,
-                    path: "app/create-matchup" +
-                        (gameId !== undefined ? `/${gameId}/wager` : ""),
+                    path: "app/home",
                     params,
                 });
             },
