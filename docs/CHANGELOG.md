@@ -1,5 +1,36 @@
 # CHANGELOG
 
+## [v1.0.0]
+
+### Added
+
+- `LucraClient` is now a singleton managed via `LucraClient.initialize(config)`, `LucraClient.getInstance()`, and `LucraClient.destroy()`
+- Event-based listener API via `on(type, listener)` and `off(type, listener)` replaces the callback-based `onMessage` constructor option
+- Simplified constructor type `LucraV1ClientConstructor` (`apiKey`, `tenantId`, `env`, `locationId`) with no `onMessage` required
+- `setMatchupDeepLinkHandler(transformer)` method to configure matchup invite URL generation
+
+**Migration guide:**
+
+```typescript
+// Before
+import { LucraClient } from "lucra-web-sdk";
+const client = new LucraClient({
+  apiKey: "...",
+  tenantId: "...",
+  env: "production",
+  onMessage: {
+    matchupCreated: (data) => {},
+    // ...all handlers required
+  },
+});
+
+// After
+import { LucraClient } from "lucra-web-sdk";
+const client = LucraClient.initialize({ apiKey: "...", tenantId: "...", env: "production" });
+client.on("matchupCreated", (data) => {});
+client.on("exitLucra", () => {});
+```
+
 ## [v0.21.1]
 
 - `createMatchup` updated for a better flow

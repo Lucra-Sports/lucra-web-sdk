@@ -86,26 +86,30 @@ export type LucraClientConstructor = {
     apiKey: string;
     tenantId: string;
     env: LucraEnvironment;
-    onMessage: LucraClientOnMessage;
     /** @deprecated This is no longer utilized and will be removed in the next version */
     useTestUsers?: boolean;
     locationId?: string;
-    onExitLucra?: () => void;
 };
-export type LucraClientOnMessage = {
-    userInfo: (data: LucraUserInfoBody) => void;
-    matchupCreated: (data: LucraMatchupCreatedBody) => void;
-    activeMatchupStarted: (data: LucraActiveMatchupStartedBody) => void;
-    matchupStarted: (data: LucraMatchupStartedBody) => void;
-    matchupAccepted: (data: LucraMatchupAcceptedBody) => void;
-    matchupCanceled: (data: LucraMatchupCanceledBody) => void;
-    convertToCredit: (data: LucraConvertToCreditBody) => void;
-    tournamentJoined: (data: LucraTournamentJoinedBody) => void;
-    deepLink: (data: LucraDeepLinkBody) => void;
-    matchupInviteUrl: LucraMatchupInviteUrlTransformer;
-    navigationEvent: (data: LucraNavigationEventBody) => void;
-    claimReward: (data: LucraClaimRewardBody) => void;
-    loginSuccess: (data: LucraLoginSuccessBody) => void;
+export type LucraV1ClientConstructor = {
+    apiKey: string;
+    tenantId: string;
+    env: LucraEnvironment;
+    locationId?: string;
+};
+export type LucraEventMap = {
+    userInfo: LucraUserInfoBody;
+    matchupCreated: LucraMatchupCreatedBody;
+    activeMatchupStarted: LucraActiveMatchupStartedBody;
+    matchupStarted: LucraMatchupStartedBody;
+    matchupAccepted: LucraMatchupAcceptedBody;
+    matchupCanceled: LucraMatchupCanceledBody;
+    convertToCredit: LucraConvertToCreditBody;
+    tournamentJoined: LucraTournamentJoinedBody;
+    deepLink: LucraDeepLinkBody;
+    navigationEvent: LucraNavigationEventBody;
+    claimReward: LucraClaimRewardBody;
+    loginSuccess: LucraLoginSuccessBody;
+    exitLucra: void;
 };
 export type LucraClientSendMessage = {
     userUpdated: (data: SDKClientUser) => void;
