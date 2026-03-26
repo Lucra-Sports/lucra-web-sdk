@@ -15,7 +15,8 @@
   },
   "type": "module",
   "scripts": {
-    "build": "bunx tsc -d --project tsconfig.json"
+    "build": "bunx tsc --project tsconfig.json",
+    "test": "bun test"
   },
   "devDependencies": {
     "@types/bun": "latest"
