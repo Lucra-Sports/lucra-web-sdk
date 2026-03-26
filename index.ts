@@ -23,7 +23,7 @@ export type {
   LucraReward,
   SDKLucraUser,
   SDKClientUser,
-  LucraV1ClientConstructor,
+  LucraClientConstructor,
   LucraEventMap,
 } from "./types/types.js";
 

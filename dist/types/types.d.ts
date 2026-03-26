@@ -86,14 +86,6 @@ export type LucraClientConstructor = {
     apiKey: string;
     tenantId: string;
     env: LucraEnvironment;
-    /** @deprecated This is no longer utilized and will be removed in the next version */
-    useTestUsers?: boolean;
-    locationId?: string;
-};
-export type LucraV1ClientConstructor = {
-    apiKey: string;
-    tenantId: string;
-    env: LucraEnvironment;
     locationId?: string;
 };
 export type LucraEventMap = {

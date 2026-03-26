@@ -4,7 +4,7 @@ import {
   MessageTypeToLucraClient,
   type LucraEventMap,
   type LucraMatchupInviteUrlTransformer,
-  type LucraV1ClientConstructor,
+  type LucraClientConstructor,
 } from "./types/types.js";
 
 export class LucraClient extends LucraClientBase {
@@ -12,7 +12,7 @@ export class LucraClient extends LucraClientBase {
   private listenerMap = new Map<string, Map<Function, EventListener>>();
   private matchupInviteUrlTransformer?: LucraMatchupInviteUrlTransformer;
 
-  private constructor(config: LucraV1ClientConstructor) {
+  private constructor(config: LucraClientConstructor) {
     super(config);
   }
 
@@ -74,7 +74,7 @@ export class LucraClient extends LucraClientBase {
     this.matchupInviteUrlTransformer = transformer;
   }
 
-  static initialize(config: LucraV1ClientConstructor): LucraClient {
+  static initialize(config: LucraClientConstructor): LucraClient {
     if (LucraClient.instance) {
       throw new Error(
         "LucraClient is already initialized. Call LucraClient.getInstance() to retrieve the existing instance."

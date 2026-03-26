@@ -162,6 +162,7 @@ export class LucraClientBase extends EventTarget {
     }
     close() {
         this.controller.abort("Closing LucraClient");
+        this.controller = new AbortController();
         this.iframe?.remove();
         this.iframe = undefined;
     }
