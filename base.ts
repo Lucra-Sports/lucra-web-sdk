@@ -127,9 +127,8 @@ export class LucraClientBase extends EventTarget {
       element.appendChild(iframe);
     } catch (e) {
       console.error("Error opening up LucraSports", e);
-    } finally {
-      return this;
     }
+    return this;
   }
 
   private _redirect(
@@ -249,9 +248,8 @@ export class LucraClientBase extends EventTarget {
       this.iframe?.contentWindow?.postMessage(message, this.iframeUrlOrigin());
     } catch (e) {
       console.error("Unable to send message to LucraClient iframe", e);
-    } finally {
-      return this;
     }
+    return this;
   }
 
   protected _matchupInviteUrlResponse(data: LucraDeepLinkResponse) {

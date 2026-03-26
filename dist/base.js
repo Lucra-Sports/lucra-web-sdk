@@ -65,9 +65,7 @@ export class LucraClientBase extends EventTarget {
         catch (e) {
             console.error("Error opening up LucraSports", e);
         }
-        finally {
-            return this;
-        }
+        return this;
     }
     _redirect(path, params = new URLSearchParams(), deepLinkUrl) {
         if (!this.iframe) {
@@ -174,9 +172,7 @@ export class LucraClientBase extends EventTarget {
         catch (e) {
             console.error("Unable to send message to LucraClient iframe", e);
         }
-        finally {
-            return this;
-        }
+        return this;
     }
     _matchupInviteUrlResponse(data) {
         this._sendMessage({
