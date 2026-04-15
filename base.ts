@@ -84,11 +84,13 @@ export class LucraClientBase extends EventTarget {
     path = "",
     params = new URLSearchParams(),
     deepLinkUrl,
+    hidden,
   }: {
     element: HTMLElement;
     path?: string;
     params?: URLSearchParams;
     deepLinkUrl?: string;
+    hidden?: boolean;
   }) {
     if (this.iframe) {
       return this._redirect(path, params, deepLinkUrl);
@@ -125,6 +127,9 @@ export class LucraClientBase extends EventTarget {
       iframe.allow =
         "geolocation *; web-share; accelerometer *; bluetooth *; gyroscope *; clipboard-write *; payment;";
       element.appendChild(iframe);
+      if (hidden) {
+        iframe.style.display = "none";
+      }
     } catch (e) {
       console.error("Error opening up LucraSports", e);
     }
@@ -194,35 +199,35 @@ export class LucraClientBase extends EventTarget {
     };
   }
 
-  open(element: HTMLElement, phoneNumber?: string): LucraNavigation {
+  open(element: HTMLElement, phoneNumber?: string, options?: { hidden?: boolean }): LucraNavigation {
     return {
       profile: () => {
         const params = addDefinedSearchParams({ phoneNumber });
-        return this._open({ element, path: "app/profile", params });
+        return this._open({ element, path: "app/profile", params, hidden: options?.hidden });
       },
       home: (locationId?: string) => {
         const params = addDefinedSearchParams({ locationId, phoneNumber });
-        return this._open({ element, path: "app/home", params });
+        return this._open({ element, path: "app/home", params, hidden: options?.hidden });
       },
       deposit: () => {
         const params = addDefinedSearchParams({ phoneNumber });
-        return this._open({ element, path: "app/add-funds", params });
+        return this._open({ element, path: "app/add-funds", params, hidden: options?.hidden });
       },
       withdraw: () => {
         const params = addDefinedSearchParams({ phoneNumber });
-        return this._open({ element, path: "app/withdraw-funds", params });
+        return this._open({ element, path: "app/withdraw-funds", params, hidden: options?.hidden });
       },
       createMatchup: (gameId?: string) => {
         const params = addDefinedSearchParams({ openGameId: gameId, phoneNumber });
-        return this._open({ element, path: "app/home", params });
+        return this._open({ element, path: "app/home", params, hidden: options?.hidden });
       },
       matchupDetails: (matchupId: string) => {
         const params = addDefinedSearchParams({ phoneNumber });
-        return this._open({ element, path: `app/matchups/${matchupId}`, params });
+        return this._open({ element, path: `app/matchups/${matchupId}`, params, hidden: options?.hidden });
       },
       tournamentDetails: (matchupId: string) => {
         const params = addDefinedSearchParams({ phoneNumber });
-        return this._open({ element, path: `app/tournaments/${matchupId}`, params });
+        return this._open({ element, path: `app/tournaments/${matchupId}`, params, hidden: options?.hidden });
       },
       deepLink: (url: string) => {
         if (this.urlOrigin === "" || new URL(url).origin !== this.urlOrigin) {
@@ -232,6 +237,7 @@ export class LucraClientBase extends EventTarget {
           element,
           deepLinkUrl: url,
           params: addDefinedSearchParams({ phoneNumber }),
+          hidden: options?.hidden,
         });
       },
     };
@@ -242,6 +248,27 @@ export class LucraClientBase extends EventTarget {
     this.controller = new AbortController();
     this.iframe?.remove();
     this.iframe = undefined;
+  }
+
+  moveTo(element: HTMLElement): LucraClientBase {
+    if (this.iframe) {
+      element.appendChild(this.iframe);
+    }
+    return this;
+  }
+
+  hide(): LucraClientBase {
+    if (this.iframe) {
+      this.iframe.style.display = "none";
+    }
+    return this;
+  }
+
+  show(): LucraClientBase {
+    if (this.iframe) {
+      this.iframe.style.display = "block";
+    }
+    return this;
   }
 
   protected _sendMessage(message: any) {

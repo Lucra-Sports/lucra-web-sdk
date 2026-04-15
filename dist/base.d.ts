@@ -27,8 +27,13 @@ export declare class LucraClientBase extends EventTarget {
     private _redirect;
     logout(): LucraClientBase;
     redirect(): LucraNavigation;
-    open(element: HTMLElement, phoneNumber?: string): LucraNavigation;
+    open(element: HTMLElement, phoneNumber?: string, options?: {
+        hidden?: boolean;
+    }): LucraNavigation;
     close(): void;
+    moveTo(element: HTMLElement): LucraClientBase;
+    hide(): LucraClientBase;
+    show(): LucraClientBase;
     protected _sendMessage(message: any): this;
     protected _matchupInviteUrlResponse(data: LucraDeepLinkResponse): void;
     sendMessage: LucraClientSendMessage;
