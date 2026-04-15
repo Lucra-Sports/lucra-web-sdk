@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## [v1.1.0]
+
+### Added
+
+- `hide()` method to make the Lucra iframe invisible without removing it from the DOM
+- `show()` method to restore the Lucra iframe to visible
+- `moveTo(element)` method to move the Lucra iframe to a different parent element without reloading
+- `open()` now accepts an optional third argument `options?: { hidden?: boolean }` to start the experience in a hidden state
+
 ## [v1.0.0]
 
 ### Added
