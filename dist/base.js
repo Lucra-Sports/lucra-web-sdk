@@ -11,7 +11,32 @@ export class LucraClientBase extends EventTarget {
     messages = [];
     locationId = "";
     controller = new AbortController();
+    achievementsResolve;
+    achievementsReject;
+    achievementsTimer;
+    triggerFrames = new Map();
+    _user = null;
+    _isInitialized = false;
+    _readyResolve;
+    _readyReject;
+    _readyPromise = this._createReadyPromise();
+    _createReadyPromise() {
+        return new Promise((resolve, reject) => {
+            this._readyResolve = resolve;
+            this._readyReject = reject;
+        });
+    }
+    get ready() {
+        return this._readyPromise;
+    }
+    get isInitialized() {
+        return this._isInitialized;
+    }
+    get user() {
+        return this._user;
+    }
     iframeUrlOrigin() {
+        //console.log('iframeUrlOrigin', this.url)
         return new URL(this.url).origin;
     }
     _eventListener = async (_event) => { };
@@ -35,10 +60,7 @@ export class LucraClientBase extends EventTarget {
                 ? `http://localhost:3000`
                 : `https://${this.tenantId.toLowerCase()}.${this.env !== "production" ? `${this.env}.` : ""}lucrasports.com`;
     }
-    _open({ element, path = "", params = new URLSearchParams(), deepLinkUrl, hidden, }) {
-        if (this.iframe) {
-            return this._redirect(path, params, deepLinkUrl);
-        }
+    _buildIframeUrl({ path = "", params = new URLSearchParams(), deepLinkUrl, }) {
         const url = new URL(deepLinkUrl || `${this.urlOrigin}/${path}?${params.toString()}`);
         url.searchParams.set("apiKey", this.apiKey);
         const validatedPhoneNumber = validatePhoneNumber(params.get("phoneNumber"));
@@ -49,6 +71,13 @@ export class LucraClientBase extends EventTarget {
             url.searchParams.set("locationId", this.locationId);
         }
         url.searchParams.set("parentUrl", window.location.origin);
+        return url;
+    }
+    _open({ element, path = "", params = new URLSearchParams(), deepLinkUrl, hidden, }) {
+        if (this.iframe) {
+            return this._redirect(path, params, deepLinkUrl);
+        }
+        const url = this._buildIframeUrl({ path, params, deepLinkUrl });
         this.url = url.toString();
         this.setUpEventListener();
         try {
@@ -69,6 +98,69 @@ export class LucraClientBase extends EventTarget {
             console.error("Error opening up LucraSports", e);
         }
         return this;
+    }
+    _minigamesTrigger(element, input) {
+        return new Promise((resolve, reject) => {
+            try {
+                this.setUpEventListener();
+                const params = new URLSearchParams();
+                params.set("game_mode", input.game_mode);
+                if (input.amount !== undefined) {
+                    params.set("amount", String(input.amount));
+                }
+                if (input.matchup_id) {
+                    params.set("matchup_id", input.matchup_id);
+                }
+                const path = `app/headless/minigames/${encodeURIComponent(input.game_id)}`;
+                const url = this._buildIframeUrl({ path, params });
+                const iframe = document.createElement("iframe");
+                iframe.src = url.toString();
+                iframe.style.height = "100%";
+                iframe.style.width = "100%";
+                iframe.style.border = "none";
+                iframe.style.background = "transparent";
+                iframe.allow =
+                    "geolocation *; web-share; accelerometer *; bluetooth *; gyroscope *; clipboard-write *; payment;";
+                const register = () => {
+                    const win = iframe.contentWindow;
+                    if (!win) {
+                        reject(new Error("Trigger iframe contentWindow unavailable"));
+                        return;
+                    }
+                    this.triggerFrames.set(win, {
+                        iframe,
+                        resolve: (data) => {
+                            try {
+                                iframe.remove();
+                            }
+                            catch (e) {
+                                console.error("Error removing trigger iframe", e);
+                            }
+                            resolve(data);
+                        },
+                        reject: (reason) => {
+                            try {
+                                iframe.remove();
+                            }
+                            catch (e) {
+                                console.error("Error removing trigger iframe", e);
+                            }
+                            reject(reason);
+                        },
+                    });
+                };
+                element.appendChild(iframe);
+                if (iframe.contentWindow) {
+                    register();
+                }
+                else {
+                    iframe.addEventListener("load", register, { once: true });
+                }
+            }
+            catch (e) {
+                reject(e);
+            }
+        });
     }
     _redirect(path, params = new URLSearchParams(), deepLinkUrl) {
         if (!this.iframe) {
@@ -162,6 +254,8 @@ export class LucraClientBase extends EventTarget {
                     hidden: options?.hidden,
                 });
             },
+            // minigamesTrigger: (input: LucraMinigamesTriggerInput) =>
+            //   this._minigamesTrigger(element, input),
         };
     }
     close() {
@@ -169,6 +263,9 @@ export class LucraClientBase extends EventTarget {
         this.controller = new AbortController();
         this.iframe?.remove();
         this.iframe = undefined;
+        this._user = null;
+        this._isInitialized = false;
+        this._readyPromise = this._createReadyPromise();
     }
     moveTo(element) {
         if (this.iframe) {
@@ -190,7 +287,7 @@ export class LucraClientBase extends EventTarget {
     }
     _sendMessage(message) {
         try {
-            this.iframe?.contentWindow?.postMessage(message, this.iframeUrlOrigin());
+            this.iframe?.contentWindow?.postMessage(message, this.urlOrigin);
         }
         catch (e) {
             console.error("Unable to send message to LucraClient iframe", e);
@@ -203,6 +300,48 @@ export class LucraClientBase extends EventTarget {
             body: data,
         });
     }
+    _resolveAchievements(data) {
+        clearTimeout(this.achievementsTimer);
+        this.achievementsResolve?.(data);
+    }
+    _resolveTrigger(win, data) {
+        const handle = this.triggerFrames.get(win);
+        if (!handle)
+            return false;
+        this.triggerFrames.delete(win);
+        handle.resolve(data);
+        return true;
+    }
+    _handleInitialized(body) {
+        if (body.success) {
+            this._isInitialized = true;
+            this._readyResolve();
+        }
+        else {
+            this._isInitialized = false;
+            this._readyReject(body);
+        }
+    }
+    _handleUserInfo(body) {
+        this._user = body;
+    }
+    api = {
+        achievements: () => {
+            const promise = new Promise((resolve, reject) => {
+                this._sendMessage({
+                    type: MessageTypeToLucraClient.achievementsRequest,
+                    body: null,
+                });
+                this.achievementsResolve = resolve;
+                this.achievementsReject = reject;
+            });
+            const timer = setTimeout(() => {
+                this.achievementsReject?.("Timeout");
+            }, 15_000);
+            this.achievementsTimer = timer;
+            return promise;
+        },
+    };
     sendMessage = {
         userUpdated: (data) => {
             if (!validateMetadata(data.metadata)) {

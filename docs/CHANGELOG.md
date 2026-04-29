@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## [v1.2.0]
+
+### Added
+
+- `api.achievements()` method returning the current user's achievements
+- `initialized` event fired when the Lucra iframe finishes initializing
+- `ready` Promise, `isInitialized` boolean, and `user` getter on the client
+- Type: `LucraAchievement`
+
 ## [v1.1.0]
 
 ### Added

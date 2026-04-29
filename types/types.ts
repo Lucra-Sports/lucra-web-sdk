@@ -7,6 +7,7 @@ export type LucraEnvironment =
   | "production";
 
 export enum LucraClientMessageType {
+  achievementsResponse = "achievementsResponse",
   activeMatchupStarted = "activeMatchupStarted",
   claimReward = "claimReward",
   convertToCredit = "convertToCredit",
@@ -19,11 +20,14 @@ export enum LucraClientMessageType {
   matchupInviteUrl = "matchupInviteUrl",
   matchupStarted = "matchupStarted",
   navigationEvent = "navigationEvent",
+  startMinigamesSessionResponse = "startMinigamesSessionResponse",
   tournamentJoined = "tournamentJoined",
   userInfo = "userInfo",
+  initialized = "initialized"
 }
 
 export enum MessageTypeToLucraClient {
+  achievementsRequest = "achievementsRequest",
   availableRewards = "availableRewards",
   clientUserInfo = "clientUserInfo",
   convertToCreditResponse = "convertToCreditResponse",
@@ -73,6 +77,7 @@ export type LucraMatchupInviteUrlTransformer = (
 export type LucraNavigationEventBody = { url: string; page?: LucraPage };
 export type LucraClaimRewardBody = { reward: LucraReward };
 export type LucraLoginSuccessBody = SDKLucraUser;
+export type LucraInitializedBody = { success: boolean };
 
 export type LucraClientConstructor = {
   apiKey: string;
@@ -95,6 +100,7 @@ export type LucraEventMap = {
   claimReward: LucraClaimRewardBody;
   loginSuccess: LucraLoginSuccessBody;
   exitLucra: void;
+  initialized: LucraInitializedBody;
 };
 
 export type LucraClientSendMessage = {
@@ -299,4 +305,44 @@ export type LucraReward = {
   bannerIconUrl: string;
   disclaimer: string;
   metadata: unknown;
+};
+
+export type LucraAchievement = {
+  id: string;
+  isEarned: boolean;
+  earnedAt?: string | null;
+  claimedAt?: string | null;
+  currentProgress: number;
+  achievement?: {
+    id: string;
+    title: string;
+    description?: string | null;
+    iconUrl?: string | null;
+    gameId?: string | null;
+    criteriaConfig: unknown;
+    criteriaType: string;
+    catalogReward?: {
+      id: string;
+      title: string;
+      iconUrl?: string | null;
+      descriptor?: string | null;
+    } | null;
+  } | null;
+};
+
+export type LucraAchievementsResponse = {
+  achievements: LucraAchievement[];
+};
+
+export type LucraMinigamesTriggerInput = {
+  game_id: string;
+  game_mode: "practice" | "1v1" | "free_for_all" | "tournament";
+  amount?: number;
+  matchup_id?: string;
+};
+
+export type LucraStartMinigamesSessionResponse = {
+  iframe_url: string;
+  matchup_id?: string | null;
+  session_id: string;
 };

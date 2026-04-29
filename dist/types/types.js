@@ -1,5 +1,6 @@
 export var LucraClientMessageType;
 (function (LucraClientMessageType) {
+    LucraClientMessageType["achievementsResponse"] = "achievementsResponse";
     LucraClientMessageType["activeMatchupStarted"] = "activeMatchupStarted";
     LucraClientMessageType["claimReward"] = "claimReward";
     LucraClientMessageType["convertToCredit"] = "convertToCredit";
@@ -12,11 +13,14 @@ export var LucraClientMessageType;
     LucraClientMessageType["matchupInviteUrl"] = "matchupInviteUrl";
     LucraClientMessageType["matchupStarted"] = "matchupStarted";
     LucraClientMessageType["navigationEvent"] = "navigationEvent";
+    LucraClientMessageType["startMinigamesSessionResponse"] = "startMinigamesSessionResponse";
     LucraClientMessageType["tournamentJoined"] = "tournamentJoined";
     LucraClientMessageType["userInfo"] = "userInfo";
+    LucraClientMessageType["initialized"] = "initialized";
 })(LucraClientMessageType || (LucraClientMessageType = {}));
 export var MessageTypeToLucraClient;
 (function (MessageTypeToLucraClient) {
+    MessageTypeToLucraClient["achievementsRequest"] = "achievementsRequest";
     MessageTypeToLucraClient["availableRewards"] = "availableRewards";
     MessageTypeToLucraClient["clientUserInfo"] = "clientUserInfo";
     MessageTypeToLucraClient["convertToCreditResponse"] = "convertToCreditResponse";

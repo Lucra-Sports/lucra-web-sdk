@@ -36,6 +36,23 @@ export class LucraClient extends LucraClientBase {
       }
       return;
     }
+    if (event.data.type === LucraClientMessageType.achievementsResponse) {
+      this._resolveAchievements(event.data.data);
+      return;
+    }
+    if (event.data.type === LucraClientMessageType.startMinigamesSessionResponse) {
+      const sourceWindow = event.source as Window | null;
+      if (sourceWindow) {
+        this._resolveTrigger(sourceWindow, event.data.data);
+      }
+      return;
+    }
+    if (event.data.type === LucraClientMessageType.userInfo) {
+      this._handleUserInfo(event.data.data);
+    }
+    if (event.data.type === LucraClientMessageType.initialized) {
+      this._handleInitialized(event.data.data);
+    }
     this.dispatchEvent(new CustomEvent(event.data.type, { detail: event.data.data }));
   };
 
@@ -56,6 +73,10 @@ export class LucraClient extends LucraClientBase {
         type: MessageTypeToLucraClient.enableExitLucra,
         body: true,
       });
+    }
+
+    if (type === "userInfo" && this._user) {
+      (listener as (data: LucraEventMap["userInfo"]) => void)(this._user);
     }
   }
 
