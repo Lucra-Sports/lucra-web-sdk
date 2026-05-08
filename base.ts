@@ -419,9 +419,18 @@ export class LucraClientBase extends EventTarget {
     });
   }
 
+  private _clearAchievements() {
+    if (this.achievementsTimer) {
+      clearTimeout(this.achievementsTimer);
+    }
+    this.achievementsResolve = undefined;
+    this.achievementsReject = undefined;
+    this.achievementsTimer = undefined;
+  }
+
   protected _resolveAchievements(data: LucraAchievementsResponse) {
-    clearTimeout(this.achievementsTimer);
     this.achievementsResolve?.(data);
+    this._clearAchievements();
   }
 
   protected _resolveTrigger(
@@ -451,18 +460,23 @@ export class LucraClientBase extends EventTarget {
 
   api = {
     achievements: (): Promise<LucraAchievementsResponse> => {
+      if (this.achievementsReject) {
+        this.achievementsReject("Cancelled by new achievements request");
+      }
+      this._clearAchievements();
+
       const promise = new Promise<LucraAchievementsResponse>((resolve, reject) => {
+        this.achievementsResolve = resolve;
+        this.achievementsReject = reject;
         this._sendMessage({
           type: MessageTypeToLucraClient.achievementsRequest,
           body: null,
         });
-        this.achievementsResolve = resolve;
-        this.achievementsReject = reject;
       });
-      const timer = setTimeout(() => {
+      this.achievementsTimer = setTimeout(() => {
         this.achievementsReject?.("Timeout");
+        this._clearAchievements();
       }, 15_000);
-      this.achievementsTimer = timer;
       return promise;
     },
   };

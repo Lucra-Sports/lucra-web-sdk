@@ -56,6 +56,7 @@ export declare class LucraClientBase extends EventTarget {
     show(): LucraClientBase;
     protected _sendMessage(message: any): this;
     protected _matchupInviteUrlResponse(data: LucraDeepLinkResponse): void;
+    private _clearAchievements;
     protected _resolveAchievements(data: LucraAchievementsResponse): void;
     protected _resolveTrigger(win: Window, data: LucraStartMinigamesSessionResponse): boolean;
     protected _handleInitialized(body: LucraInitializedBody): void;
