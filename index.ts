@@ -18,6 +18,7 @@ export type {
   LucraLoginSuccessBody,
   LucraMatchupInviteUrlTransformer,
   LucraAvailableRewards,
+  LucraAchievement,
   LucraNavigateRequest,
   LucraPage,
   LucraReward,
@@ -25,6 +26,8 @@ export type {
   SDKClientUser,
   LucraClientConstructor,
   LucraEventMap,
+  // LucraMinigamesTriggerInput,
+  // LucraStartMinigamesSessionResponse,
 } from "./types/types.js";
 
 export { LucraClient } from "./v1.js";
