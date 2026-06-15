@@ -9,6 +9,12 @@ import {
   type LucraClientConstructor,
   type LucraAvailableRewards,
   type LucraAchievementsResponse,
+  type LucraTournamentsResponse,
+  type LucraTournamentResponse,
+  type LucraTournamentLeaderboardInput,
+  type LucraTournamentLeaderboardResponse,
+  type LucraJoinTournamentResponse,
+  type LucraIsLoggedInResponse,
   type LucraPage,
   type LucraReward,
   type SDKLucraUser,
@@ -22,6 +28,14 @@ import {
   validatePhoneNumber,
   validateMetadata,
 } from "./utils.js";
+import { createApiRequest } from "./api-request.js";
+import { LucraUserNotLoggedIn } from "./errors.js";
+
+// Reason the in-flight isLoggedIn request is rejected with when a newer one
+// supersedes it (e.g. `loginSuccess` rebuilds `ready`). This is an internal
+// single-flight cancellation, not an auth failure, so `_createReadyPromise`
+// swallows it and defers to the rebuilt promise rather than surfacing it.
+const ISLOGGEDIN_CANCELLED = "Cancelled by new isLoggedIn request";
 
 type LucraNavigation = {
   profile: () => LucraClientBase;
@@ -34,11 +48,12 @@ type LucraNavigation = {
   deepLink: (url: string) => LucraClientBase;
 };
 
-// type LucraOpenNavigation = LucraNavigation & {
-//   minigamesTrigger: (
-//     input: LucraMinigamesTriggerInput
-//   ) => Promise<LucraStartMinigamesSessionResponse>;
-// };
+type LucraOpenNavigation = LucraNavigation & {
+  minigamesTrigger: (
+    input: LucraMinigamesTriggerInput
+  ) => Promise<LucraStartMinigamesSessionResponse>;
+  login: () => LucraClientBase;
+};
 
 type TriggerHandle = {
   iframe: HTMLIFrameElement;
@@ -56,21 +71,85 @@ export class LucraClientBase extends EventTarget {
   private messages: string[] = [];
   private locationId: string = "";
   private controller: AbortController = new AbortController();
-  private achievementsResolve: ((response: LucraAchievementsResponse) => void) | undefined;
-  private achievementsReject: ((reason?: string) => void) | undefined;
-  private achievementsTimer: ReturnType<typeof setTimeout> | undefined;
+  private _achievementsRequest = createApiRequest<LucraAchievementsResponse>({
+    type: MessageTypeToLucraClient.achievementsRequest,
+    cancelReason: "Cancelled by new achievements request",
+    sendMessage: (message) => this._sendMessage(message),
+  });
+  private _tournamentsRequest = createApiRequest<LucraTournamentsResponse>({
+    type: MessageTypeToLucraClient.tournamentsRequest,
+    cancelReason: "Cancelled by new tournaments request",
+    sendMessage: (message) => this._sendMessage(message),
+  });
+  private _tournamentRequest = createApiRequest<
+    LucraTournamentResponse,
+    { matchupId: string }
+  >({
+    type: MessageTypeToLucraClient.tournamentRequest,
+    cancelReason: "Cancelled by new tournament request",
+    sendMessage: (message) => this._sendMessage(message),
+  });
+  private _tournamentLeaderboardRequest = createApiRequest<
+    LucraTournamentLeaderboardResponse,
+    LucraTournamentLeaderboardInput
+  >({
+    type: MessageTypeToLucraClient.tournamentLeaderboardRequest,
+    cancelReason: "Cancelled by new tournamentLeaderboard request",
+    sendMessage: (message) => this._sendMessage(message),
+  });
+  private _joinTournamentRequest = createApiRequest<
+    LucraJoinTournamentResponse,
+    { matchupId: string }
+  >({
+    type: MessageTypeToLucraClient.joinTournamentRequest,
+    cancelReason: "Cancelled by new joinTournament request",
+    sendMessage: (message) => this._sendMessage(message),
+  });
+  private _isLoggedInRequest = createApiRequest<LucraIsLoggedInResponse>({
+    type: MessageTypeToLucraClient.isLoggedInRequest,
+    cancelReason: ISLOGGEDIN_CANCELLED,
+    sendMessage: (message) => this._sendMessage(message),
+  });
   protected triggerFrames: Map<Window, TriggerHandle> = new Map();
   protected _user: SDKLucraUser | null = null;
   protected _isInitialized: boolean = false;
   private _readyResolve!: () => void;
   private _readyReject!: (reason?: unknown) => void;
+  private _initializedPromise: Promise<void> = this._createInitializedPromise();
   private _readyPromise: Promise<void> = this._createReadyPromise();
 
-  private _createReadyPromise(): Promise<void> {
+  private _createInitializedPromise(): Promise<void> {
     return new Promise<void>((resolve, reject) => {
       this._readyResolve = resolve;
       this._readyReject = reject;
     });
+  }
+
+  // `ready` resolves once the iframe has initialized and the user is logged in.
+  // It rejects with the initialization failure body if initialization fails, or
+  // with LucraUserNotLoggedIn if the user is not logged in.
+  private _createReadyPromise(): Promise<void> {
+    const promise: Promise<void> = this._initializedPromise
+      .then(() => this._assertLoggedIn())
+      .catch((reason: unknown) => {
+        // A newer isLoggedIn request superseded ours (e.g. `loginSuccess`
+        // rebuilt `ready`), cancelling the in-flight one. That is not an auth
+        // failure, so defer to the current promise -- which reflects the latest
+        // login state -- instead of surfacing the cancellation to callers still
+        // awaiting this now-superseded promise.
+        if (reason === ISLOGGEDIN_CANCELLED && this._readyPromise !== promise) {
+          return this._readyPromise;
+        }
+        throw reason;
+      });
+    return promise;
+  }
+
+  private async _assertLoggedIn(): Promise<void> {
+    const { isLoggedIn } = await this._isLoggedInRequest.send();
+    if (!isLoggedIn) {
+      throw new LucraUserNotLoggedIn();
+    }
   }
 
   get ready(): Promise<void> {
@@ -86,7 +165,6 @@ export class LucraClientBase extends EventTarget {
   }
 
   private iframeUrlOrigin() {
-    //console.log('iframeUrlOrigin', this.url)
     return new URL(this.url).origin;
   }
 
@@ -326,7 +404,7 @@ export class LucraClientBase extends EventTarget {
     };
   }
 
-  open(element: HTMLElement, phoneNumber?: string, options?: { hidden?: boolean }): LucraNavigation {
+  open(element: HTMLElement, phoneNumber?: string, options?: { hidden?: boolean }): LucraOpenNavigation {
     return {
       profile: () => {
         const params = addDefinedSearchParams({ phoneNumber });
@@ -367,8 +445,20 @@ export class LucraClientBase extends EventTarget {
           hidden: options?.hidden,
         });
       },
-      // minigamesTrigger: (input: LucraMinigamesTriggerInput) =>
-      //   this._minigamesTrigger(element, input),
+      login: () => {
+        const params = addDefinedSearchParams({ phoneNumber });
+        params.set("login", "true");
+        // When the user is not logged in the in-app navigate listener isn't subscribed yet,
+        // so a navigate message would be dropped; reload src to reliably reach the login screen.
+        if (this.iframe) {
+          this.url = this._buildIframeUrl({ path: "", params }).toString();
+          this.iframe.src = this.url;
+          return this.show();
+        }
+        return this._open({ element, path: "", params });
+      },
+      minigamesTrigger: (input: LucraMinigamesTriggerInput) =>
+        this._minigamesTrigger(element, input),
     };
   }
 
@@ -379,6 +469,7 @@ export class LucraClientBase extends EventTarget {
     this.iframe = undefined;
     this._user = null;
     this._isInitialized = false;
+    this._initializedPromise = this._createInitializedPromise();
     this._readyPromise = this._createReadyPromise();
   }
 
@@ -419,18 +510,28 @@ export class LucraClientBase extends EventTarget {
     });
   }
 
-  private _clearAchievements() {
-    if (this.achievementsTimer) {
-      clearTimeout(this.achievementsTimer);
-    }
-    this.achievementsResolve = undefined;
-    this.achievementsReject = undefined;
-    this.achievementsTimer = undefined;
+  protected _resolveAchievements(data: LucraAchievementsResponse) {
+    this._achievementsRequest.resolve(data);
   }
 
-  protected _resolveAchievements(data: LucraAchievementsResponse) {
-    this.achievementsResolve?.(data);
-    this._clearAchievements();
+  protected _resolveTournaments(data: LucraTournamentsResponse) {
+    this._tournamentsRequest.resolve(data);
+  }
+
+  protected _resolveTournament(data: LucraTournamentResponse) {
+    this._tournamentRequest.resolve(data);
+  }
+
+  protected _resolveTournamentLeaderboard(data: LucraTournamentLeaderboardResponse) {
+    this._tournamentLeaderboardRequest.resolve(data);
+  }
+
+  protected _resolveJoinTournament(data: LucraJoinTournamentResponse) {
+    this._joinTournamentRequest.resolve(data);
+  }
+
+  protected _resolveIsLoggedIn(data: LucraIsLoggedInResponse) {
+    this._isLoggedInRequest.resolve(data);
   }
 
   protected _resolveTrigger(
@@ -458,27 +559,31 @@ export class LucraClientBase extends EventTarget {
     this._user = body;
   }
 
-  api = {
-    achievements: (): Promise<LucraAchievementsResponse> => {
-      if (this.achievementsReject) {
-        this.achievementsReject("Cancelled by new achievements request");
-      }
-      this._clearAchievements();
+  // A logged-out user makes `ready` reject with LucraUserNotLoggedIn, and that
+  // rejection is cached on `_readyPromise`. Once the user logs in, rebuild the
+  // promise so it re-runs `_assertLoggedIn` against the now-authenticated session.
+  protected _handleLoginSuccess() {
+    this._readyPromise = this._createReadyPromise();
+  }
 
-      const promise = new Promise<LucraAchievementsResponse>((resolve, reject) => {
-        this.achievementsResolve = resolve;
-        this.achievementsReject = reject;
-        this._sendMessage({
-          type: MessageTypeToLucraClient.achievementsRequest,
-          body: null,
-        });
-      });
-      this.achievementsTimer = setTimeout(() => {
-        this.achievementsReject?.("Timeout");
-        this._clearAchievements();
-      }, 15_000);
-      return promise;
-    },
+  api = {
+    achievements: (): Promise<LucraAchievementsResponse> =>
+      this._achievementsRequest.send(),
+    tournaments: (): Promise<LucraTournamentsResponse> =>
+      this._tournamentsRequest.send(),
+    tournament: (matchupId: string): Promise<LucraTournamentResponse> =>
+      this._tournamentRequest.send({ matchupId }),
+    tournamentLeaderboard: (
+      matchupId: string,
+      pagination?: { limit?: number; offset?: number }
+    ): Promise<LucraTournamentLeaderboardResponse> =>
+      this._tournamentLeaderboardRequest.send({
+        matchupId,
+        limit: pagination?.limit,
+        offset: pagination?.offset,
+      }),
+    joinTournament: (tournamentId: string): Promise<LucraJoinTournamentResponse> =>
+      this._joinTournamentRequest.send({ matchupId: tournamentId }),
   };
 
   sendMessage: LucraClientSendMessage = {

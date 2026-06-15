@@ -22,8 +22,13 @@ export enum LucraClientMessageType {
   navigationEvent = "navigationEvent",
   startMinigamesSessionResponse = "startMinigamesSessionResponse",
   tournamentJoined = "tournamentJoined",
+  tournamentsResponse = "tournamentsResponse",
+  tournamentResponse = "tournamentResponse",
+  tournamentLeaderboardResponse = "tournamentLeaderboardResponse",
+  joinTournamentResponse = "joinTournamentResponse",
   userInfo = "userInfo",
-  initialized = "initialized"
+  initialized = "initialized",
+  isLoggedInResponse = "isLoggedInResponse"
 }
 
 export enum MessageTypeToLucraClient {
@@ -36,6 +41,11 @@ export enum MessageTypeToLucraClient {
   enableConvertToCredit = "enableConvertToCredit",
   enableExitLucra = "enableExitLucra",
   navigate = "navigate",
+  tournamentsRequest = "tournamentsRequest",
+  tournamentRequest = "tournamentRequest",
+  tournamentLeaderboardRequest = "tournamentLeaderboardRequest",
+  joinTournamentRequest = "joinTournamentRequest",
+  isLoggedInRequest = "isLoggedInRequest",
 }
 
 export type LucraConvertToCreditResponse = {
@@ -332,6 +342,214 @@ export type LucraAchievement = {
 
 export type LucraAchievementsResponse = {
   achievements: LucraAchievement[];
+};
+
+// ---------------------------------------------------------------------------
+// Tournament wire shapes.
+//
+// These mirror the raw GraphQL types returned by lucra-web-app verbatim
+// (snake_case where the schema is snake_case, camelCase only where the schema
+// itself is). lucra-web-app performs no mapping; consumers reshape into their
+// own view models.
+// ---------------------------------------------------------------------------
+
+// List item: mirrors RecommendedPoolTournamentCard (get_recommended_pool_tournaments).
+export type LucraTournament = {
+  matchupId: string;
+  canJoinTournament?: boolean | null;
+  matchup?: {
+    starts_at?: string | null;
+    expires_at?: string | null;
+    pool_tournament_details?: {
+      game_id?: string | null;
+      title: string;
+      buy_in_amount: number;
+      icon_url?: string | null;
+      type: string;
+    } | null;
+    pool_payout_reward_structures: {
+      place: number;
+      value?: number | null;
+      type: string;
+    }[];
+    pool_tournament_leaderboard_aggregate: {
+      aggregate?: { count: number } | null;
+    };
+  } | null;
+};
+
+export type LucraTournamentsResponse = {
+  tournaments: LucraTournament[];
+};
+
+// Leaderboard: mirrors UITournamentLeaderboard / UITournamentLeaderboardRow.
+export type LucraLeaderboardRow = {
+  name: string;
+  payout?: string | null;
+  points?: string | null;
+  rank?: number | null;
+  userId: string;
+};
+
+export type LucraLeaderboardColumn = {
+  label: string;
+  name: string;
+};
+
+export type LucraLeaderboardPagination = {
+  limit: number;
+  offset: number;
+  total_count: number;
+};
+
+export type LucraTournamentLeaderboard = {
+  columns: LucraLeaderboardColumn[];
+  pagination: LucraLeaderboardPagination;
+  rows: LucraLeaderboardRow[];
+};
+
+export type LucraTournamentLeaderboardInput = {
+  matchupId: string;
+  limit?: number;
+  offset?: number;
+};
+
+// Mirrors UITournamentByIdResponse: one raw (unmasked) ui_tournament_details
+// page. The consumer's infinite query merges leaderboard rows across pages,
+// exactly like the app's UITournamentLeaderboardInfiniteQueryOptions select.
+export type LucraTournamentLeaderboardResponse = {
+  ui_tournament_details: LucraTournamentDetail | null;
+};
+
+// Detail: mirrors UITournament (ui_tournament_details) and its nested types.
+export type LucraTournamentTimer = {
+  caption: string;
+  state: string;
+};
+
+export type LucraTournamentGame = {
+  game_id?: string | null;
+  minigame_enabled: boolean;
+};
+
+export type LucraTournamentHowToPlayStep = {
+  step: number;
+  text: string;
+};
+
+export type LucraTournamentConfirmationTerm = {
+  description: string;
+  title: string;
+};
+
+export type LucraTournamentNotice = {
+  affected_fields: string[];
+  message: string;
+  type: string;
+};
+
+export type LucraTournamentAttemptScores = {
+  attempt: number;
+  is_best?: boolean | null;
+  score?: number | null;
+};
+
+export type LucraTournamentAttemptData = {
+  attempts_remaining?: number | null;
+  can_join_tournament: boolean;
+  icon_type?: string | null;
+  is_replayable: boolean;
+  modal_title_text?: string | null;
+  play_again_recommendation_text?: string | null;
+  play_again_recommendation_title?: string | null;
+  present_to_user: boolean;
+  rank_variation?: number | null;
+  remaining_attempts_text?: string | null;
+  scores: LucraTournamentAttemptScores[];
+  user_present: boolean;
+};
+
+export type LucraTournamentCatalogReward = {
+  banner_icon_url?: string | null;
+  config: unknown;
+  descriptor?: string | null;
+  disclaimer?: string | null;
+  icon_url?: string | null;
+  id: string;
+  title: string;
+  type: string;
+};
+
+export type LucraTournamentEarnedReward = {
+  id: string;
+  place: number;
+  reward: LucraTournamentCatalogReward;
+};
+
+export type LucraTournamentPayoutReward = {
+  amount_label?: string | null;
+  catalog_reward?: LucraTournamentCatalogReward | null;
+  end_place?: number | null;
+  place?: number | null;
+  place_label?: string | null;
+  position_label?: string | null;
+  reward_label?: string | null;
+  value?: number | null;
+};
+
+export type LucraTournamentPayoutStructure = {
+  description: string;
+  is_percentage_payout: boolean;
+  jackpot_amount?: string | null;
+  jackpot_descriptor?: string | null;
+  label_description?: string | null;
+  label_title?: string | null;
+  no_payout: boolean;
+  rewards: LucraTournamentPayoutReward[];
+  show_amount: boolean;
+  title: string;
+};
+
+export type LucraTournamentDetail = {
+  attempt_data?: LucraTournamentAttemptData | null;
+  buy_in_amount?: number | null;
+  buy_in_amount_numeric?: number | string | null;
+  description?: string | null;
+  earned_rewards: LucraTournamentEarnedReward[];
+  expires_at?: string | null;
+  free_buy_in: boolean;
+  game?: LucraTournamentGame | null;
+  how_to_play?: LucraTournamentHowToPlayStep[] | null;
+  image_url?: string | null;
+  is_completed: boolean;
+  is_expired: boolean;
+  is_not_started: boolean;
+  is_private: boolean;
+  leaderboard?: LucraTournamentLeaderboard | null;
+  max_participants?: number | null;
+  notices: LucraTournamentNotice[];
+  payout_structure?: LucraTournamentPayoutStructure | null;
+  reward_type?: string | null;
+  starts_at?: string | null;
+  status: string;
+  terms: LucraTournamentConfirmationTerm[];
+  timer?: LucraTournamentTimer | null;
+  title: string;
+  total_participants?: number | null;
+  user_leaderboard_row?: LucraLeaderboardRow | null;
+  visibility_level?: string | null;
+};
+
+export type LucraTournamentResponse = {
+  tournament: LucraTournamentDetail | null;
+};
+
+export type LucraJoinTournamentResponse = {
+  matchupId: string;
+};
+
+export type LucraIsLoggedInResponse = {
+  isLoggedIn: boolean;
 };
 
 export type LucraMinigamesTriggerInput = {

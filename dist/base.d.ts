@@ -1,4 +1,4 @@
-import { type LucraClientSendMessage, type LucraDeepLinkResponse, type LucraClientConstructor, type LucraAchievementsResponse, type SDKLucraUser, type LucraStartMinigamesSessionResponse, type LucraInitializedBody } from "./types/types.js";
+import { type LucraClientSendMessage, type LucraDeepLinkResponse, type LucraClientConstructor, type LucraAchievementsResponse, type LucraTournamentsResponse, type LucraTournamentResponse, type LucraTournamentLeaderboardResponse, type LucraJoinTournamentResponse, type LucraIsLoggedInResponse, type SDKLucraUser, type LucraMinigamesTriggerInput, type LucraStartMinigamesSessionResponse, type LucraInitializedBody } from "./types/types.js";
 type LucraNavigation = {
     profile: () => LucraClientBase;
     home: (locationId?: string) => LucraClientBase;
@@ -8,6 +8,10 @@ type LucraNavigation = {
     matchupDetails: (matchupId: string) => LucraClientBase;
     tournamentDetails: (matchupId: string) => LucraClientBase;
     deepLink: (url: string) => LucraClientBase;
+};
+type LucraOpenNavigation = LucraNavigation & {
+    minigamesTrigger: (input: LucraMinigamesTriggerInput) => Promise<LucraStartMinigamesSessionResponse>;
+    login: () => LucraClientBase;
 };
 type TriggerHandle = {
     iframe: HTMLIFrameElement;
@@ -24,16 +28,22 @@ export declare class LucraClientBase extends EventTarget {
     private messages;
     private locationId;
     private controller;
-    private achievementsResolve;
-    private achievementsReject;
-    private achievementsTimer;
+    private _achievementsRequest;
+    private _tournamentsRequest;
+    private _tournamentRequest;
+    private _tournamentLeaderboardRequest;
+    private _joinTournamentRequest;
+    private _isLoggedInRequest;
     protected triggerFrames: Map<Window, TriggerHandle>;
     protected _user: SDKLucraUser | null;
     protected _isInitialized: boolean;
     private _readyResolve;
     private _readyReject;
+    private _initializedPromise;
     private _readyPromise;
+    private _createInitializedPromise;
     private _createReadyPromise;
+    private _assertLoggedIn;
     get ready(): Promise<void>;
     get isInitialized(): boolean;
     get user(): SDKLucraUser | null;
@@ -49,20 +59,32 @@ export declare class LucraClientBase extends EventTarget {
     redirect(): LucraNavigation;
     open(element: HTMLElement, phoneNumber?: string, options?: {
         hidden?: boolean;
-    }): LucraNavigation;
+    }): LucraOpenNavigation;
     close(): void;
     moveTo(element: HTMLElement): LucraClientBase;
     hide(): LucraClientBase;
     show(): LucraClientBase;
     protected _sendMessage(message: any): this;
     protected _matchupInviteUrlResponse(data: LucraDeepLinkResponse): void;
-    private _clearAchievements;
     protected _resolveAchievements(data: LucraAchievementsResponse): void;
+    protected _resolveTournaments(data: LucraTournamentsResponse): void;
+    protected _resolveTournament(data: LucraTournamentResponse): void;
+    protected _resolveTournamentLeaderboard(data: LucraTournamentLeaderboardResponse): void;
+    protected _resolveJoinTournament(data: LucraJoinTournamentResponse): void;
+    protected _resolveIsLoggedIn(data: LucraIsLoggedInResponse): void;
     protected _resolveTrigger(win: Window, data: LucraStartMinigamesSessionResponse): boolean;
     protected _handleInitialized(body: LucraInitializedBody): void;
     protected _handleUserInfo(body: SDKLucraUser): void;
+    protected _handleLoginSuccess(): void;
     api: {
         achievements: () => Promise<LucraAchievementsResponse>;
+        tournaments: () => Promise<LucraTournamentsResponse>;
+        tournament: (matchupId: string) => Promise<LucraTournamentResponse>;
+        tournamentLeaderboard: (matchupId: string, pagination?: {
+            limit?: number;
+            offset?: number;
+        }) => Promise<LucraTournamentLeaderboardResponse>;
+        joinTournament: (tournamentId: string) => Promise<LucraJoinTournamentResponse>;
     };
     sendMessage: LucraClientSendMessage;
 }

@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## [v1.3.0]
+
+### Added
+
+- `api.tournaments()` method returning recommended pool tournaments
+- `api.tournament(matchupId)` method returning a single tournament's full detail
+- `api.tournamentLeaderboard(matchupId, pagination?)` method returning a paginated leaderboard page
+- `api.joinTournament(tournamentId)` method to join a tournament by id
+- New tournament types: `LucraTournament`, `LucraTournamentDetail`, `LucraTournamentResponse`, `LucraTournamentLeaderboard`, `LucraTournamentLeaderboardInput`, `LucraTournamentLeaderboardResponse`, `LucraLeaderboardRow`, `LucraLeaderboardColumn`, `LucraLeaderboardPagination`, `LucraTournamentPayoutStructure`, `LucraTournamentPayoutReward`, `LucraTournamentCatalogReward`, `LucraTournamentEarnedReward`, `LucraTournamentAttemptData`, `LucraTournamentAttemptScores`, `LucraTournamentTimer`, `LucraTournamentGame`, `LucraTournamentHowToPlayStep`, `LucraTournamentConfirmationTerm`, `LucraTournamentNotice`, `LucraJoinTournamentResponse`
+
 ## [v1.2.0]
 
 ### Added

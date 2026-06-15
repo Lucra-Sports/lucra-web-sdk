@@ -15,8 +15,13 @@ export var LucraClientMessageType;
     LucraClientMessageType["navigationEvent"] = "navigationEvent";
     LucraClientMessageType["startMinigamesSessionResponse"] = "startMinigamesSessionResponse";
     LucraClientMessageType["tournamentJoined"] = "tournamentJoined";
+    LucraClientMessageType["tournamentsResponse"] = "tournamentsResponse";
+    LucraClientMessageType["tournamentResponse"] = "tournamentResponse";
+    LucraClientMessageType["tournamentLeaderboardResponse"] = "tournamentLeaderboardResponse";
+    LucraClientMessageType["joinTournamentResponse"] = "joinTournamentResponse";
     LucraClientMessageType["userInfo"] = "userInfo";
     LucraClientMessageType["initialized"] = "initialized";
+    LucraClientMessageType["isLoggedInResponse"] = "isLoggedInResponse";
 })(LucraClientMessageType || (LucraClientMessageType = {}));
 export var MessageTypeToLucraClient;
 (function (MessageTypeToLucraClient) {
@@ -29,6 +34,11 @@ export var MessageTypeToLucraClient;
     MessageTypeToLucraClient["enableConvertToCredit"] = "enableConvertToCredit";
     MessageTypeToLucraClient["enableExitLucra"] = "enableExitLucra";
     MessageTypeToLucraClient["navigate"] = "navigate";
+    MessageTypeToLucraClient["tournamentsRequest"] = "tournamentsRequest";
+    MessageTypeToLucraClient["tournamentRequest"] = "tournamentRequest";
+    MessageTypeToLucraClient["tournamentLeaderboardRequest"] = "tournamentLeaderboardRequest";
+    MessageTypeToLucraClient["joinTournamentRequest"] = "joinTournamentRequest";
+    MessageTypeToLucraClient["isLoggedInRequest"] = "isLoggedInRequest";
 })(MessageTypeToLucraClient || (MessageTypeToLucraClient = {}));
 var account_status_types_enum;
 (function (account_status_types_enum) {
