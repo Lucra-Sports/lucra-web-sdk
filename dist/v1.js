@@ -34,6 +34,26 @@ export class LucraClient extends LucraClientBase {
             this._resolveAchievements(event.data.data);
             return;
         }
+        if (event.data.type === LucraClientMessageType.tournamentsResponse) {
+            this._resolveTournaments(event.data.data);
+            return;
+        }
+        if (event.data.type === LucraClientMessageType.tournamentResponse) {
+            this._resolveTournament(event.data.data);
+            return;
+        }
+        if (event.data.type === LucraClientMessageType.tournamentLeaderboardResponse) {
+            this._resolveTournamentLeaderboard(event.data.data);
+            return;
+        }
+        if (event.data.type === LucraClientMessageType.joinTournamentResponse) {
+            this._resolveJoinTournament(event.data.data);
+            return;
+        }
+        if (event.data.type === LucraClientMessageType.isLoggedInResponse) {
+            this._resolveIsLoggedIn(event.data.data);
+            return;
+        }
         if (event.data.type === LucraClientMessageType.startMinigamesSessionResponse) {
             const sourceWindow = event.source;
             if (sourceWindow) {
@@ -46,6 +66,9 @@ export class LucraClient extends LucraClientBase {
         }
         if (event.data.type === LucraClientMessageType.initialized) {
             this._handleInitialized(event.data.data);
+        }
+        if (event.data.type === LucraClientMessageType.loginSuccess) {
+            this._handleLoginSuccess();
         }
         this.dispatchEvent(new CustomEvent(event.data.type, { detail: event.data.data }));
     };
