@@ -2,6 +2,7 @@ import { MessageTypeToLucraClient, } from "./types/types.js";
 import { LucraClientIframeId, States } from "./constants.js";
 import { addDefinedSearchParams, validatePhoneNumber, validateMetadata, } from "./utils.js";
 import { createApiRequest } from "./api-request.js";
+import { createDialog } from "./dialog.js";
 import { LucraUserNotLoggedIn } from "./errors.js";
 // Reason the in-flight isLoggedIn request is rejected with when a newer one
 // supersedes it (e.g. `loginSuccess` rebuilds `ready`). This is an internal
@@ -51,6 +52,9 @@ export class LucraClientBase extends EventTarget {
     triggerFrames = new Map();
     _user = null;
     _isInitialized = false;
+    // The element the iframe currently lives in, as designated by open()/moveTo().
+    _host = null;
+    _activeDialog = null;
     _readyResolve;
     _readyReject;
     _initializedPromise = this._createInitializedPromise();
@@ -149,6 +153,7 @@ export class LucraClientBase extends EventTarget {
             iframe.allow =
                 "geolocation *; web-share; accelerometer *; bluetooth *; gyroscope *; clipboard-write *; payment;";
             element.appendChild(iframe);
+            this._host = element;
             if (hidden) {
                 iframe.style.display = "none";
             }
@@ -246,6 +251,7 @@ export class LucraClientBase extends EventTarget {
     redirect() {
         return {
             profile: () => this._redirect("app/profile"),
+            wallet: () => this._redirect("app/wallet"),
             home: (locationId) => {
                 const params = new URLSearchParams();
                 if (locationId !== undefined) {
@@ -272,11 +278,64 @@ export class LucraClientBase extends EventTarget {
             },
         };
     }
+    // Opens any route as a dialog. Reuses redirect()'s in-place navigation (no
+    // re-parenting, so no reload) and presents the iframe's host as an overlay.
+    dialog() {
+        const nav = this.redirect();
+        const present = (navigate) => this._presentDialog(navigate);
+        return {
+            profile: () => present(() => nav.profile()),
+            wallet: () => present(() => nav.wallet()),
+            home: (locationId) => present(() => nav.home(locationId)),
+            deposit: () => present(() => nav.deposit()),
+            withdraw: () => present(() => nav.withdraw()),
+            createMatchup: (gameId) => present(() => nav.createMatchup(gameId)),
+            matchupDetails: (matchupId) => present(() => nav.matchupDetails(matchupId)),
+            tournamentDetails: (matchupId) => present(() => nav.tournamentDetails(matchupId)),
+            deepLink: (url) => present(() => nav.deepLink(url)),
+        };
+    }
+    // Presents the iframe's host as a dialog: shows the iframe, enables the in-app
+    // close (X), and navigates in place (no re-parenting, so no reload). Tracks the
+    // open dialog so exitLucra, Escape, and close() all dismiss it.
+    _presentDialog(navigate) {
+        const host = this._host;
+        if (!this.iframe || !host) {
+            throw new Error("Cannot open a dialog. LucraClient is not open.");
+        }
+        this._activeDialog?.close();
+        const dialog = createDialog(host, () => {
+            this.show();
+            this._sendMessage({
+                type: MessageTypeToLucraClient.enableExitLucra,
+                body: true,
+            });
+            navigate();
+        }, () => this.hide());
+        dialog.onClose(() => {
+            if (this._activeDialog === dialog)
+                this._activeDialog = null;
+        });
+        this._activeDialog = dialog;
+        return dialog;
+    }
+    // Closes an open dialog when the in-app close (exitLucra) fires. Returns true
+    // when a dialog handled it, so callers can avoid surfacing exitLucra further.
+    _closeActiveDialog() {
+        if (!this._activeDialog)
+            return false;
+        this._activeDialog.close();
+        return true;
+    }
     open(element, phoneNumber, options) {
         return {
             profile: () => {
                 const params = addDefinedSearchParams({ phoneNumber });
                 return this._open({ element, path: "app/profile", params, hidden: options?.hidden });
+            },
+            wallet: () => {
+                const params = addDefinedSearchParams({ phoneNumber });
+                return this._open({ element, path: "app/wallet", params, hidden: options?.hidden });
             },
             home: (locationId) => {
                 const params = addDefinedSearchParams({ locationId, phoneNumber });
@@ -331,6 +390,8 @@ export class LucraClientBase extends EventTarget {
     close() {
         this.controller.abort("Closing LucraClient");
         this.controller = new AbortController();
+        this._activeDialog?.close();
+        this._host = null;
         this.iframe?.remove();
         this.iframe = undefined;
         this._user = null;
@@ -341,6 +402,7 @@ export class LucraClientBase extends EventTarget {
     moveTo(element) {
         if (this.iframe) {
             element.appendChild(this.iframe);
+            this._host = element;
         }
         return this;
     }
