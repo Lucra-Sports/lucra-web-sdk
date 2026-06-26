@@ -1,6 +1,7 @@
-import { type LucraClientSendMessage, type LucraDeepLinkResponse, type LucraClientConstructor, type LucraAchievementsResponse, type LucraTournamentsResponse, type LucraTournamentResponse, type LucraTournamentLeaderboardResponse, type LucraJoinTournamentResponse, type LucraIsLoggedInResponse, type SDKLucraUser, type LucraMinigamesTriggerInput, type LucraStartMinigamesSessionResponse, type LucraInitializedBody } from "./types/types.js";
+import { type LucraClientSendMessage, type LucraDeepLinkResponse, type LucraClientConstructor, type LucraAchievementsResponse, type LucraTournamentsResponse, type LucraTournamentResponse, type LucraTournamentLeaderboardResponse, type LucraJoinTournamentResponse, type LucraIsLoggedInResponse, type SDKLucraUser, type LucraMinigamesTriggerInput, type LucraStartMinigamesSessionResponse, type LucraInitializedBody, type LucraDialog } from "./types/types.js";
 type LucraNavigation = {
     profile: () => LucraClientBase;
+    wallet: () => LucraClientBase;
     home: (locationId?: string) => LucraClientBase;
     deposit: () => LucraClientBase;
     withdraw: () => LucraClientBase;
@@ -12,6 +13,17 @@ type LucraNavigation = {
 type LucraOpenNavigation = LucraNavigation & {
     minigamesTrigger: (input: LucraMinigamesTriggerInput) => Promise<LucraStartMinigamesSessionResponse>;
     login: () => LucraClientBase;
+};
+type LucraDialogNavigation = {
+    profile: () => LucraDialog;
+    wallet: () => LucraDialog;
+    home: (locationId?: string) => LucraDialog;
+    deposit: () => LucraDialog;
+    withdraw: () => LucraDialog;
+    createMatchup: (gameId?: string) => LucraDialog;
+    matchupDetails: (matchupId: string) => LucraDialog;
+    tournamentDetails: (matchupId: string) => LucraDialog;
+    deepLink: (url: string) => LucraDialog;
 };
 type TriggerHandle = {
     iframe: HTMLIFrameElement;
@@ -37,6 +49,8 @@ export declare class LucraClientBase extends EventTarget {
     protected triggerFrames: Map<Window, TriggerHandle>;
     protected _user: SDKLucraUser | null;
     protected _isInitialized: boolean;
+    private _host;
+    private _activeDialog;
     private _readyResolve;
     private _readyReject;
     private _initializedPromise;
@@ -57,6 +71,9 @@ export declare class LucraClientBase extends EventTarget {
     private _redirect;
     logout(): LucraClientBase;
     redirect(): LucraNavigation;
+    dialog(): LucraDialogNavigation;
+    private _presentDialog;
+    protected _closeActiveDialog(): boolean;
     open(element: HTMLElement, phoneNumber?: string, options?: {
         hidden?: boolean;
     }): LucraOpenNavigation;

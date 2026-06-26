@@ -70,6 +70,10 @@ export class LucraClient extends LucraClientBase {
         if (event.data.type === LucraClientMessageType.loginSuccess) {
             this._handleLoginSuccess();
         }
+        if (event.data.type === LucraClientMessageType.exitLucra &&
+            this._closeActiveDialog()) {
+            return;
+        }
         this.dispatchEvent(new CustomEvent(event.data.type, { detail: event.data.data }));
     };
     on(type, listener) {

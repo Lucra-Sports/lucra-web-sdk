@@ -99,6 +99,10 @@ export type LucraLoginSuccessBody = SDKLucraUser;
 export type LucraInitializedBody = {
     success: boolean;
 };
+export type LucraDialog = {
+    close: () => void;
+    onClose: (callback: () => void) => void;
+};
 export type LucraClientConstructor = {
     apiKey: string;
     tenantId: string;

@@ -89,6 +89,12 @@ export type LucraClaimRewardBody = { reward: LucraReward };
 export type LucraLoginSuccessBody = SDKLucraUser;
 export type LucraInitializedBody = { success: boolean };
 
+// Handle returned when a Lucra route is opened as a dialog (see client.dialog()).
+export type LucraDialog = {
+  close: () => void;
+  onClose: (callback: () => void) => void;
+};
+
 export type LucraClientConstructor = {
   apiKey: string;
   tenantId: string;

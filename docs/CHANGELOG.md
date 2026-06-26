@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## [v1.4.0]
+
+### Added
+
+- `dialog()` navigation that opens any route as a fullscreen overlay without reloading the iframe (it styles the host element in place and navigates via message). Returns a `LucraDialog` handle (`close()`, `onClose(cb)`) and closes on the in-app close, `Escape`, or `close()`. New type: `LucraDialog`
+- `wallet()` navigation method on `open()`, `redirect()`, and `dialog()` for the `app/wallet` route
+
 ## [v1.3.0]
 
 ### Added
@@ -26,6 +33,7 @@
 - `hide()` method to make the Lucra iframe invisible without removing it from the DOM
 - `show()` method to restore the Lucra iframe to visible
 - `moveTo(element)` method to move the Lucra iframe to a different parent element without reloading
+  - Correction (v1.4.0): re-parenting an iframe reloads its contents, so `moveTo` reloads the Lucra page. Use [`dialog()`](1.3_lucraflows.md#dialogs) to present a route as an overlay without reloading.
 - `open()` now accepts an optional third argument `options?: { hidden?: boolean }` to start the experience in a hidden state
 
 ## [v1.0.0]

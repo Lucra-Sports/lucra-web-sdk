@@ -50,6 +50,7 @@ export type {
   LucraEventMap,
   LucraMinigamesTriggerInput,
   LucraStartMinigamesSessionResponse,
+  LucraDialog,
 } from "./types/types.js";
 
 export { LucraClient } from "./v1.js";
