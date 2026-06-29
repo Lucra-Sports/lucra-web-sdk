@@ -104,6 +104,15 @@ export type LucraDialog = {
     close: () => void;
     onClose: (callback: () => void) => void;
 };
+export declare const LUCRA_POPUP_MESSAGE_TYPE = "LucraPopupMessage";
+export type LucraPopupResult = {
+    toastType: "success" | "error";
+    message: string;
+};
+export type LucraPopup = {
+    close: () => void;
+    onClose: (callback: (result?: LucraPopupResult) => void) => void;
+};
 export type LucraClientConstructor = {
     apiKey: string;
     tenantId: string;

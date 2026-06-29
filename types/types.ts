@@ -96,6 +96,24 @@ export type LucraDialog = {
   onClose: (callback: () => void) => void;
 };
 
+// Message the Lucra web app posts to the opener when a deposit finishes in a
+// popup (see client.popup()). The envelope is flat (no nested `data`).
+export const LUCRA_POPUP_MESSAGE_TYPE = "LucraPopupMessage";
+
+// Outcome of a deposit performed in a popup, surfaced via LucraPopup.onClose.
+export type LucraPopupResult = {
+  toastType: "success" | "error";
+  message: string;
+};
+
+// Handle returned when a Lucra route is opened in a real popup window (see
+// client.popup()). onClose receives the deposit result when one was reported
+// before the popup closed, or undefined when the user dismissed it.
+export type LucraPopup = {
+  close: () => void;
+  onClose: (callback: (result?: LucraPopupResult) => void) => void;
+};
+
 export type LucraClientConstructor = {
   apiKey: string;
   tenantId: string;

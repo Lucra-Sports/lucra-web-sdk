@@ -52,6 +52,8 @@ export type {
   LucraMinigamesTriggerInput,
   LucraStartMinigamesSessionResponse,
   LucraDialog,
+  LucraPopup,
+  LucraPopupResult,
 } from "./types/types.js";
 
 export { LucraApiErrorCode } from "./types/types.js";

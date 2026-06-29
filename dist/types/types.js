@@ -41,6 +41,9 @@ export var MessageTypeToLucraClient;
     MessageTypeToLucraClient["joinTournamentRequest"] = "joinTournamentRequest";
     MessageTypeToLucraClient["isLoggedInRequest"] = "isLoggedInRequest";
 })(MessageTypeToLucraClient || (MessageTypeToLucraClient = {}));
+// Message the Lucra web app posts to the opener when a deposit finishes in a
+// popup (see client.popup()). The envelope is flat (no nested `data`).
+export const LUCRA_POPUP_MESSAGE_TYPE = "LucraPopupMessage";
 var account_status_types_enum;
 (function (account_status_types_enum) {
     // For free to play sports, a status that indicates they have passed an age assurance check and are verified to play.

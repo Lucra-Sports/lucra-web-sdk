@@ -1,5 +1,6 @@
 import { describe, it, expect, afterEach, mock } from "bun:test";
 import { LucraClient } from "./v1.ts";
+import { createPopup } from "./popup.ts";
 import { LucraUserNotLoggedIn, LucraApiError } from "./errors.ts";
 import { LucraApiErrorCode } from "./types/types.ts";
 import type { LucraV1ClientConstructor } from "./types/types.ts";
@@ -536,5 +537,173 @@ describe("LucraClient.ready", () => {
     // The originally-awaited promise reflects the real result, not the
     // transient cancellation.
     await expect(initial).resolves.toBeUndefined();
+  });
+});
+
+const LUCRA_ORIGIN = "https://test-tenant.sandbox.lucrasports.com";
+
+type FakeWin = { closed: boolean; close: ReturnType<typeof mock> };
+
+// bun test has no DOM, so stub the globals popup() touches: window.open (returns
+// a fake popup window, or null to simulate a blocked popup), location.origin
+// (the parentUrl the SDK posts), screen/inner sizing, and add/removeEventListener.
+function installFakeWindow(opts: { blocked?: boolean } = {}) {
+  const fakeWin: FakeWin = {
+    closed: false,
+    close: mock(() => {
+      fakeWin.closed = true;
+    }),
+  };
+  const open = mock(() => (opts.blocked ? null : fakeWin));
+  const original = (globalThis as any).window;
+  (globalThis as any).window = {
+    open,
+    location: { origin: "https://client.example.com" },
+    screenX: 0,
+    screenY: 0,
+    innerWidth: 1000,
+    innerHeight: 1000,
+    addEventListener: mock(() => {}),
+    removeEventListener: mock(() => {}),
+  };
+  return {
+    fakeWin,
+    open,
+    restore: () => {
+      (globalThis as any).window = original;
+    },
+  };
+}
+
+describe("LucraClient.popup().deposit", () => {
+  let restore: (() => void) | undefined;
+  afterEach(() => {
+    restore?.();
+    restore = undefined;
+  });
+
+  it("opens a popup window to the add-funds URL carrying apiKey and parentUrl", () => {
+    const w = installFakeWindow();
+    restore = w.restore;
+    const client = LucraClient.initialize(baseConfig);
+
+    client.popup().deposit();
+
+    expect(w.open).toHaveBeenCalledTimes(1);
+    const url = new URL(w.open.mock.calls[0][0] as string);
+    expect(url.origin).toBe(LUCRA_ORIGIN);
+    expect(url.pathname).toBe("/app/add-funds");
+    expect(url.searchParams.get("apiKey")).toBe("test-api-key");
+    expect(url.searchParams.get("parentUrl")).toBe("https://client.example.com");
+  });
+
+  it("throws when the browser blocks the popup", () => {
+    const w = installFakeWindow({ blocked: true });
+    restore = w.restore;
+    const client = LucraClient.initialize(baseConfig);
+
+    expect(() => client.popup().deposit()).toThrow("Unable to open the Lucra popup");
+  });
+
+  it("close() closes the opened window and fires onClose", () => {
+    const w = installFakeWindow();
+    restore = w.restore;
+    const client = LucraClient.initialize(baseConfig);
+
+    const popup = client.popup().deposit();
+    const onClose = mock(() => {});
+    popup.onClose(onClose);
+
+    popup.close();
+
+    expect(w.fakeWin.close).toHaveBeenCalledTimes(1);
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onClose).toHaveBeenCalledWith(undefined);
+  });
+
+  it("routes a LucraPopupMessage to onClose with the result and closes the window", async () => {
+    const w = installFakeWindow();
+    restore = w.restore;
+    const client = LucraClient.initialize(baseConfig);
+
+    const popup = client.popup().deposit();
+    const onClose = mock(() => {});
+    popup.onClose(onClose);
+
+    await (client as any)._eventListener({
+      origin: LUCRA_ORIGIN,
+      data: {
+        type: "LucraPopupMessage",
+        toastType: "success",
+        message: "Funds deposit successful",
+      },
+    });
+
+    expect(w.fakeWin.close).toHaveBeenCalledTimes(1);
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onClose).toHaveBeenCalledWith({
+      toastType: "success",
+      message: "Funds deposit successful",
+    });
+  });
+
+  it("ignores a LucraPopupMessage from a foreign origin", async () => {
+    const w = installFakeWindow();
+    restore = w.restore;
+    const client = LucraClient.initialize(baseConfig);
+
+    const popup = client.popup().deposit();
+    const onClose = mock(() => {});
+    popup.onClose(onClose);
+
+    await (client as any)._eventListener({
+      origin: "https://evil.example.com",
+      data: { type: "LucraPopupMessage", toastType: "success", message: "x" },
+    });
+
+    expect(onClose).not.toHaveBeenCalled();
+    expect(w.fakeWin.close).not.toHaveBeenCalled();
+  });
+
+  it("ignores a malformed LucraPopupMessage (no valid toastType)", async () => {
+    const w = installFakeWindow();
+    restore = w.restore;
+    const client = LucraClient.initialize(baseConfig);
+
+    const popup = client.popup().deposit();
+    const onClose = mock(() => {});
+    popup.onClose(onClose);
+
+    await (client as any)._eventListener({
+      origin: LUCRA_ORIGIN,
+      data: { type: "LucraPopupMessage", message: "Funds deposit successful" },
+    });
+
+    expect(onClose).not.toHaveBeenCalled();
+    expect(w.fakeWin.close).not.toHaveBeenCalled();
+  });
+});
+
+describe("createPopup", () => {
+  let restore: (() => void) | undefined;
+  afterEach(() => {
+    restore?.();
+    restore = undefined;
+  });
+
+  it("fires onClose(undefined) when the user closes the window (polling)", async () => {
+    const w = installFakeWindow();
+    restore = w.restore;
+
+    const popup = createPopup("https://test-tenant.sandbox.lucrasports.com/app/add-funds", 5);
+    const onClose = mock(() => {});
+    popup.onClose(onClose);
+
+    // User closes the popup; polling should observe it and fire onClose.
+    w.fakeWin.closed = true;
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onClose).toHaveBeenCalledWith(undefined);
   });
 });

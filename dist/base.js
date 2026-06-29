@@ -3,6 +3,7 @@ import { LucraClientIframeId, States } from "./constants.js";
 import { addDefinedSearchParams, validatePhoneNumber, validateMetadata, } from "./utils.js";
 import { createApiRequest } from "./api-request.js";
 import { createDialog } from "./dialog.js";
+import { createPopup } from "./popup.js";
 import { LucraUserNotLoggedIn, LucraApiError } from "./errors.js";
 // Reason the in-flight isLoggedIn request is rejected with when a newer one
 // supersedes it (e.g. `loginSuccess` rebuilds `ready`). This is an internal
@@ -55,6 +56,7 @@ export class LucraClientBase extends EventTarget {
     // The element the iframe currently lives in, as designated by open()/moveTo().
     _host = null;
     _activeDialog = null;
+    _activePopup = null;
     _readyResolve;
     _readyReject;
     _initializedPromise = this._createInitializedPromise();
@@ -327,6 +329,36 @@ export class LucraClientBase extends EventTarget {
         this._activeDialog.close();
         return true;
     }
+    // Opens the deposit flow in a real popup window. Unlike dialog()/open(), this
+    // is a top-level browsing context (not an iframe), which Apple Pay requires.
+    // Scoped to deposit only. Must be called from a user gesture or the browser
+    // blocks the popup. Does not require open() first -- the popup is standalone.
+    popup() {
+        return {
+            deposit: () => this._presentPopup("app/add-funds"),
+        };
+    }
+    // Opens `path` in a popup window and tracks it so a deposit result and close()
+    // can be routed to it. Reuses _buildIframeUrl (so the popup URL carries apiKey,
+    // loginHint, locationId, and parentUrl) and (re)attaches the message listener so
+    // the popup's result message is received even when no iframe was ever opened.
+    _presentPopup(path) {
+        this.setUpEventListener();
+        const url = this._buildIframeUrl({ path });
+        this._activePopup?.close();
+        const popup = createPopup(url.toString());
+        popup.onClose(() => {
+            if (this._activePopup === popup)
+                this._activePopup = null;
+        });
+        this._activePopup = popup;
+        return popup;
+    }
+    // Routes a deposit result reported by the popup to the active popup, which
+    // records it and closes (firing onClose with the result).
+    _resolveActivePopup(result) {
+        this._activePopup?.resolve(result);
+    }
     open(element, phoneNumber, options) {
         return {
             profile: () => {
@@ -391,6 +423,7 @@ export class LucraClientBase extends EventTarget {
         this.controller.abort("Closing LucraClient");
         this.controller = new AbortController();
         this._activeDialog?.close();
+        this._activePopup?.close();
         this._host = null;
         this.iframe?.remove();
         this.iframe = undefined;

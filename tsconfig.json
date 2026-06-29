@@ -27,5 +27,5 @@
     "noPropertyAccessFromIndexSignature": false
   },
   "exclude": ["dist"],
-  "files": ["index.ts", "types/types.ts", "base.ts", "v1.ts", "dialog.ts"]
+  "files": ["index.ts", "types/types.ts", "base.ts", "v1.ts", "dialog.ts", "popup.ts"]
 }

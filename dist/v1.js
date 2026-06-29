@@ -1,5 +1,5 @@
 import { LucraClientBase } from "./base.js";
-import { LucraClientMessageType, MessageTypeToLucraClient, } from "./types/types.js";
+import { LucraClientMessageType, MessageTypeToLucraClient, LUCRA_POPUP_MESSAGE_TYPE, } from "./types/types.js";
 export class LucraClient extends LucraClientBase {
     static instance = null;
     listenerMap = new Map();
@@ -12,6 +12,18 @@ export class LucraClient extends LucraClientBase {
             return;
         if (!event.data || typeof event.data !== 'object')
             return;
+        // The popup deposit flow reports its result with a flat envelope (no nested
+        // `data`); route a well-formed result to the active popup, which records it
+        // and closes. A malformed message is ignored -- the popup still closes via
+        // its window.closed poll, firing onClose with no result.
+        if (event.data.type === LUCRA_POPUP_MESSAGE_TYPE) {
+            const { toastType, message } = event.data;
+            if ((toastType === "success" || toastType === "error") &&
+                typeof message === "string") {
+                this._resolveActivePopup({ toastType, message });
+            }
+            return;
+        }
         if (event.data.type === LucraClientMessageType.matchupInviteUrl) {
             if (!this.matchupInviteUrlTransformer) {
                 console.warn("matchupDeepLinkHandler not configured, falling back to deepLink");

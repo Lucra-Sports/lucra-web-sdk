@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## [v1.6.0]
+
+### Added
+
+- `popup()` navigation that opens the deposit flow in a real browser popup window instead of an iframe, required because Apple Pay does not run inside a cross-origin iframe. Scoped to deposit only: `client.popup().deposit()`. Must be called from a user gesture. Returns a `LucraPopup` handle (`close()`, `onClose(result?)`) whose `onClose` receives a `LucraPopupResult` (`{ toastType, message }`) when the deposit reports an outcome, or `undefined` when dismissed. See [Popups](1.3_lucraflows.md#popups). New types: `LucraPopup`, `LucraPopupResult`
+
 ## [v1.5.0]
 
 ### Added

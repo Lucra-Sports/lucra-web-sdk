@@ -1,4 +1,4 @@
-import { type LucraClientSendMessage, type LucraDeepLinkResponse, type LucraClientConstructor, type LucraAchievementsResponse, type LucraTournamentsResponse, type LucraTournamentResponse, type LucraTournamentLeaderboardResponse, type LucraJoinTournamentResponse, type LucraApiErrorBody, type LucraIsLoggedInResponse, type SDKLucraUser, type LucraMinigamesTriggerInput, type LucraStartMinigamesSessionResponse, type LucraInitializedBody, type LucraDialog } from "./types/types.js";
+import { type LucraClientSendMessage, type LucraDeepLinkResponse, type LucraClientConstructor, type LucraAchievementsResponse, type LucraTournamentsResponse, type LucraTournamentResponse, type LucraTournamentLeaderboardResponse, type LucraJoinTournamentResponse, type LucraApiErrorBody, type LucraIsLoggedInResponse, type SDKLucraUser, type LucraMinigamesTriggerInput, type LucraStartMinigamesSessionResponse, type LucraInitializedBody, type LucraDialog, type LucraPopup, type LucraPopupResult } from "./types/types.js";
 type LucraNavigation = {
     profile: () => LucraClientBase;
     wallet: () => LucraClientBase;
@@ -24,6 +24,9 @@ type LucraDialogNavigation = {
     matchupDetails: (matchupId: string) => LucraDialog;
     tournamentDetails: (matchupId: string) => LucraDialog;
     deepLink: (url: string) => LucraDialog;
+};
+type LucraPopupNavigation = {
+    deposit: () => LucraPopup;
 };
 type TriggerHandle = {
     iframe: HTMLIFrameElement;
@@ -51,6 +54,7 @@ export declare class LucraClientBase extends EventTarget {
     protected _isInitialized: boolean;
     private _host;
     private _activeDialog;
+    private _activePopup;
     private _readyResolve;
     private _readyReject;
     private _initializedPromise;
@@ -74,6 +78,9 @@ export declare class LucraClientBase extends EventTarget {
     dialog(): LucraDialogNavigation;
     private _presentDialog;
     protected _closeActiveDialog(): boolean;
+    popup(): LucraPopupNavigation;
+    private _presentPopup;
+    protected _resolveActivePopup(result: LucraPopupResult): void;
     open(element: HTMLElement, phoneNumber?: string, options?: {
         hidden?: boolean;
     }): LucraOpenNavigation;
