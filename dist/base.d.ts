@@ -1,4 +1,4 @@
-import { type LucraClientSendMessage, type LucraDeepLinkResponse, type LucraClientConstructor, type LucraAchievementsResponse, type LucraTournamentsResponse, type LucraTournamentResponse, type LucraTournamentLeaderboardResponse, type LucraJoinTournamentResponse, type LucraIsLoggedInResponse, type SDKLucraUser, type LucraMinigamesTriggerInput, type LucraStartMinigamesSessionResponse, type LucraInitializedBody, type LucraDialog } from "./types/types.js";
+import { type LucraClientSendMessage, type LucraDeepLinkResponse, type LucraClientConstructor, type LucraAchievementsResponse, type LucraTournamentsResponse, type LucraTournamentResponse, type LucraTournamentLeaderboardResponse, type LucraJoinTournamentResponse, type LucraApiErrorBody, type LucraIsLoggedInResponse, type SDKLucraUser, type LucraMinigamesTriggerInput, type LucraStartMinigamesSessionResponse, type LucraInitializedBody, type LucraDialog } from "./types/types.js";
 type LucraNavigation = {
     profile: () => LucraClientBase;
     wallet: () => LucraClientBase;
@@ -88,6 +88,7 @@ export declare class LucraClientBase extends EventTarget {
     protected _resolveTournament(data: LucraTournamentResponse): void;
     protected _resolveTournamentLeaderboard(data: LucraTournamentLeaderboardResponse): void;
     protected _resolveJoinTournament(data: LucraJoinTournamentResponse): void;
+    protected _rejectJoinTournament(body: LucraApiErrorBody): void;
     protected _resolveIsLoggedIn(data: LucraIsLoggedInResponse): void;
     protected _resolveTrigger(win: Window, data: LucraStartMinigamesSessionResponse): boolean;
     protected _handleInitialized(body: LucraInitializedBody): void;

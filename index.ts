@@ -40,6 +40,7 @@ export type {
   LucraTournamentPayoutReward,
   LucraTournamentPayoutStructure,
   LucraJoinTournamentResponse,
+  LucraApiErrorBody,
   LucraIsLoggedInResponse,
   LucraNavigateRequest,
   LucraPage,
@@ -53,5 +54,6 @@ export type {
   LucraDialog,
 } from "./types/types.js";
 
+export { LucraApiErrorCode } from "./types/types.js";
 export { LucraClient } from "./v1.js";
-export { LucraUserNotLoggedIn } from "./errors.js";
+export { LucraUserNotLoggedIn, LucraApiError } from "./errors.js";

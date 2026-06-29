@@ -35,5 +35,9 @@ export function createApiRequest({ type, cancelReason, sendMessage, }) {
             pendingResolve?.(data);
             clear();
         },
+        reject: (reason) => {
+            pendingReject?.(reason);
+            clear();
+        },
     };
 }

@@ -50,6 +50,10 @@ export class LucraClient extends LucraClientBase {
             this._resolveJoinTournament(event.data.data);
             return;
         }
+        if (event.data.type === LucraClientMessageType.joinTournamentError) {
+            this._rejectJoinTournament(event.data.data);
+            return;
+        }
         if (event.data.type === LucraClientMessageType.isLoggedInResponse) {
             this._resolveIsLoggedIn(event.data.data);
             return;

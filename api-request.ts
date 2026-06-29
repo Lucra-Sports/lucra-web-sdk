@@ -5,6 +5,7 @@ const API_REQUEST_TIMEOUT_MS = 15_000;
 export type ApiRequest<TResponse, TBody = void> = {
   send: (body: TBody) => Promise<TResponse>;
   resolve: (data: TResponse) => void;
+  reject: (reason?: unknown) => void;
 };
 
 /**
@@ -22,7 +23,7 @@ export function createApiRequest<TResponse, TBody = void>({
   sendMessage: (message: unknown) => void;
 }): ApiRequest<TResponse, TBody> {
   let pendingResolve: ((data: TResponse) => void) | undefined;
-  let pendingReject: ((reason?: string) => void) | undefined;
+  let pendingReject: ((reason?: unknown) => void) | undefined;
   let timer: ReturnType<typeof setTimeout> | undefined;
 
   const clear = () => {
@@ -52,6 +53,10 @@ export function createApiRequest<TResponse, TBody = void>({
     },
     resolve: (data: TResponse) => {
       pendingResolve?.(data);
+      clear();
+    },
+    reject: (reason?: unknown) => {
+      pendingReject?.(reason);
       clear();
     },
   };

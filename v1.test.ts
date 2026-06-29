@@ -1,6 +1,7 @@
 import { describe, it, expect, afterEach, mock } from "bun:test";
 import { LucraClient } from "./v1.ts";
-import { LucraUserNotLoggedIn } from "./errors.ts";
+import { LucraUserNotLoggedIn, LucraApiError } from "./errors.ts";
+import { LucraApiErrorCode } from "./types/types.ts";
 import type { LucraV1ClientConstructor } from "./types/types.ts";
 
 const baseConfig: LucraV1ClientConstructor = {
@@ -232,6 +233,59 @@ describe("LucraClient.api.joinTournament", () => {
     client.api.joinTournament("some-id").catch(() => {});
 
     await expect(first).rejects.toBe("Cancelled by new joinTournament request");
+  });
+
+  it("rejects with a typed LucraApiError when a joinTournamentError message arrives", async () => {
+    const client = LucraClient.initialize(baseConfig);
+    const promise = client.api.joinTournament("some-id");
+
+    await (client as any)._eventListener({
+      origin: "https://test-tenant.sandbox.lucrasports.com",
+      data: {
+        type: "joinTournamentError",
+        data: { code: "INSUFFICIENT_FUNDS", message: "Not enough funds" },
+      },
+    });
+
+    let caught: unknown;
+    await promise.catch((e) => {
+      caught = e;
+    });
+    expect(caught).toBeInstanceOf(LucraApiError);
+    expect((caught as LucraApiError).code).toBe(
+      LucraApiErrorCode.insufficientFunds
+    );
+    expect((caught as LucraApiError).message).toBe("Not enough funds");
+  });
+
+  it("surfaces each error code with a default message when none is provided", async () => {
+    const codes = [
+      LucraApiErrorCode.unverified,
+      LucraApiErrorCode.insufficientFunds,
+      LucraApiErrorCode.demographicInformationMissing,
+      LucraApiErrorCode.locationError,
+    ];
+
+    for (const code of codes) {
+      const client = LucraClient.initialize(baseConfig);
+      const promise = client.api.joinTournament("some-id");
+
+      await (client as any)._eventListener({
+        origin: "https://test-tenant.sandbox.lucrasports.com",
+        data: { type: "joinTournamentError", data: { code } },
+      });
+
+      let caught: any;
+      await promise.catch((e) => {
+        caught = e;
+      });
+      expect(caught).toBeInstanceOf(LucraApiError);
+      expect(caught.code).toBe(code);
+      expect(typeof caught.message).toBe("string");
+      expect(caught.message.length).toBeGreaterThan(0);
+
+      LucraClient.destroy();
+    }
   });
 });
 

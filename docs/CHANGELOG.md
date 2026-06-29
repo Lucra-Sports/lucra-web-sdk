@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## [v1.5.0]
+
+### Added
+
+- `api.joinTournament()` now rejects with a typed `LucraApiError` when a join is blocked, so client apps can react to the reason. `LucraApiError` carries a `code` (`LucraApiErrorCode`): `UNVERIFIED`, `INSUFFICIENT_FUNDS`, `DEMOGRAPHIC_INFORMATION_MISSING`, or `LOCATION_ERROR`. See [Handling join errors](1.6_lucra_event_listener.md#handling-join-errors).
+- New exports: `LucraApiError`, `LucraApiErrorCode`, `LucraApiErrorBody`
+
 ## [v1.4.0]
 
 ### Added

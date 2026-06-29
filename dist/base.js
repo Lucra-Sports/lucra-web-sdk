@@ -3,7 +3,7 @@ import { LucraClientIframeId, States } from "./constants.js";
 import { addDefinedSearchParams, validatePhoneNumber, validateMetadata, } from "./utils.js";
 import { createApiRequest } from "./api-request.js";
 import { createDialog } from "./dialog.js";
-import { LucraUserNotLoggedIn } from "./errors.js";
+import { LucraUserNotLoggedIn, LucraApiError } from "./errors.js";
 // Reason the in-flight isLoggedIn request is rejected with when a newer one
 // supersedes it (e.g. `loginSuccess` rebuilds `ready`). This is an internal
 // single-flight cancellation, not an auth failure, so `_createReadyPromise`
@@ -447,6 +447,9 @@ export class LucraClientBase extends EventTarget {
     }
     _resolveJoinTournament(data) {
         this._joinTournamentRequest.resolve(data);
+    }
+    _rejectJoinTournament(body) {
+        this._joinTournamentRequest.reject(new LucraApiError(body.code, body.message));
     }
     _resolveIsLoggedIn(data) {
         this._isLoggedInRequest.resolve(data);
