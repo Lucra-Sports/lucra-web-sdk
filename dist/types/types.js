@@ -19,6 +19,7 @@ export var LucraClientMessageType;
     LucraClientMessageType["tournamentResponse"] = "tournamentResponse";
     LucraClientMessageType["tournamentLeaderboardResponse"] = "tournamentLeaderboardResponse";
     LucraClientMessageType["joinTournamentResponse"] = "joinTournamentResponse";
+    LucraClientMessageType["joinTournamentError"] = "joinTournamentError";
     LucraClientMessageType["userInfo"] = "userInfo";
     LucraClientMessageType["initialized"] = "initialized";
     LucraClientMessageType["isLoggedInResponse"] = "isLoggedInResponse";
@@ -67,3 +68,15 @@ var account_status_types_enum;
     // User has been verified
     account_status_types_enum["VERIFIED"] = "VERIFIED";
 })(account_status_types_enum || (account_status_types_enum = {}));
+// Error codes the web-app can surface for a failed API call. The web-app posts
+// an error message carrying one of these codes and the SDK rejects the matching
+// API promise with a LucraApiError so clients can react to the specific failure.
+// Currently only api.joinTournament throws these, but the codes are not specific
+// to it and other API calls may surface them in the future.
+export var LucraApiErrorCode;
+(function (LucraApiErrorCode) {
+    LucraApiErrorCode["unverified"] = "UNVERIFIED";
+    LucraApiErrorCode["insufficientFunds"] = "INSUFFICIENT_FUNDS";
+    LucraApiErrorCode["demographicInformationMissing"] = "DEMOGRAPHIC_INFORMATION_MISSING";
+    LucraApiErrorCode["locationError"] = "LOCATION_ERROR";
+})(LucraApiErrorCode || (LucraApiErrorCode = {}));

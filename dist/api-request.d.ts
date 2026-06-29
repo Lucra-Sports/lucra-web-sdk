@@ -2,6 +2,7 @@ import type { MessageTypeToLucraClient } from "./types/types.js";
 export type ApiRequest<TResponse, TBody = void> = {
     send: (body: TBody) => Promise<TResponse>;
     resolve: (data: TResponse) => void;
+    reject: (reason?: unknown) => void;
 };
 /**
  * Creates a single-flight request/response pair backed by a promise.

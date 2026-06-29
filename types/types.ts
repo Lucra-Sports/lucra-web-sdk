@@ -26,6 +26,7 @@ export enum LucraClientMessageType {
   tournamentResponse = "tournamentResponse",
   tournamentLeaderboardResponse = "tournamentLeaderboardResponse",
   joinTournamentResponse = "joinTournamentResponse",
+  joinTournamentError = "joinTournamentError",
   userInfo = "userInfo",
   initialized = "initialized",
   isLoggedInResponse = "isLoggedInResponse"
@@ -552,6 +553,23 @@ export type LucraTournamentResponse = {
 
 export type LucraJoinTournamentResponse = {
   matchupId: string;
+};
+
+// Error codes the web-app can surface for a failed API call. The web-app posts
+// an error message carrying one of these codes and the SDK rejects the matching
+// API promise with a LucraApiError so clients can react to the specific failure.
+// Currently only api.joinTournament throws these, but the codes are not specific
+// to it and other API calls may surface them in the future.
+export enum LucraApiErrorCode {
+  unverified = "UNVERIFIED",
+  insufficientFunds = "INSUFFICIENT_FUNDS",
+  demographicInformationMissing = "DEMOGRAPHIC_INFORMATION_MISSING",
+  locationError = "LOCATION_ERROR",
+}
+
+export type LucraApiErrorBody = {
+  code: LucraApiErrorCode;
+  message?: string;
 };
 
 export type LucraIsLoggedInResponse = {

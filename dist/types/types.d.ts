@@ -19,6 +19,7 @@ export declare enum LucraClientMessageType {
     tournamentResponse = "tournamentResponse",
     tournamentLeaderboardResponse = "tournamentLeaderboardResponse",
     joinTournamentResponse = "joinTournamentResponse",
+    joinTournamentError = "joinTournamentError",
     userInfo = "userInfo",
     initialized = "initialized",
     isLoggedInResponse = "isLoggedInResponse"
@@ -386,6 +387,16 @@ export type LucraTournamentResponse = {
 };
 export type LucraJoinTournamentResponse = {
     matchupId: string;
+};
+export declare enum LucraApiErrorCode {
+    unverified = "UNVERIFIED",
+    insufficientFunds = "INSUFFICIENT_FUNDS",
+    demographicInformationMissing = "DEMOGRAPHIC_INFORMATION_MISSING",
+    locationError = "LOCATION_ERROR"
+}
+export type LucraApiErrorBody = {
+    code: LucraApiErrorCode;
+    message?: string;
 };
 export type LucraIsLoggedInResponse = {
     isLoggedIn: boolean;
