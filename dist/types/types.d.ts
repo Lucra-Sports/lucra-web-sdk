@@ -5,6 +5,7 @@ export declare enum LucraClientMessageType {
     claimReward = "claimReward",
     convertToCredit = "convertToCredit",
     deepLink = "deepLink",
+    demographicComplete = "demographicComplete",
     exitLucra = "exitLucra",
     kycComplete = "kycComplete",
     loginSuccess = "loginSuccess",
@@ -135,6 +136,7 @@ export type LucraEventMap = {
     loginSuccess: LucraLoginSuccessBody;
     exitLucra: void;
     kycComplete: void;
+    demographicComplete: void;
     initialized: LucraInitializedBody;
 };
 export type LucraClientSendMessage = {
@@ -149,7 +151,7 @@ export type LucraClientMessage = (body: {
     type: LucraClientMessageType;
     data: any;
 }) => void;
-export type LucraPage = "add-funds" | "create-matchup" | "home" | "id-scan-complete" | "kyc" | "logout" | "matchup-details" | "profile" | "search" | "tournament-details" | "transactions" | "withdraw-funds";
+export type LucraPage = "add-funds" | "create-matchup" | "demographicform" | "home" | "id-scan-complete" | "kyc" | "logout" | "matchup-details" | "profile" | "search" | "tournament-details" | "transactions" | "withdraw-funds";
 export type StateFull = "Alaska" | "Alabama" | "Arkansas" | "Arizona" | "California" | "Colorado" | "Connecticut" | "District of Columbia" | "Delaware" | "Florida" | "Georgia" | "Hawaii" | "Iowa" | "Idaho" | "Illinois" | "Indiana" | "Kansas" | "Kentucky" | "Louisiana" | "Massachusetts" | "Maryland" | "Maine" | "Michigan" | "Minnesota" | "Missouri" | "Mississippi" | "Montana" | "North Carolina" | "North Dakota" | "Nebraska" | "New Hampshire" | "New Jersey" | "New Mexico" | "Nevada" | "New York" | "Ohio" | "Oklahoma" | "Oregon" | "Pennsylvania" | "Rhode Island" | "South Carolina" | "South Dakota" | "Tennessee" | "Texas" | "Utah" | "Virginia" | "Vermont" | "Washington" | "Wisconsin" | "West Virginia" | "Wyoming";
 export type StateCode = "AK" | "AL" | "AR" | "AZ" | "CA" | "CO" | "CT" | "DC" | "DE" | "FL" | "GA" | "HI" | "IA" | "ID" | "IL" | "IN" | "KS" | "KY" | "LA" | "MA" | "MD" | "ME" | "MI" | "MN" | "MO" | "MS" | "MT" | "NC" | "ND" | "NE" | "NH" | "NJ" | "NM" | "NV" | "NY" | "OH" | "OK" | "OR" | "PA" | "RI" | "SC" | "SD" | "TN" | "TX" | "UT" | "VA" | "VT" | "WA" | "WI" | "WV" | "WY";
 declare enum account_status_types_enum {

@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## [v1.8.0]
+
+### Added
+
+- `demographic()` navigation on `open()`, `redirect()`, and `dialog()` that opens the `app/demographicform` demographic-collection flow: `client.open(element).demographic()`, `client.dialog().demographic()`.
+- `demographicComplete` event (payload `void`) fired when the user finishes the demographic collection flow. Lucra does not navigate away on completion, so the embedding app reacts — typically by closing the dialog it opened the flow in: `client.on('demographicComplete', () => dialog.close())`. See [Lucra Event Listener](1.6_lucra_event_listener.md).
+
 ## [v1.7.0]
 
 ### Added
