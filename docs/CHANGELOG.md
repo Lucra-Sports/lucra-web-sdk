@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## [v1.7.0]
+
+### Added
+
+- `kyc()` navigation on `open()`, `redirect()`, and `dialog()` that opens the `app/kyc` identity-verification flow: `client.open(element).kyc()`, `client.dialog().kyc()`.
+- `kycComplete` event (payload `void`) fired when the user finishes the KYC flow. Lucra does not navigate away on completion, so the embedding app reacts — typically by closing the dialog it opened KYC in: `client.on('kycComplete', () => dialog.close())`. See [Lucra Event Listener](1.6_lucra_event_listener.md).
+
 ## [v1.6.0]
 
 ### Added

@@ -278,6 +278,7 @@ export class LucraClientBase extends EventTarget {
                 }
                 return this._redirect("", undefined, url);
             },
+            kyc: () => this._redirect("app/kyc")
         };
     }
     // Opens any route as a dialog. Reuses redirect()'s in-place navigation (no
@@ -295,6 +296,7 @@ export class LucraClientBase extends EventTarget {
             matchupDetails: (matchupId) => present(() => nav.matchupDetails(matchupId)),
             tournamentDetails: (matchupId) => present(() => nav.tournamentDetails(matchupId)),
             deepLink: (url) => present(() => nav.deepLink(url)),
+            kyc: () => present(() => nav.kyc())
         };
     }
     // Presents the iframe's host as a dialog: shows the iframe, enables the in-app
@@ -338,10 +340,9 @@ export class LucraClientBase extends EventTarget {
             deposit: () => this._presentPopup("app/add-funds"),
         };
     }
-    // Opens `path` in a popup window and tracks it so a deposit result and close()
-    // can be routed to it. Reuses _buildIframeUrl (so the popup URL carries apiKey,
-    // loginHint, locationId, and parentUrl) and (re)attaches the message listener so
-    // the popup's result message is received even when no iframe was ever opened.
+    // Tracks the popup so a deposit result and close() can be routed to it, and
+    // re-attaches the message listener so the result is received even when no
+    // iframe was ever opened.
     _presentPopup(path) {
         this.setUpEventListener();
         const url = this._buildIframeUrl({ path });
@@ -354,8 +355,6 @@ export class LucraClientBase extends EventTarget {
         this._activePopup = popup;
         return popup;
     }
-    // Routes a deposit result reported by the popup to the active popup, which
-    // records it and closes (firing onClose with the result).
     _resolveActivePopup(result) {
         this._activePopup?.resolve(result);
     }
@@ -417,6 +416,10 @@ export class LucraClientBase extends EventTarget {
                 return this._open({ element, path: "", params });
             },
             minigamesTrigger: (input) => this._minigamesTrigger(element, input),
+            kyc: () => {
+                const params = addDefinedSearchParams({ phoneNumber });
+                return this._open({ element, path: "app/kyc", params, hidden: options?.hidden });
+            }
         };
     }
     close() {

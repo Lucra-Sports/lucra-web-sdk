@@ -21,9 +21,8 @@ export class LucraClient extends LucraClientBase {
     if (!this.urlOrigin || event.origin !== this.urlOrigin) return;
     if (!event.data || typeof event.data !== 'object') return;
     // The popup deposit flow reports its result with a flat envelope (no nested
-    // `data`); route a well-formed result to the active popup, which records it
-    // and closes. A malformed message is ignored -- the popup still closes via
-    // its window.closed poll, firing onClose with no result.
+    // `data`). Ignore a malformed message -- the popup still closes via its
+    // window.closed poll, firing onClose with no result.
     if (event.data.type === LUCRA_POPUP_MESSAGE_TYPE) {
       const { toastType, message } = event.data;
       if (

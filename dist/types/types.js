@@ -6,6 +6,7 @@ export var LucraClientMessageType;
     LucraClientMessageType["convertToCredit"] = "convertToCredit";
     LucraClientMessageType["deepLink"] = "deepLink";
     LucraClientMessageType["exitLucra"] = "exitLucra";
+    LucraClientMessageType["kycComplete"] = "kycComplete";
     LucraClientMessageType["loginSuccess"] = "loginSuccess";
     LucraClientMessageType["matchupAccepted"] = "matchupAccepted";
     LucraClientMessageType["matchupCanceled"] = "matchupCanceled";
