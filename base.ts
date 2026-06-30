@@ -173,6 +173,11 @@ export class LucraClientBase extends EventTarget {
         }
         throw reason;
       });
+    // Mark the rejection handled so a pre-auth consumer who never awaits
+    // `ready` (e.g. one that only fetches tournaments while logged out) does
+    // not trigger an unhandled rejection. `get ready()` still returns
+    // `promise`, so callers that do await it still observe the rejection.
+    promise.catch(() => {});
     return promise;
   }
 
@@ -721,8 +726,19 @@ export class LucraClientBase extends EventTarget {
   api = {
     achievements: (): Promise<LucraAchievementsResponse> =>
       this._achievementsRequest.send(),
-    tournaments: (): Promise<LucraTournamentsResponse> =>
-      this._tournamentsRequest.send(),
+    // Fetching all tournaments is allowed before auth, so it only waits for the
+    // embedded app to be initialized (not `ready`, which also asserts login).
+    // Awaiting init also keeps the request from racing initialization -- it is
+    // sent once the iframe is ready to receive it. The detail and leaderboard
+    // reads require auth, so callers reach them after `ready` (init guaranteed)
+    // and they send immediately.
+    // Note: if `close()` runs while this is still awaiting a not-yet-resolved
+    // init, the captured promise never settles and this call stays pending --
+    // an accepted edge given the narrow window.
+    tournaments: async (): Promise<LucraTournamentsResponse> => {
+      await this._initializedPromise;
+      return this._tournamentsRequest.send();
+    },
     tournament: (matchupId: string): Promise<LucraTournamentResponse> =>
       this._tournamentRequest.send({ matchupId }),
     tournamentLeaderboard: (
