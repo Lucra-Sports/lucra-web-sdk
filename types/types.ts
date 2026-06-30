@@ -12,6 +12,7 @@ export enum LucraClientMessageType {
   claimReward = "claimReward",
   convertToCredit = "convertToCredit",
   deepLink = "deepLink",
+  demographicComplete = "demographicComplete",
   exitLucra = "exitLucra",
   kycComplete = "kycComplete",
   loginSuccess = "loginSuccess",
@@ -137,6 +138,7 @@ export type LucraEventMap = {
   loginSuccess: LucraLoginSuccessBody;
   exitLucra: void;
   kycComplete: void;
+  demographicComplete: void;
   initialized: LucraInitializedBody;
 };
 
@@ -157,6 +159,7 @@ export type LucraClientMessage = (body: {
 export type LucraPage =
   | "add-funds"
   | "create-matchup"
+  | "demographicform"
   | "home"
   | "id-scan-complete"
   | "kyc"

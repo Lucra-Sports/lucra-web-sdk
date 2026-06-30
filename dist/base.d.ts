@@ -10,6 +10,7 @@ type LucraNavigation = {
     tournamentDetails: (matchupId: string) => LucraClientBase;
     deepLink: (url: string) => LucraClientBase;
     kyc: () => LucraClientBase;
+    demographic: () => LucraClientBase;
 };
 type LucraOpenNavigation = LucraNavigation & {
     minigamesTrigger: (input: LucraMinigamesTriggerInput) => Promise<LucraStartMinigamesSessionResponse>;
@@ -26,6 +27,7 @@ type LucraDialogNavigation = {
     tournamentDetails: (matchupId: string) => LucraDialog;
     deepLink: (url: string) => LucraDialog;
     kyc: () => LucraDialog;
+    demographic: () => LucraDialog;
 };
 type LucraPopupNavigation = {
     deposit: () => LucraPopup;
