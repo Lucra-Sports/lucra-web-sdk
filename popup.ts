@@ -22,8 +22,7 @@ function popupFeatures(): string {
 // null when the browser blocks the popup, which happens unless this runs inside
 // a user gesture (e.g. a click handler) -- surface that as a clear error rather
 // than silently doing nothing. The popup self-closes when the web app finishes a
-// deposit; polling window.closed covers that and the user dismissing it. close()
-// is idempotent; resolve() records a result then closes so onClose(result) fires.
+// deposit; polling window.closed covers that and the user dismissing it.
 // pollMs is overridable so tests can poll faster than the 500ms default.
 export function createPopup(url: string, pollMs = 500): LucraPopupHandle {
   const win = window.open(url, POPUP_WINDOW_NAME, popupFeatures());

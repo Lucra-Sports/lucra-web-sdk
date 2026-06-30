@@ -6,6 +6,7 @@ export declare enum LucraClientMessageType {
     convertToCredit = "convertToCredit",
     deepLink = "deepLink",
     exitLucra = "exitLucra",
+    kycComplete = "kycComplete",
     loginSuccess = "loginSuccess",
     matchupAccepted = "matchupAccepted",
     matchupCanceled = "matchupCanceled",
@@ -133,6 +134,7 @@ export type LucraEventMap = {
     claimReward: LucraClaimRewardBody;
     loginSuccess: LucraLoginSuccessBody;
     exitLucra: void;
+    kycComplete: void;
     initialized: LucraInitializedBody;
 };
 export type LucraClientSendMessage = {

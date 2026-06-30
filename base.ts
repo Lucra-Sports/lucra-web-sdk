@@ -53,6 +53,7 @@ type LucraNavigation = {
   matchupDetails: (matchupId: string) => LucraClientBase;
   tournamentDetails: (matchupId: string) => LucraClientBase;
   deepLink: (url: string) => LucraClientBase;
+  kyc: () => LucraClientBase;
 };
 
 type LucraOpenNavigation = LucraNavigation & {
@@ -72,10 +73,9 @@ type LucraDialogNavigation = {
   matchupDetails: (matchupId: string) => LucraDialog;
   tournamentDetails: (matchupId: string) => LucraDialog;
   deepLink: (url: string) => LucraDialog;
+  kyc: () => LucraDialog;
 };
 
-// Scoped to deposit only: a popup is a real top-level window, needed for the
-// deposit flow because Apple Pay does not run inside a cross-origin iframe.
 type LucraPopupNavigation = {
   deposit: () => LucraPopup;
 };
@@ -432,6 +432,7 @@ export class LucraClientBase extends EventTarget {
         }
         return this._redirect("", undefined, url);
       },
+      kyc: () => this._redirect("app/kyc")
     };
   }
 
@@ -454,6 +455,7 @@ export class LucraClientBase extends EventTarget {
       tournamentDetails: (matchupId: string) =>
         present(() => nav.tournamentDetails(matchupId)),
       deepLink: (url: string) => present(() => nav.deepLink(url)),
+      kyc: () => present(() => nav.kyc())
     };
   }
 
@@ -505,10 +507,9 @@ export class LucraClientBase extends EventTarget {
     };
   }
 
-  // Opens `path` in a popup window and tracks it so a deposit result and close()
-  // can be routed to it. Reuses _buildIframeUrl (so the popup URL carries apiKey,
-  // loginHint, locationId, and parentUrl) and (re)attaches the message listener so
-  // the popup's result message is received even when no iframe was ever opened.
+  // Tracks the popup so a deposit result and close() can be routed to it, and
+  // re-attaches the message listener so the result is received even when no
+  // iframe was ever opened.
   private _presentPopup(path: string): LucraPopup {
     this.setUpEventListener();
     const url = this._buildIframeUrl({ path });
@@ -523,8 +524,6 @@ export class LucraClientBase extends EventTarget {
     return popup;
   }
 
-  // Routes a deposit result reported by the popup to the active popup, which
-  // records it and closes (firing onClose with the result).
   protected _resolveActivePopup(result: LucraPopupResult): void {
     this._activePopup?.resolve(result);
   }
@@ -588,6 +587,11 @@ export class LucraClientBase extends EventTarget {
       },
       minigamesTrigger: (input: LucraMinigamesTriggerInput) =>
         this._minigamesTrigger(element, input),
+
+      kyc: () => {
+        const params = addDefinedSearchParams({ phoneNumber })
+        return this._open({ element, path: "app/kyc", params, hidden: options?.hidden })
+      }
     };
   }
 
