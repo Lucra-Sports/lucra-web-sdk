@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## [v1.9.0]
+
+### Changed
+
+- `api.tournaments()` can now be called before the user is logged in. It awaits iframe initialization internally (instead of requiring `await client.ready`, which also asserts login) and resolves with the tournament list for logged-out users. The detail and leaderboard reads (`api.tournament()`, `api.tournamentLeaderboard()`) still require a logged-in user. See [Async API](1.6_lucra_event_listener.md#async-api).
+
 ## [v1.8.0]
 
 ### Added
