@@ -12,6 +12,7 @@ const API_ERROR_MESSAGES = {
     [LucraApiErrorCode.demographicInformationMissing]: "Required demographic information is missing",
     [LucraApiErrorCode.locationError]: "User location could not be verified",
     [LucraApiErrorCode.locationNeeded]: "User location has not been granted",
+    [LucraApiErrorCode.apiError]: "The request could not be completed",
 };
 // Thrown (as a promise rejection) by Lucra API calls when the web-app reports a
 // known failure. Currently only api.joinTournament rejects with it. Inspect

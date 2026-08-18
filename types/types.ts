@@ -595,6 +595,10 @@ export enum LucraApiErrorCode {
   // location-grant page via `dialog().locationGrant()` so a user gesture inside
   // the iframe can unlock location access, then retry the call.
   locationNeeded = "LOCATION_NEEDED",
+  // Catch-all for a failure with no more specific code: an API or network
+  // error, or a rejection the web-app cannot classify. `message` carries the
+  // detail returned by the API when there is one.
+  apiError = "API_ERROR",
 }
 
 export type LucraApiErrorBody = {

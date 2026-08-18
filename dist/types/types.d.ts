@@ -408,7 +408,8 @@ export declare enum LucraApiErrorCode {
     insufficientFunds = "INSUFFICIENT_FUNDS",
     demographicInformationMissing = "DEMOGRAPHIC_INFORMATION_MISSING",
     locationError = "LOCATION_ERROR",
-    locationNeeded = "LOCATION_NEEDED"
+    locationNeeded = "LOCATION_NEEDED",
+    apiError = "API_ERROR"
 }
 export type LucraApiErrorBody = {
     code: LucraApiErrorCode;

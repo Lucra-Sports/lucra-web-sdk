@@ -333,6 +333,7 @@ describe("LucraClient.api.joinTournament", () => {
       LucraApiErrorCode.demographicInformationMissing,
       LucraApiErrorCode.locationError,
       LucraApiErrorCode.locationNeeded,
+      LucraApiErrorCode.apiError,
     ];
 
     for (const code of codes) {

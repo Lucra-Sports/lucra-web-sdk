@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## [v1.11.0]
+
+### Added
+
+- `LucraApiErrorCode.apiError` (`API_ERROR`), a catch-all code for a failure with no more specific reason. The web-app now reports every failed `api.joinTournament()` with a typed `LucraApiError`; previously only geolocation failures were reported, so an API error left the call to reject with the 15s timeout string instead. `message` carries the underlying detail. See [Handling join errors](1.6_lucra_event_listener.md#handling-join-errors).
+
 ## [v1.10.0]
 
 ### Added
