@@ -55,6 +55,7 @@ type LucraNavigation = {
   deepLink: (url: string) => LucraClientBase;
   kyc: () => LucraClientBase;
   demographic: () => LucraClientBase;
+  locationGrant: () => LucraClientBase;
 };
 
 type LucraOpenNavigation = LucraNavigation & {
@@ -76,6 +77,7 @@ type LucraDialogNavigation = {
   deepLink: (url: string) => LucraDialog;
   kyc: () => LucraDialog;
   demographic: () => LucraDialog;
+  locationGrant: () => LucraDialog;
 };
 
 type LucraPopupNavigation = {
@@ -440,7 +442,8 @@ export class LucraClientBase extends EventTarget {
         return this._redirect("", undefined, url);
       },
       kyc: () => this._redirect("app/kyc"),
-      demographic: () => this._redirect("app/demographicform")
+      demographic: () => this._redirect("app/demographicform"),
+      locationGrant: () => this._redirect("app/location-grant")
     };
   }
 
@@ -464,7 +467,8 @@ export class LucraClientBase extends EventTarget {
         present(() => nav.tournamentDetails(matchupId)),
       deepLink: (url: string) => present(() => nav.deepLink(url)),
       kyc: () => present(() => nav.kyc()),
-      demographic: () => present(() => nav.demographic())
+      demographic: () => present(() => nav.demographic()),
+      locationGrant: () => present(() => nav.locationGrant())
     };
   }
 
@@ -605,6 +609,11 @@ export class LucraClientBase extends EventTarget {
       demographic: () => {
         const params = addDefinedSearchParams({ phoneNumber })
         return this._open({ element, path: "app/demographicform", params, hidden: options?.hidden })
+      },
+
+      locationGrant: () => {
+        const params = addDefinedSearchParams({ phoneNumber })
+        return this._open({ element, path: "app/location-grant", params, hidden: options?.hidden })
       }
     };
   }

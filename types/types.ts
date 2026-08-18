@@ -15,6 +15,7 @@ export enum LucraClientMessageType {
   demographicComplete = "demographicComplete",
   exitLucra = "exitLucra",
   kycComplete = "kycComplete",
+  locationGranted = "locationGranted",
   loginSuccess = "loginSuccess",
   matchupAccepted = "matchupAccepted",
   matchupCanceled = "matchupCanceled",
@@ -138,6 +139,7 @@ export type LucraEventMap = {
   loginSuccess: LucraLoginSuccessBody;
   exitLucra: void;
   kycComplete: void;
+  locationGranted: void;
   demographicComplete: void;
   initialized: LucraInitializedBody;
 };
@@ -588,6 +590,11 @@ export enum LucraApiErrorCode {
   insufficientFunds = "INSUFFICIENT_FUNDS",
   demographicInformationMissing = "DEMOGRAPHIC_INFORMATION_MISSING",
   locationError = "LOCATION_ERROR",
+  // The web-app has no cached geo token, usually because the iframe was never
+  // granted browser geolocation permission. The client should present the
+  // location-grant page via `dialog().locationGrant()` so a user gesture inside
+  // the iframe can unlock location access, then retry the call.
+  locationNeeded = "LOCATION_NEEDED",
 }
 
 export type LucraApiErrorBody = {

@@ -8,6 +8,7 @@ export declare enum LucraClientMessageType {
     demographicComplete = "demographicComplete",
     exitLucra = "exitLucra",
     kycComplete = "kycComplete",
+    locationGranted = "locationGranted",
     loginSuccess = "loginSuccess",
     matchupAccepted = "matchupAccepted",
     matchupCanceled = "matchupCanceled",
@@ -136,6 +137,7 @@ export type LucraEventMap = {
     loginSuccess: LucraLoginSuccessBody;
     exitLucra: void;
     kycComplete: void;
+    locationGranted: void;
     demographicComplete: void;
     initialized: LucraInitializedBody;
 };
@@ -405,7 +407,8 @@ export declare enum LucraApiErrorCode {
     unverified = "UNVERIFIED",
     insufficientFunds = "INSUFFICIENT_FUNDS",
     demographicInformationMissing = "DEMOGRAPHIC_INFORMATION_MISSING",
-    locationError = "LOCATION_ERROR"
+    locationError = "LOCATION_ERROR",
+    locationNeeded = "LOCATION_NEEDED"
 }
 export type LucraApiErrorBody = {
     code: LucraApiErrorCode;

@@ -14,6 +14,7 @@ const API_ERROR_MESSAGES: Record<LucraApiErrorCode, string> = {
   [LucraApiErrorCode.demographicInformationMissing]:
     "Required demographic information is missing",
   [LucraApiErrorCode.locationError]: "User location could not be verified",
+  [LucraApiErrorCode.locationNeeded]: "User location has not been granted",
 };
 
 // Thrown (as a promise rejection) by Lucra API calls when the web-app reports a

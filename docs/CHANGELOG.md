@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## [v1.10.0]
+
+### Added
+
+- `locationGrant()` navigation on `open()`, `redirect()`, and `dialog()` that opens the `app/location-grant` page: `client.dialog().locationGrant()`. The page asks the user to allow location access, which browsers only grant an iframe from a user gesture inside it.
+- `LOCATION_NEEDED` `LucraApiErrorCode` (`LucraApiErrorCode.locationNeeded`), rejected when Lucra has no location for the user yet. Present the location page with `client.dialog().locationGrant()`, then retry. See [Handling join errors](1.6_lucra_event_listener.md#handling-join-errors).
+- `locationGranted` event (payload `void`) fired once Lucra has the user's location. It carries no location detail: `client.on('locationGranted', () => dialog.close())`. See [Lucra Event Listener](1.6_lucra_event_listener.md).
+
 ## [v1.9.0]
 
 ### Changed
