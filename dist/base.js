@@ -284,7 +284,8 @@ export class LucraClientBase extends EventTarget {
                 return this._redirect("", undefined, url);
             },
             kyc: () => this._redirect("app/kyc"),
-            demographic: () => this._redirect("app/demographicform")
+            demographic: () => this._redirect("app/demographicform"),
+            locationGrant: () => this._redirect("app/location-grant")
         };
     }
     // Opens any route as a dialog. Reuses redirect()'s in-place navigation (no
@@ -303,7 +304,8 @@ export class LucraClientBase extends EventTarget {
             tournamentDetails: (matchupId) => present(() => nav.tournamentDetails(matchupId)),
             deepLink: (url) => present(() => nav.deepLink(url)),
             kyc: () => present(() => nav.kyc()),
-            demographic: () => present(() => nav.demographic())
+            demographic: () => present(() => nav.demographic()),
+            locationGrant: () => present(() => nav.locationGrant())
         };
     }
     // Presents the iframe's host as a dialog: shows the iframe, enables the in-app
@@ -430,6 +432,10 @@ export class LucraClientBase extends EventTarget {
             demographic: () => {
                 const params = addDefinedSearchParams({ phoneNumber });
                 return this._open({ element, path: "app/demographicform", params, hidden: options?.hidden });
+            },
+            locationGrant: () => {
+                const params = addDefinedSearchParams({ phoneNumber });
+                return this._open({ element, path: "app/location-grant", params, hidden: options?.hidden });
             }
         };
     }

@@ -11,6 +11,7 @@ type LucraNavigation = {
     deepLink: (url: string) => LucraClientBase;
     kyc: () => LucraClientBase;
     demographic: () => LucraClientBase;
+    locationGrant: () => LucraClientBase;
 };
 type LucraOpenNavigation = LucraNavigation & {
     minigamesTrigger: (input: LucraMinigamesTriggerInput) => Promise<LucraStartMinigamesSessionResponse>;
@@ -28,6 +29,7 @@ type LucraDialogNavigation = {
     deepLink: (url: string) => LucraDialog;
     kyc: () => LucraDialog;
     demographic: () => LucraDialog;
+    locationGrant: () => LucraDialog;
 };
 type LucraPopupNavigation = {
     deposit: () => LucraPopup;

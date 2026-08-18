@@ -148,6 +148,20 @@ describe("LucraClient.on / off", () => {
     const handler = mock(() => {});
     expect(() => client.off("userInfo", handler)).not.toThrow();
   });
+
+  it("delivers a locationGranted message to a registered listener with no payload", async () => {
+    const client = LucraClient.initialize(baseConfig);
+    const handler = mock(() => {});
+
+    client.on("locationGranted", handler);
+    await (client as any)._eventListener({
+      origin: "https://test-tenant.sandbox.lucrasports.com",
+      data: { type: "locationGranted", data: undefined },
+    });
+
+    expect(handler).toHaveBeenCalledTimes(1);
+    expect(handler.mock.calls[0][0] ?? undefined).toBeUndefined();
+  });
 });
 
 describe("LucraClient.api.tournaments", () => {
@@ -318,6 +332,7 @@ describe("LucraClient.api.joinTournament", () => {
       LucraApiErrorCode.insufficientFunds,
       LucraApiErrorCode.demographicInformationMissing,
       LucraApiErrorCode.locationError,
+      LucraApiErrorCode.locationNeeded,
     ];
 
     for (const code of codes) {
@@ -734,6 +749,69 @@ describe("LucraClient.popup().deposit", () => {
 
     expect(onClose).not.toHaveBeenCalled();
     expect(w.fakeWin.close).not.toHaveBeenCalled();
+  });
+});
+
+describe("LucraClient location grant navigation", () => {
+  let restore: (() => void) | undefined;
+  afterEach(() => {
+    restore?.();
+    restore = undefined;
+  });
+
+  // Navigation happens by message against an already-open iframe. bun test has no
+  // DOM, so stub the iframe to pass the open guard and capture the sent message.
+  function openedClient() {
+    const client = LucraClient.initialize(baseConfig);
+    (client as any).iframe = { remove: mock(() => {}) };
+    const sendMessage = mock(() => {});
+    (client as any)._sendMessage = sendMessage;
+    return { client, sendMessage };
+  }
+
+  function navigatedPathname(sendMessage: any) {
+    const message = sendMessage.mock.calls[0][0];
+    expect(message.type).toBe("navigate");
+    return new URL(message.body.pathname, LUCRA_ORIGIN).pathname;
+  }
+
+  it("redirect().locationGrant() navigates the iframe to app/location-grant", () => {
+    const w = installFakeWindow();
+    restore = w.restore;
+    const { client, sendMessage } = openedClient();
+
+    client.redirect().locationGrant();
+
+    expect(sendMessage).toHaveBeenCalledTimes(1);
+    expect(navigatedPathname(sendMessage)).toBe("/app/location-grant");
+  });
+
+  it("dialog().locationGrant() presents a dialog and navigates to app/location-grant", () => {
+    const w = installFakeWindow();
+    restore = w.restore;
+    const { client, sendMessage } = openedClient();
+    const handle = { close: mock(() => {}), onClose: mock(() => {}) };
+    // Presenting styles the host element, which needs a DOM; run the navigation
+    // the dialog would perform and hand back a stub handle.
+    (client as any)._presentDialog = mock((navigate: () => unknown) => {
+      navigate();
+      return handle;
+    });
+
+    const dialog = client.dialog().locationGrant();
+
+    expect(dialog).toBe(handle);
+    expect(navigatedPathname(sendMessage)).toBe("/app/location-grant");
+  });
+
+  it("redirect().locationGrant() throws when the client is not open", () => {
+    const w = installFakeWindow();
+    restore = w.restore;
+    const client = LucraClient.initialize(baseConfig);
+
+    expect(() => client.redirect().locationGrant()).toThrow(
+      "Cannot redirect. LucraClient is not open."
+    );
   });
 });
 
