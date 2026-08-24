@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## [v1.12.0]
+
+### Added
+
+- `autoJoinedTournaments` event (payload `{ tournamentIds: string[] }`), fired after Lucra enrolls the user in the free tournaments they were eligible for but not already in. An empty list is a normal result, not an error. It does not fire when the enrollment was skipped or failed. See [Lucra Event Listener](1.6_lucra_event_listener.md#available-events).
+- `autoJoin` constructor property (default `true`). Lucra enrolls an authenticated user in eligible free tournaments automatically, once per sign-in. Pass `autoJoin: false` to turn that off and choose the moment yourself. See [autoJoin](1.2_initialize_client.md#autojoin).
+- `api.autoJoinTournaments()`, which enrolls the user on demand and resolves with `{ tournamentIds }`. Reports through the same `autoJoinedTournaments` event as the automatic trigger. See [Async API](1.6_lucra_event_listener.md#async-api).
+
 ## [v1.11.0]
 
 ### Added

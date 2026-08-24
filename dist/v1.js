@@ -65,6 +65,11 @@ export class LucraClient extends LucraClientBase {
             this._rejectJoinTournament(event.data.data);
             return;
         }
+        // No return, unlike the settlers above: this message also falls through to
+        // dispatchEvent so manual and automatic triggers report through the same event.
+        if (event.data.type === LucraClientMessageType.autoJoinedTournaments) {
+            this._resolveAutoJoinTournaments(event.data.data);
+        }
         if (event.data.type === LucraClientMessageType.isLoggedInResponse) {
             this._resolveIsLoggedIn(event.data.data);
             return;

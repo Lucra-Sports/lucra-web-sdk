@@ -359,6 +359,100 @@ describe("LucraClient.api.joinTournament", () => {
   });
 });
 
+describe("LucraClient autoJoin", () => {
+  let restore: (() => void) | undefined;
+  afterEach(() => {
+    restore?.();
+    restore = undefined;
+  });
+
+  it("declares autoJoin=true on the iframe url by default", () => {
+    restore = installFakeWindow().restore;
+    const client = LucraClient.initialize(baseConfig);
+    const url = (client as any)._buildIframeUrl({});
+
+    expect(url.searchParams.get("autoJoin")).toBe("true");
+  });
+
+  it("passes autoJoin=false to the embedded app when opted out", () => {
+    restore = installFakeWindow().restore;
+    const client = LucraClient.initialize({ ...baseConfig, autoJoin: false });
+    const url = (client as any)._buildIframeUrl({});
+
+    expect(url.searchParams.get("autoJoin")).toBe("false");
+  });
+});
+
+describe("LucraClient.api.autoJoinTournaments", () => {
+  it("posts an autoJoinTournamentsRequest message to the iframe", () => {
+    const client = LucraClient.initialize(baseConfig);
+    const sendMessage = mock(() => {});
+    (client as any)._sendMessage = sendMessage;
+
+    client.api.autoJoinTournaments().catch(() => {});
+
+    expect(sendMessage).toHaveBeenCalledTimes(1);
+    expect(sendMessage).toHaveBeenCalledWith({
+      type: "autoJoinTournamentsRequest",
+      body: null,
+    });
+  });
+
+  it("resolves with the tournament ids when an autoJoinedTournaments message arrives", async () => {
+    const client = LucraClient.initialize(baseConfig);
+    const promise = client.api.autoJoinTournaments();
+    const data = { tournamentIds: ["a", "b"] };
+
+    await (client as any)._eventListener({
+      origin: "https://test-tenant.sandbox.lucrasports.com",
+      data: { type: "autoJoinedTournaments", data },
+    });
+
+    expect(await promise).toEqual(data);
+  });
+
+  it("resolves with an empty list, which is not an error", async () => {
+    const client = LucraClient.initialize(baseConfig);
+    const promise = client.api.autoJoinTournaments();
+
+    await (client as any)._eventListener({
+      origin: "https://test-tenant.sandbox.lucrasports.com",
+      data: { type: "autoJoinedTournaments", data: { tournamentIds: [] } },
+    });
+
+    expect(await promise).toEqual({ tournamentIds: [] });
+  });
+
+  it("fires the autoJoinedTournaments listener as well as resolving the request", async () => {
+    const client = LucraClient.initialize(baseConfig);
+    const listener = mock(() => {});
+    client.on("autoJoinedTournaments", listener);
+    const promise = client.api.autoJoinTournaments();
+
+    await (client as any)._eventListener({
+      origin: "https://test-tenant.sandbox.lucrasports.com",
+      data: { type: "autoJoinedTournaments", data: { tournamentIds: ["a"] } },
+    });
+
+    await promise;
+    expect(listener).toHaveBeenCalledTimes(1);
+    expect(listener).toHaveBeenCalledWith({ tournamentIds: ["a"] });
+  });
+
+  it("fires the listener for the automatic trigger, with no request pending", async () => {
+    const client = LucraClient.initialize(baseConfig);
+    const listener = mock(() => {});
+    client.on("autoJoinedTournaments", listener);
+
+    await (client as any)._eventListener({
+      origin: "https://test-tenant.sandbox.lucrasports.com",
+      data: { type: "autoJoinedTournaments", data: { tournamentIds: ["a"] } },
+    });
+
+    expect(listener).toHaveBeenCalledWith({ tournamentIds: ["a"] });
+  });
+});
+
 describe("LucraClient.api.tournament", () => {
   it("posts a tournamentRequest message with the matchupId", () => {
     const client = LucraClient.initialize(baseConfig);

@@ -19,6 +19,7 @@ export class LucraClientBase extends EventTarget {
     url = "";
     messages = [];
     locationId = "";
+    autoJoin = true;
     controller = new AbortController();
     _achievementsRequest = createApiRequest({
         type: MessageTypeToLucraClient.achievementsRequest,
@@ -43,6 +44,11 @@ export class LucraClientBase extends EventTarget {
     _joinTournamentRequest = createApiRequest({
         type: MessageTypeToLucraClient.joinTournamentRequest,
         cancelReason: "Cancelled by new joinTournament request",
+        sendMessage: (message) => this._sendMessage(message),
+    });
+    _autoJoinTournamentsRequest = createApiRequest({
+        type: MessageTypeToLucraClient.autoJoinTournamentsRequest,
+        cancelReason: "Cancelled by new autoJoinTournaments request",
         sendMessage: (message) => this._sendMessage(message),
     });
     _isLoggedInRequest = createApiRequest({
@@ -116,13 +122,14 @@ export class LucraClientBase extends EventTarget {
         });
         return null;
     }
-    constructor({ apiKey, tenantId, env, locationId, }) {
+    constructor({ apiKey, tenantId, env, locationId, autoJoin, }) {
         super();
         if (!apiKey || !tenantId) {
             throw new Error("Both apiKey and tenantId must be provided to create LucraClient");
         }
         this.env = env;
         this.locationId = locationId ?? "";
+        this.autoJoin = autoJoin ?? true;
         this.apiKey = apiKey;
         this.tenantId = tenantId;
         this.urlOrigin =
@@ -140,6 +147,10 @@ export class LucraClientBase extends EventTarget {
         if (this.locationId && !params.get("locationId")) {
             url.searchParams.set("locationId", this.locationId);
         }
+        // Always declared, both values: the embedded app persists the opt-out across the
+        // auth round-trip (URL params drop on navigation), so a fresh boot must be able to
+        // clear a stale opt-out as well as set one.
+        url.searchParams.set("autoJoin", String(this.autoJoin));
         url.searchParams.set("parentUrl", window.location.origin);
         return url;
     }
@@ -504,6 +515,13 @@ export class LucraClientBase extends EventTarget {
     _rejectJoinTournament(body) {
         this._joinTournamentRequest.reject(new LucraApiError(body.code, body.message));
     }
+    // Settles a pending manual autoJoinTournaments() call. The embedded app emits the
+    // same autoJoinedTournaments message for the automatic trigger, where no request is
+    // pending and this is a no-op. A gate-skipped or failed call emits nothing, so a
+    // manual caller's promise rejects on the request's own 15s timeout.
+    _resolveAutoJoinTournaments(data) {
+        this._autoJoinTournamentsRequest.resolve(data);
+    }
     _resolveIsLoggedIn(data) {
         this._isLoggedInRequest.resolve(data);
     }
@@ -556,6 +574,7 @@ export class LucraClientBase extends EventTarget {
             offset: pagination?.offset,
         }),
         joinTournament: (tournamentId) => this._joinTournamentRequest.send({ matchupId: tournamentId }),
+        autoJoinTournaments: () => this._autoJoinTournamentsRequest.send(),
     };
     sendMessage = {
         userUpdated: (data) => {

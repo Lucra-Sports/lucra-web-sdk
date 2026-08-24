@@ -2,6 +2,7 @@ export var LucraClientMessageType;
 (function (LucraClientMessageType) {
     LucraClientMessageType["achievementsResponse"] = "achievementsResponse";
     LucraClientMessageType["activeMatchupStarted"] = "activeMatchupStarted";
+    LucraClientMessageType["autoJoinedTournaments"] = "autoJoinedTournaments";
     LucraClientMessageType["claimReward"] = "claimReward";
     LucraClientMessageType["convertToCredit"] = "convertToCredit";
     LucraClientMessageType["deepLink"] = "deepLink";
@@ -30,6 +31,7 @@ export var LucraClientMessageType;
 export var MessageTypeToLucraClient;
 (function (MessageTypeToLucraClient) {
     MessageTypeToLucraClient["achievementsRequest"] = "achievementsRequest";
+    MessageTypeToLucraClient["autoJoinTournamentsRequest"] = "autoJoinTournamentsRequest";
     MessageTypeToLucraClient["availableRewards"] = "availableRewards";
     MessageTypeToLucraClient["clientUserInfo"] = "clientUserInfo";
     MessageTypeToLucraClient["convertToCreditResponse"] = "convertToCreditResponse";

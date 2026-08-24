@@ -1,4 +1,4 @@
-import { type LucraClientSendMessage, type LucraDeepLinkResponse, type LucraClientConstructor, type LucraAchievementsResponse, type LucraTournamentsResponse, type LucraTournamentResponse, type LucraTournamentLeaderboardResponse, type LucraJoinTournamentResponse, type LucraApiErrorBody, type LucraIsLoggedInResponse, type SDKLucraUser, type LucraMinigamesTriggerInput, type LucraStartMinigamesSessionResponse, type LucraInitializedBody, type LucraDialog, type LucraPopup, type LucraPopupResult } from "./types/types.js";
+import { type LucraClientSendMessage, type LucraDeepLinkResponse, type LucraClientConstructor, type LucraAchievementsResponse, type LucraTournamentsResponse, type LucraTournamentResponse, type LucraTournamentLeaderboardResponse, type LucraAutoJoinedTournamentsBody, type LucraJoinTournamentResponse, type LucraApiErrorBody, type LucraIsLoggedInResponse, type SDKLucraUser, type LucraMinigamesTriggerInput, type LucraStartMinigamesSessionResponse, type LucraInitializedBody, type LucraDialog, type LucraPopup, type LucraPopupResult } from "./types/types.js";
 type LucraNavigation = {
     profile: () => LucraClientBase;
     wallet: () => LucraClientBase;
@@ -48,12 +48,14 @@ export declare class LucraClientBase extends EventTarget {
     private url;
     private messages;
     private locationId;
+    private autoJoin;
     private controller;
     private _achievementsRequest;
     private _tournamentsRequest;
     private _tournamentRequest;
     private _tournamentLeaderboardRequest;
     private _joinTournamentRequest;
+    private _autoJoinTournamentsRequest;
     private _isLoggedInRequest;
     protected triggerFrames: Map<Window, TriggerHandle>;
     protected _user: SDKLucraUser | null;
@@ -74,7 +76,7 @@ export declare class LucraClientBase extends EventTarget {
     private iframeUrlOrigin;
     protected _eventListener: (_event: MessageEvent<any>) => Promise<void>;
     private setUpEventListener;
-    constructor({ apiKey, tenantId, env, locationId, }: LucraClientConstructor);
+    constructor({ apiKey, tenantId, env, locationId, autoJoin, }: LucraClientConstructor);
     private _buildIframeUrl;
     private _open;
     private _minigamesTrigger;
@@ -102,6 +104,7 @@ export declare class LucraClientBase extends EventTarget {
     protected _resolveTournamentLeaderboard(data: LucraTournamentLeaderboardResponse): void;
     protected _resolveJoinTournament(data: LucraJoinTournamentResponse): void;
     protected _rejectJoinTournament(body: LucraApiErrorBody): void;
+    protected _resolveAutoJoinTournaments(data: LucraAutoJoinedTournamentsBody): void;
     protected _resolveIsLoggedIn(data: LucraIsLoggedInResponse): void;
     protected _resolveTrigger(win: Window, data: LucraStartMinigamesSessionResponse): boolean;
     protected _handleInitialized(body: LucraInitializedBody): void;
@@ -116,6 +119,7 @@ export declare class LucraClientBase extends EventTarget {
             offset?: number;
         }) => Promise<LucraTournamentLeaderboardResponse>;
         joinTournament: (tournamentId: string) => Promise<LucraJoinTournamentResponse>;
+        autoJoinTournaments: () => Promise<LucraAutoJoinedTournamentsBody>;
     };
     sendMessage: LucraClientSendMessage;
 }
