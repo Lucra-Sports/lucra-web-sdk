@@ -85,7 +85,7 @@ export type LucraTournamentJoinedBody = {
     matchupId: string;
 };
 export type LucraAutoJoinedTournamentsBody = {
-    tournamentIds: string[];
+    matchupIds: string[];
 };
 export type LucraConvertToCreditBody = {
     amount: number;

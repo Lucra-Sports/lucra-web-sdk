@@ -147,9 +147,6 @@ export class LucraClientBase extends EventTarget {
         if (this.locationId && !params.get("locationId")) {
             url.searchParams.set("locationId", this.locationId);
         }
-        // Always declared, both values: the embedded app persists the opt-out across the
-        // auth round-trip (URL params drop on navigation), so a fresh boot must be able to
-        // clear a stale opt-out as well as set one.
         url.searchParams.set("autoJoin", String(this.autoJoin));
         url.searchParams.set("parentUrl", window.location.origin);
         return url;

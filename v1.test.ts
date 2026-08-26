@@ -401,7 +401,7 @@ describe("LucraClient.api.autoJoinTournaments", () => {
   it("resolves with the tournament ids when an autoJoinedTournaments message arrives", async () => {
     const client = LucraClient.initialize(baseConfig);
     const promise = client.api.autoJoinTournaments();
-    const data = { tournamentIds: ["a", "b"] };
+    const data = { matchupIds: ["a", "b"] };
 
     await (client as any)._eventListener({
       origin: "https://test-tenant.sandbox.lucrasports.com",
@@ -417,10 +417,10 @@ describe("LucraClient.api.autoJoinTournaments", () => {
 
     await (client as any)._eventListener({
       origin: "https://test-tenant.sandbox.lucrasports.com",
-      data: { type: "autoJoinedTournaments", data: { tournamentIds: [] } },
+      data: { type: "autoJoinedTournaments", data: { matchupIds: [] } },
     });
 
-    expect(await promise).toEqual({ tournamentIds: [] });
+    expect(await promise).toEqual({ matchupIds: [] });
   });
 
   it("fires the autoJoinedTournaments listener as well as resolving the request", async () => {
@@ -431,12 +431,12 @@ describe("LucraClient.api.autoJoinTournaments", () => {
 
     await (client as any)._eventListener({
       origin: "https://test-tenant.sandbox.lucrasports.com",
-      data: { type: "autoJoinedTournaments", data: { tournamentIds: ["a"] } },
+      data: { type: "autoJoinedTournaments", data: { matchupIds: ["a"] } },
     });
 
     await promise;
     expect(listener).toHaveBeenCalledTimes(1);
-    expect(listener).toHaveBeenCalledWith({ tournamentIds: ["a"] });
+    expect(listener).toHaveBeenCalledWith({ matchupIds: ["a"] });
   });
 
   it("fires the listener for the automatic trigger, with no request pending", async () => {
@@ -446,10 +446,10 @@ describe("LucraClient.api.autoJoinTournaments", () => {
 
     await (client as any)._eventListener({
       origin: "https://test-tenant.sandbox.lucrasports.com",
-      data: { type: "autoJoinedTournaments", data: { tournamentIds: ["a"] } },
+      data: { type: "autoJoinedTournaments", data: { matchupIds: ["a"] } },
     });
 
-    expect(listener).toHaveBeenCalledWith({ tournamentIds: ["a"] });
+    expect(listener).toHaveBeenCalledWith({ matchupIds: ["a"] });
   });
 });
 
