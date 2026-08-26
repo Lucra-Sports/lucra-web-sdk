@@ -10,6 +10,7 @@ export enum LucraClientMessageType {
   achievementsResponse = "achievementsResponse",
   activeMatchupStarted = "activeMatchupStarted",
   autoJoinedTournaments = "autoJoinedTournaments",
+  autoJoinTournamentsError = "autoJoinTournamentsError",
   claimReward = "claimReward",
   convertToCredit = "convertToCredit",
   deepLink = "deepLink",

@@ -709,10 +709,15 @@ export class LucraClientBase extends EventTarget {
 
   // Settles a pending manual autoJoinTournaments() call. The embedded app emits the
   // same autoJoinedTournaments message for the automatic trigger, where no request is
-  // pending and this is a no-op. A gate-skipped or failed call emits nothing, so a
-  // manual caller's promise rejects on the request's own 15s timeout.
+  // pending and this is a no-op.
   protected _resolveAutoJoinTournaments(data: LucraAutoJoinedTournamentsBody) {
     this._autoJoinTournamentsRequest.resolve(data);
+  }
+
+  protected _rejectAutoJoinTournaments(body: LucraApiErrorBody) {
+    this._autoJoinTournamentsRequest.reject(
+      new LucraApiError(body.code, body.message)
+    );
   }
 
   protected _resolveIsLoggedIn(data: LucraIsLoggedInResponse) {

@@ -105,6 +105,7 @@ export declare class LucraClientBase extends EventTarget {
     protected _resolveJoinTournament(data: LucraJoinTournamentResponse): void;
     protected _rejectJoinTournament(body: LucraApiErrorBody): void;
     protected _resolveAutoJoinTournaments(data: LucraAutoJoinedTournamentsBody): void;
+    protected _rejectAutoJoinTournaments(body: LucraApiErrorBody): void;
     protected _resolveIsLoggedIn(data: LucraIsLoggedInResponse): void;
     protected _resolveTrigger(win: Window, data: LucraStartMinigamesSessionResponse): boolean;
     protected _handleInitialized(body: LucraInitializedBody): void;

@@ -439,6 +439,41 @@ describe("LucraClient.api.autoJoinTournaments", () => {
     expect(listener).toHaveBeenCalledWith({ matchupIds: ["a"] });
   });
 
+  it("rejects with a typed LucraApiError when an autoJoinTournamentsError arrives", async () => {
+    const client = LucraClient.initialize(baseConfig);
+    const promise = client.api.autoJoinTournaments();
+
+    await (client as any)._eventListener({
+      origin: "https://test-tenant.sandbox.lucrasports.com",
+      data: {
+        type: "autoJoinTournamentsError",
+        data: { code: "LOCATION_NEEDED", message: "Location not granted" },
+      },
+    });
+
+    let caught: unknown;
+    await promise.catch((e) => {
+      caught = e;
+    });
+    expect(caught).toBeInstanceOf(LucraApiError);
+    expect((caught as LucraApiError).code).toBe(LucraApiErrorCode.locationNeeded);
+    expect((caught as LucraApiError).message).toBe("Location not granted");
+  });
+
+  it("does not fire the autoJoinedTournaments listener on an error message", async () => {
+    const client = LucraClient.initialize(baseConfig);
+    const listener = mock(() => {});
+    client.on("autoJoinedTournaments", listener);
+    client.api.autoJoinTournaments().catch(() => {});
+
+    await (client as any)._eventListener({
+      origin: "https://test-tenant.sandbox.lucrasports.com",
+      data: { type: "autoJoinTournamentsError", data: { code: "API_ERROR" } },
+    });
+
+    expect(listener).not.toHaveBeenCalled();
+  });
+
   it("fires the listener for the automatic trigger, with no request pending", async () => {
     const client = LucraClient.initialize(baseConfig);
     const listener = mock(() => {});

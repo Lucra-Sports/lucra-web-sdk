@@ -3,6 +3,7 @@ export var LucraClientMessageType;
     LucraClientMessageType["achievementsResponse"] = "achievementsResponse";
     LucraClientMessageType["activeMatchupStarted"] = "activeMatchupStarted";
     LucraClientMessageType["autoJoinedTournaments"] = "autoJoinedTournaments";
+    LucraClientMessageType["autoJoinTournamentsError"] = "autoJoinTournamentsError";
     LucraClientMessageType["claimReward"] = "claimReward";
     LucraClientMessageType["convertToCredit"] = "convertToCredit";
     LucraClientMessageType["deepLink"] = "deepLink";
