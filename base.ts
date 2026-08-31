@@ -13,6 +13,7 @@ import {
   type LucraTournamentResponse,
   type LucraTournamentLeaderboardInput,
   type LucraTournamentLeaderboardResponse,
+  type LucraAutoJoinedTournamentsBody,
   type LucraJoinTournamentResponse,
   type LucraApiErrorBody,
   type LucraIsLoggedInResponse,
@@ -99,6 +100,7 @@ export class LucraClientBase extends EventTarget {
   private url: string = "";
   private messages: string[] = [];
   private locationId: string = "";
+  private autoJoin: boolean = true;
   private controller: AbortController = new AbortController();
   private _achievementsRequest = createApiRequest<LucraAchievementsResponse>({
     type: MessageTypeToLucraClient.achievementsRequest,
@@ -134,6 +136,12 @@ export class LucraClientBase extends EventTarget {
     cancelReason: "Cancelled by new joinTournament request",
     sendMessage: (message) => this._sendMessage(message),
   });
+  private _autoJoinTournamentsRequest =
+    createApiRequest<LucraAutoJoinedTournamentsBody>({
+      type: MessageTypeToLucraClient.autoJoinTournamentsRequest,
+      cancelReason: "Cancelled by new autoJoinTournaments request",
+      sendMessage: (message) => this._sendMessage(message),
+    });
   private _isLoggedInRequest = createApiRequest<LucraIsLoggedInResponse>({
     type: MessageTypeToLucraClient.isLoggedInRequest,
     cancelReason: ISLOGGEDIN_CANCELLED,
@@ -220,6 +228,7 @@ export class LucraClientBase extends EventTarget {
     tenantId,
     env,
     locationId,
+    autoJoin,
   }: LucraClientConstructor) {
     super();
     if (!apiKey || !tenantId) {
@@ -230,6 +239,7 @@ export class LucraClientBase extends EventTarget {
 
     this.env = env;
     this.locationId = locationId ?? "";
+    this.autoJoin = autoJoin ?? true;
     this.apiKey = apiKey;
     this.tenantId = tenantId;
     this.urlOrigin =
@@ -264,6 +274,7 @@ export class LucraClientBase extends EventTarget {
       url.searchParams.set("locationId", this.locationId);
     }
 
+    url.searchParams.set("autoJoin", String(this.autoJoin));
     url.searchParams.set("parentUrl", window.location.origin);
 
     return url;
@@ -696,6 +707,19 @@ export class LucraClientBase extends EventTarget {
     );
   }
 
+  // Settles a pending manual autoJoinTournaments() call. The embedded app emits the
+  // same autoJoinedTournaments message for the automatic trigger, where no request is
+  // pending and this is a no-op.
+  protected _resolveAutoJoinTournaments(data: LucraAutoJoinedTournamentsBody) {
+    this._autoJoinTournamentsRequest.resolve(data);
+  }
+
+  protected _rejectAutoJoinTournaments(body: LucraApiErrorBody) {
+    this._autoJoinTournamentsRequest.reject(
+      new LucraApiError(body.code, body.message)
+    );
+  }
+
   protected _resolveIsLoggedIn(data: LucraIsLoggedInResponse) {
     this._isLoggedInRequest.resolve(data);
   }
@@ -761,6 +785,8 @@ export class LucraClientBase extends EventTarget {
       }),
     joinTournament: (tournamentId: string): Promise<LucraJoinTournamentResponse> =>
       this._joinTournamentRequest.send({ matchupId: tournamentId }),
+    autoJoinTournaments: (): Promise<LucraAutoJoinedTournamentsBody> =>
+      this._autoJoinTournamentsRequest.send(),
   };
 
   sendMessage: LucraClientSendMessage = {

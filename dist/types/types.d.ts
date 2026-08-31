@@ -2,6 +2,8 @@ export type LucraEnvironment = "local" | "dev1" | "dev2" | "staging" | "sandbox"
 export declare enum LucraClientMessageType {
     achievementsResponse = "achievementsResponse",
     activeMatchupStarted = "activeMatchupStarted",
+    autoJoinedTournaments = "autoJoinedTournaments",
+    autoJoinTournamentsError = "autoJoinTournamentsError",
     claimReward = "claimReward",
     convertToCredit = "convertToCredit",
     deepLink = "deepLink",
@@ -29,6 +31,7 @@ export declare enum LucraClientMessageType {
 }
 export declare enum MessageTypeToLucraClient {
     achievementsRequest = "achievementsRequest",
+    autoJoinTournamentsRequest = "autoJoinTournamentsRequest",
     availableRewards = "availableRewards",
     clientUserInfo = "clientUserInfo",
     convertToCreditResponse = "convertToCreditResponse",
@@ -82,6 +85,9 @@ export type LucraMatchupAcceptedBody = {
 export type LucraTournamentJoinedBody = {
     matchupId: string;
 };
+export type LucraAutoJoinedTournamentsBody = {
+    matchupIds: string[];
+};
 export type LucraConvertToCreditBody = {
     amount: number;
 };
@@ -121,6 +127,7 @@ export type LucraClientConstructor = {
     tenantId: string;
     env: LucraEnvironment;
     locationId?: string;
+    autoJoin?: boolean;
 };
 export type LucraEventMap = {
     userInfo: LucraUserInfoBody;
@@ -131,6 +138,7 @@ export type LucraEventMap = {
     matchupCanceled: LucraMatchupCanceledBody;
     convertToCredit: LucraConvertToCreditBody;
     tournamentJoined: LucraTournamentJoinedBody;
+    autoJoinedTournaments: LucraAutoJoinedTournamentsBody;
     deepLink: LucraDeepLinkBody;
     navigationEvent: LucraNavigationEventBody;
     claimReward: LucraClaimRewardBody;
