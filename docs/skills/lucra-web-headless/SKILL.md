@@ -54,8 +54,9 @@ An `api.*` call is: SDK posts a request message into the iframe → Lucra app do
 posts a response message back → SDK resolves your Promise. Three properties matter:
 
 - **Single-flight per function.** A new call to the same function cancels the in-flight one, which
-  rejects with the string `"Cancelled by new <name> request"`. React StrictMode's double-fired dev
-  effects hit this constantly — that rejection is benign, never surface it as an error.
+  rejects with the string `"Cancelled by new <name> request"`. That rejection is benign — never
+  surface it as an error. Development-mode behavior in some frameworks triggers it constantly; see
+  [Framework notes](#framework-notes).
 - **15-second timeout, rejected as the string `"Timeout"`.** A timeout usually means the
   request was never received or never answered (not-yet-initialized iframe, logged-out session on
   a gated call, no iframe at all, mid-request reload) — treat it as a sequencing bug first, a
@@ -112,6 +113,28 @@ Use a [Lucra flow](../../1.3_lucraflows.md) instead when the step *is* Lucra's U
 
 In short: headless renders *your* screens from Lucra data; flows run *Lucra's* screens.
 Compose them — headless list, flow for the interactive step, headless retry after.
+
+## Framework notes
+
+The SDK is plain TypeScript with no framework dependency — there is no React code in it, and it
+does not know about components, effects, or routers. The issues below come from how frameworks
+drive the SDK, not from the SDK itself.
+
+- **React StrictMode (development only)** double-invokes effects. An effect that issues an `api.*`
+  call fires twice; the second call cancels the first, which rejects with
+  `"Cancelled by new <name> request"`. Treat that rejection as benign. Production builds do not
+  double-invoke, so do not add workarounds that change behavior.
+- **Effect cleanup that calls `client.close()`** runs, then the effect re-runs under StrictMode.
+  The iframe is removed and mounted again, so expect one extra iframe load in development and
+  gate on `initialized` / `ready` again after the remount.
+- **Module re-execution (hot reload, dev servers)**: `LucraClient.initialize()` throws if the
+  client already exists. Call it once at your app's entry point, not inside a component or a
+  module that hot-reloads, and use `LucraClient.getInstance()` everywhere else.
+- **Route changes that move the iframe**: `moveTo()` re-parents and therefore reloads the iframe
+  (see [Lucra Flows](../../1.3_lucraflows.md#visibility-and-placement)). A router that
+  mounts a new container per route and calls `moveTo()` reloads Lucra on every navigation and
+  drops any in-flight request. Keep one host element alive across routes, or present Lucra UI with
+  a dialog instead.
 
 ## Recipes
 
