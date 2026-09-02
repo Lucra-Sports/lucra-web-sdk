@@ -42,8 +42,10 @@ Everything else about Web headless follows from this:
   same frame `show()`, `redirect()`, and `dialog()` present. Navigating or reloading it — forcing
   `open(...).login()`, or re-parenting it with `moveTo()` — kills any in-flight request. Dialogs
   present Lucra UI without a reload.
-- **Deposits are the exception**: `client.popup().deposit()` opens a real popup window because
-  Apple Pay won't run in a cross-origin iframe. Never try to route deposits through the iframe.
+- **Deposits complete in a real popup window**, because Apple Pay won't run in a cross-origin
+  iframe. `client.popup().deposit()` opens that popup directly and is the path to use from a
+  headless remediation. Navigating the user to the Wallet or Profile screen in the iframe also
+  works: the Lucra app detects that it is in an iframe and opens Add Funds in a popup itself.
 - **You can't reach inside.** The iframe is cross-origin: synthetic clicks, script injection, and
   (in agent-piloted browsers) even typed keystrokes don't reach it. Verify behavior via SDK events
   and promises, not by driving Lucra's UI.
