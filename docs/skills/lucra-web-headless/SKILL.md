@@ -91,7 +91,7 @@ matching Lucra flow, wait for its completion event, and retry:
 | `DEMOGRAPHIC_INFORMATION_MISSING` | `dialog().demographic()` | `demographicComplete` event | Yes |
 | `INSUFFICIENT_FUNDS` | `popup().deposit()` — popup, not iframe | `popup.onClose(result)` | Yes, on success |
 | `LOCATION_NEEDED` | `dialog().locationGrant()` | `locationGranted` event | Yes |
-| `LOCATION_ERROR` | nothing — show a location-unavailable state; `message` says whether Lucra rejected the region or the browser's geolocation failed | — | **No** for a rejected region; yes once a browser-side failure is fixed |
+| `LOCATION_ERROR` | show `error.message` to the user as-is — it is a curated message carrying the geocompliance information they need; it also says whether Lucra rejected the region or the browser's geolocation failed | — | **No** for a rejected region; yes once a browser-side failure is fixed |
 | `API_ERROR` | nothing — surface `message` | — | Yes (transient) |
 
 Remove each completion listener with `off()` once it fires, or repeated failures stack duplicate
