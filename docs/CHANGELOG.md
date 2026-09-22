@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## [v1.13.0]
+
+### Added
+
+- `currentValue` and `targetValue` on `LucraAchievement`, the raw progress toward an achievement and its goal (e.g. `261` of `700`). Render `currentValue / targetValue` as text; `currentProgress` stays the floored percentage for progress bar fill. See [Achievements](2.0_headless.md#achievements).
+
 ## [v1.12.0]
 
 ### Added

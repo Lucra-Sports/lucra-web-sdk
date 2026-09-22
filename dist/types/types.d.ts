@@ -223,6 +223,8 @@ export type LucraAchievement = {
     earnedAt?: string | null;
     claimedAt?: string | null;
     currentProgress: number;
+    currentValue: number;
+    targetValue: number;
     achievement?: {
         id: string;
         title: string;
