@@ -80,6 +80,7 @@ export declare class LucraClientBase extends EventTarget {
     private _buildIframeUrl;
     private _open;
     private _minigamesTrigger;
+    private _assertOpen;
     private _redirect;
     logout(): LucraClientBase;
     redirect(): LucraNavigation;

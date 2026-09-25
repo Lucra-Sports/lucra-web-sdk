@@ -90,6 +90,14 @@ export class LucraClient extends LucraClientBase {
         }
         if (event.data.type === LucraClientMessageType.initialized) {
             this._handleInitialized(event.data.data);
+            // The Lucra app drops messages sent before it initializes (and a reload
+            // resets it), so replay the exit control enable for existing listeners.
+            if (this.listenerMap.get("exitLucra")?.size) {
+                this._sendMessage({
+                    type: MessageTypeToLucraClient.enableExitLucra,
+                    body: true,
+                });
+            }
         }
         if (event.data.type === LucraClientMessageType.loginSuccess) {
             this._handleLoginSuccess();

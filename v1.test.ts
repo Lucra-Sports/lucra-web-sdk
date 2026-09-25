@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach, mock } from "bun:test";
 import { LucraClient } from "./v1.ts";
 import { createPopup } from "./popup.ts";
-import { LucraUserNotLoggedIn, LucraApiError } from "./errors.ts";
+import { LucraUserNotLoggedIn, LucraClientNotOpen, LucraApiError } from "./errors.ts";
 import { LucraApiErrorCode } from "./types/types.ts";
 import type { LucraV1ClientConstructor } from "./types/types.ts";
 
@@ -20,6 +20,12 @@ afterEach(() => {
 // triggering the login chain.
 function markInitialized(client: LucraClient) {
   (client as any)._initializedPromise = Promise.resolve();
+}
+
+// Guarded methods need an iframe. bun test has no DOM, so stub one.
+function markOpen(client: LucraClient) {
+  (client as any).iframe = { remove: mock(() => {}), style: {} };
+  return client;
 }
 
 // Yield a macrotask so the awaited `_initializedPromise` settles and the
@@ -162,6 +168,63 @@ describe("LucraClient.on / off", () => {
     expect(handler).toHaveBeenCalledTimes(1);
     expect(handler.mock.calls[0][0] ?? undefined).toBeUndefined();
   });
+
+  const enableExitCalls = (sendMessage: any) =>
+    sendMessage.mock.calls.filter(([m]: any[]) => m.type === "enableExitLucra");
+
+  const initialized = (client: LucraClient) =>
+    (client as any)._eventListener({
+      origin: "https://test-tenant.sandbox.lucrasports.com",
+      data: { type: "initialized", data: { success: true } },
+    });
+
+  it("re-enables exitLucra when the iframe initializes, for a listener registered before open", async () => {
+    const client = LucraClient.initialize(baseConfig);
+    expect(() => client.on("exitLucra", () => {})).not.toThrow();
+    const sendMessage = mock(() => {});
+    (client as any)._sendMessage = sendMessage;
+
+    await initialized(client);
+
+    expect(enableExitCalls(sendMessage)).toEqual([
+      [{ type: "enableExitLucra", body: true }],
+    ]);
+  });
+
+  it("re-enables exitLucra on each initialize, so it survives an iframe reload", async () => {
+    const client = LucraClient.initialize(baseConfig);
+    client.on("exitLucra", () => {});
+    const sendMessage = mock(() => {});
+    (client as any)._sendMessage = sendMessage;
+
+    await initialized(client);
+    await initialized(client);
+
+    expect(enableExitCalls(sendMessage)).toHaveLength(2);
+  });
+
+  it("does not send enableExitLucra on initialize without an exitLucra listener", async () => {
+    const client = LucraClient.initialize(baseConfig);
+    const sendMessage = mock(() => {});
+    (client as any)._sendMessage = sendMessage;
+
+    await initialized(client);
+
+    expect(enableExitCalls(sendMessage)).toHaveLength(0);
+  });
+
+  it("does not send enableExitLucra on initialize after the listener is removed", async () => {
+    const client = LucraClient.initialize(baseConfig);
+    const handler = () => {};
+    client.on("exitLucra", handler);
+    client.off("exitLucra", handler);
+    const sendMessage = mock(() => {});
+    (client as any)._sendMessage = sendMessage;
+
+    await initialized(client);
+
+    expect(enableExitCalls(sendMessage)).toHaveLength(0);
+  });
 });
 
 describe("LucraClient.api.tournaments", () => {
@@ -269,7 +332,7 @@ describe("LucraClient.api.tournaments", () => {
 
 describe("LucraClient.api.joinTournament", () => {
   it("posts a joinTournamentRequest message to the iframe", () => {
-    const client = LucraClient.initialize(baseConfig);
+    const client = markOpen(LucraClient.initialize(baseConfig));
     const sendMessage = mock(() => {});
     (client as any)._sendMessage = sendMessage;
 
@@ -283,7 +346,7 @@ describe("LucraClient.api.joinTournament", () => {
   });
 
   it("resolves with the data when a joinTournamentResponse message arrives", async () => {
-    const client = LucraClient.initialize(baseConfig);
+    const client = markOpen(LucraClient.initialize(baseConfig));
     const promise = client.api.joinTournament("some-id");
     const data = { matchupId: "some-id" };
 
@@ -296,7 +359,7 @@ describe("LucraClient.api.joinTournament", () => {
   });
 
   it("rejects an in-flight request when a new request is made", async () => {
-    const client = LucraClient.initialize(baseConfig);
+    const client = markOpen(LucraClient.initialize(baseConfig));
     const first = client.api.joinTournament("some-id");
     client.api.joinTournament("some-id").catch(() => {});
 
@@ -304,7 +367,7 @@ describe("LucraClient.api.joinTournament", () => {
   });
 
   it("rejects with a typed LucraApiError when a joinTournamentError message arrives", async () => {
-    const client = LucraClient.initialize(baseConfig);
+    const client = markOpen(LucraClient.initialize(baseConfig));
     const promise = client.api.joinTournament("some-id");
 
     await (client as any)._eventListener({
@@ -337,7 +400,7 @@ describe("LucraClient.api.joinTournament", () => {
     ];
 
     for (const code of codes) {
-      const client = LucraClient.initialize(baseConfig);
+      const client = markOpen(LucraClient.initialize(baseConfig));
       const promise = client.api.joinTournament("some-id");
 
       await (client as any)._eventListener({
@@ -385,7 +448,7 @@ describe("LucraClient autoJoin", () => {
 
 describe("LucraClient.api.autoJoinTournaments", () => {
   it("posts an autoJoinTournamentsRequest message to the iframe", () => {
-    const client = LucraClient.initialize(baseConfig);
+    const client = markOpen(LucraClient.initialize(baseConfig));
     const sendMessage = mock(() => {});
     (client as any)._sendMessage = sendMessage;
 
@@ -399,7 +462,7 @@ describe("LucraClient.api.autoJoinTournaments", () => {
   });
 
   it("resolves with the tournament ids when an autoJoinedTournaments message arrives", async () => {
-    const client = LucraClient.initialize(baseConfig);
+    const client = markOpen(LucraClient.initialize(baseConfig));
     const promise = client.api.autoJoinTournaments();
     const data = { matchupIds: ["a", "b"] };
 
@@ -412,7 +475,7 @@ describe("LucraClient.api.autoJoinTournaments", () => {
   });
 
   it("resolves with an empty list, which is not an error", async () => {
-    const client = LucraClient.initialize(baseConfig);
+    const client = markOpen(LucraClient.initialize(baseConfig));
     const promise = client.api.autoJoinTournaments();
 
     await (client as any)._eventListener({
@@ -424,7 +487,7 @@ describe("LucraClient.api.autoJoinTournaments", () => {
   });
 
   it("fires the autoJoinedTournaments listener as well as resolving the request", async () => {
-    const client = LucraClient.initialize(baseConfig);
+    const client = markOpen(LucraClient.initialize(baseConfig));
     const listener = mock(() => {});
     client.on("autoJoinedTournaments", listener);
     const promise = client.api.autoJoinTournaments();
@@ -440,7 +503,7 @@ describe("LucraClient.api.autoJoinTournaments", () => {
   });
 
   it("rejects with a typed LucraApiError when an autoJoinTournamentsError arrives", async () => {
-    const client = LucraClient.initialize(baseConfig);
+    const client = markOpen(LucraClient.initialize(baseConfig));
     const promise = client.api.autoJoinTournaments();
 
     await (client as any)._eventListener({
@@ -461,7 +524,7 @@ describe("LucraClient.api.autoJoinTournaments", () => {
   });
 
   it("does not fire the autoJoinedTournaments listener on an error message", async () => {
-    const client = LucraClient.initialize(baseConfig);
+    const client = markOpen(LucraClient.initialize(baseConfig));
     const listener = mock(() => {});
     client.on("autoJoinedTournaments", listener);
     client.api.autoJoinTournaments().catch(() => {});
@@ -490,7 +553,7 @@ describe("LucraClient.api.autoJoinTournaments", () => {
 
 describe("LucraClient.api.tournament", () => {
   it("posts a tournamentRequest message with the matchupId", () => {
-    const client = LucraClient.initialize(baseConfig);
+    const client = markOpen(LucraClient.initialize(baseConfig));
     const sendMessage = mock(() => {});
     (client as any)._sendMessage = sendMessage;
 
@@ -504,7 +567,7 @@ describe("LucraClient.api.tournament", () => {
   });
 
   it("resolves with the data when a tournamentResponse message arrives", async () => {
-    const client = LucraClient.initialize(baseConfig);
+    const client = markOpen(LucraClient.initialize(baseConfig));
     const promise = client.api.tournament("abc");
     const data = {
       tournament: {
@@ -541,7 +604,7 @@ describe("LucraClient.api.tournament", () => {
   });
 
   it("rejects an in-flight request when a new request is made", async () => {
-    const client = LucraClient.initialize(baseConfig);
+    const client = markOpen(LucraClient.initialize(baseConfig));
     const first = client.api.tournament("abc");
     client.api.tournament("def").catch(() => {});
 
@@ -551,7 +614,7 @@ describe("LucraClient.api.tournament", () => {
 
 describe("LucraClient.api.tournamentLeaderboard", () => {
   it("posts a tournamentLeaderboardRequest message with the matchupId and pagination", () => {
-    const client = LucraClient.initialize(baseConfig);
+    const client = markOpen(LucraClient.initialize(baseConfig));
     const sendMessage = mock(() => {});
     (client as any)._sendMessage = sendMessage;
 
@@ -565,7 +628,7 @@ describe("LucraClient.api.tournamentLeaderboard", () => {
   });
 
   it("resolves with the page when a tournamentLeaderboardResponse message arrives", async () => {
-    const client = LucraClient.initialize(baseConfig);
+    const client = markOpen(LucraClient.initialize(baseConfig));
     const promise = client.api.tournamentLeaderboard("abc", { limit: 2, offset: 0 });
     const data = {
       ui_tournament_details: {
@@ -609,7 +672,7 @@ describe("LucraClient.api.tournamentLeaderboard", () => {
   });
 
   it("rejects an in-flight request when a new request is made", async () => {
-    const client = LucraClient.initialize(baseConfig);
+    const client = markOpen(LucraClient.initialize(baseConfig));
     const first = client.api.tournamentLeaderboard("abc", { offset: 0 });
     client.api.tournamentLeaderboard("abc", { offset: 20 }).catch(() => {});
 
@@ -941,6 +1004,114 @@ describe("LucraClient location grant navigation", () => {
 
     expect(() => client.redirect().locationGrant()).toThrow(
       "Cannot redirect. LucraClient is not open."
+    );
+    expect(() => client.redirect().locationGrant()).toThrow(LucraClientNotOpen);
+  });
+});
+
+describe("LucraClientNotOpen", () => {
+  it("is a named Error with a default message", () => {
+    const error = new LucraClientNotOpen();
+    expect(error.name).toBe("LucraClientNotOpen");
+    expect(error).toBeInstanceOf(Error);
+    expect(error).toBeInstanceOf(LucraClientNotOpen);
+    expect(error.message).toBe(
+      "LucraClient is not open. Call client.open(element) first."
+    );
+  });
+
+  it("each guarded sendMessage.* throws before open and posts nothing", () => {
+    const client = LucraClient.initialize(baseConfig);
+    const sendMessage = mock(() => {});
+    (client as any)._sendMessage = sendMessage;
+    const calls: Array<() => void> = [
+      () => client.sendMessage.userUpdated({} as any),
+      () => client.sendMessage.enableConvertToCredit(),
+      () => client.sendMessage.navigate({ pathname: "/app/home" }),
+      () => client.sendMessage.availableRewards({ rewards: [] }),
+    ];
+
+    for (const call of calls) {
+      expect(call).toThrow(LucraClientNotOpen);
+    }
+    expect(sendMessage).not.toHaveBeenCalled();
+  });
+
+  it("reply sendMessage.* methods do not throw when not open", () => {
+    const client = LucraClient.initialize(baseConfig);
+
+    expect(() =>
+      client.sendMessage.deepLinkResponse({ url: "https://x.test" })
+    ).not.toThrow();
+    expect(() =>
+      client.sendMessage.convertToCreditResponse({} as any)
+    ).not.toThrow();
+  });
+
+  it("hide(), show(), and moveTo() throw before open", () => {
+    const client = LucraClient.initialize(baseConfig);
+    const element = { appendChild: mock(() => {}) } as any;
+
+    expect(() => client.hide()).toThrow(LucraClientNotOpen);
+    expect(() => client.show()).toThrow(LucraClientNotOpen);
+    expect(() => client.moveTo(element)).toThrow(LucraClientNotOpen);
+    expect(element.appendChild).not.toHaveBeenCalled();
+  });
+
+  it("hide(), show(), and moveTo() act on the iframe when open", () => {
+    const client = markOpen(LucraClient.initialize(baseConfig));
+    const iframe = (client as any).iframe;
+    const element = { appendChild: mock(() => {}) } as any;
+
+    client.hide();
+    expect(iframe.style.display).toBe("none");
+    client.show();
+    expect(iframe.style.display).toBe("block");
+    expect(client.moveTo(element)).toBe(client);
+    expect(element.appendChild).toHaveBeenCalledWith(iframe);
+  });
+
+  it("each guarded api.* rejects before open and posts nothing", async () => {
+    const client = LucraClient.initialize(baseConfig);
+    const sendMessage = mock(() => {});
+    (client as any)._sendMessage = sendMessage;
+    const calls: Array<() => Promise<unknown>> = [
+      () => client.api.achievements(),
+      () => client.api.tournament("abc"),
+      () => client.api.tournamentLeaderboard("abc"),
+      () => client.api.joinTournament("abc"),
+      () => client.api.autoJoinTournaments(),
+    ];
+
+    for (const call of calls) {
+      await expect(call()).rejects.toBeInstanceOf(LucraClientNotOpen);
+    }
+    expect(sendMessage).not.toHaveBeenCalled();
+  });
+
+  it("logout() and dialog() throw before open, with the open() hint", () => {
+    const client = LucraClient.initialize(baseConfig);
+
+    expect(() => client.logout()).toThrow(LucraClientNotOpen);
+    expect(() => client.logout()).toThrow(
+      "Cannot redirect. LucraClient is not open. Call client.open(element) first."
+    );
+    expect(() => client.dialog().home()).toThrow(LucraClientNotOpen);
+    expect(() => client.dialog().home()).toThrow(
+      "Cannot open a dialog. LucraClient is not open. Call client.open(element) first."
+    );
+  });
+
+  it("guarded methods throw or reject after close()", async () => {
+    const client = markOpen(LucraClient.initialize(baseConfig));
+    client.close();
+
+    expect(() => client.hide()).toThrow(LucraClientNotOpen);
+    expect(() => client.sendMessage.navigate({ pathname: "/app/home" })).toThrow(
+      LucraClientNotOpen
+    );
+    await expect(client.api.joinTournament("abc")).rejects.toBeInstanceOf(
+      LucraClientNotOpen
     );
   });
 });

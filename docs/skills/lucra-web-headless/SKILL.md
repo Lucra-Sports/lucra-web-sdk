@@ -3,11 +3,11 @@ name: lucra-web-headless
 description: >
   Understand Lucra's headless surface on Web before writing code against it — fetching tournaments,
   leaderboards, or achievements into your own UI, joining tournaments programmatically, or debugging
-  api.* calls that time out, hang, reject with LucraUserNotLoggedIn / LucraApiError, or silently do
-  nothing. Teaches the mental model (headless is still an invisible iframe), the async postMessage
-  contract, which calls need auth, and the call → typed error → remediation flow → retry loop.
-  The reference is in the docs this skill points to; load lucra-web-starting-point first if the SDK
-  isn't set up yet.
+  api.* calls that time out, hang, reject with LucraUserNotLoggedIn / LucraClientNotOpen /
+  LucraApiError, or silently do nothing. Teaches the mental model (headless is still an invisible
+  iframe), the async postMessage contract, which calls need auth, and the call → typed error →
+  remediation flow → retry loop. The reference is in the docs this skill points to; load
+  lucra-web-starting-point first if the SDK isn't set up yet.
 ---
 
 # Lucra Web — Understanding Headless
@@ -35,9 +35,11 @@ that exists solely to run the Lucra app and post results back.
 
 Everything else about Web headless follows from this:
 
-- **Nothing works until the iframe is mounted and its app has booted.** Calls posted earlier are
-  silently dropped (no error — the message just lands nowhere) and surface 15 seconds later as a
-  timeout. Sequence behind the lifecycle gates: the `initialized` event / `client.ready`.
+- **Nothing works until the iframe is mounted and its app has booted.** Calls made before `open()`
+  (or after `close()`) fail fast with `LucraClientNotOpen`, except `api.tournaments()`, which waits
+  for `open()` and init. Calls posted after `open()` but before the app has booted are silently
+  dropped (no error: the message just lands nowhere) and surface 15 seconds later as a timeout.
+  Sequence behind the lifecycle gates: the `initialized` event / `client.ready`.
 - **Headless and UI share the one iframe.** The hidden frame answering your `api.*` calls is the
   same frame `show()`, `redirect()`, and `dialog()` present. Navigating or reloading it — forcing
   `open(...).login()`, or re-parenting it with `moveTo()` — kills any in-flight request. Dialogs
@@ -61,11 +63,11 @@ posts a response message back → SDK resolves your Promise. Three properties ma
   [Framework notes](#framework-notes).
 - **15-second timeout, rejected as the string `"Timeout"`.** A timeout usually means the
   request was never received or never answered (not-yet-initialized iframe, logged-out session on
-  a gated call, no iframe at all, mid-request reload) — treat it as a sequencing bug first, a
+  a gated call, mid-request reload) — treat it as a sequencing bug first, a
   Lucra outage last. The cause table: [Headless on Web → Request timeout](../../2.0_headless.md#request-timeout).
-- **Typed errors vs strings.** `LucraUserNotLoggedIn` and `LucraApiError` are real Error classes —
-  check with `instanceof`. Timeouts and cancellations are plain strings. Anything you can't
-  classify with `instanceof` is one of the strings.
+- **Typed errors vs strings.** `LucraUserNotLoggedIn`, `LucraClientNotOpen`, and `LucraApiError`
+  are real Error classes: check with `instanceof`. Timeouts and cancellations are plain strings.
+  Anything you can't classify with `instanceof` is one of the strings.
 
 ## 3. Auth: exactly one call works logged-out
 

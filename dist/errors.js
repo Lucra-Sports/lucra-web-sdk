@@ -6,6 +6,15 @@ export class LucraUserNotLoggedIn extends Error {
         Object.setPrototypeOf(this, LucraUserNotLoggedIn.prototype);
     }
 }
+// Thrown (rejected with, for api.* calls) when a method that needs the Lucra
+// iframe runs before open() or after close().
+export class LucraClientNotOpen extends Error {
+    constructor(message = "LucraClient is not open. Call client.open(element) first.") {
+        super(message);
+        this.name = "LucraClientNotOpen";
+        Object.setPrototypeOf(this, LucraClientNotOpen.prototype);
+    }
+}
 const API_ERROR_MESSAGES = {
     [LucraApiErrorCode.unverified]: "User is not verified",
     [LucraApiErrorCode.insufficientFunds]: "User has insufficient funds",
