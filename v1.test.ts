@@ -236,7 +236,7 @@ describe("LucraClient.on / off", () => {
 
 describe("LucraClient.api.tournaments", () => {
   it("posts a tournamentsRequest message to the iframe", async () => {
-    const client = LucraClient.initialize(baseConfig);
+    const client = markOpen(LucraClient.initialize(baseConfig));
     const sendMessage = mock(() => {});
     (client as any)._sendMessage = sendMessage;
     markInitialized(client);
@@ -252,7 +252,7 @@ describe("LucraClient.api.tournaments", () => {
   });
 
   it("resolves with the data when a tournamentsResponse message arrives", async () => {
-    const client = LucraClient.initialize(baseConfig);
+    const client = markOpen(LucraClient.initialize(baseConfig));
     markInitialized(client);
     const promise = client.api.tournaments();
     await flush();
@@ -291,7 +291,7 @@ describe("LucraClient.api.tournaments", () => {
   });
 
   it("rejects an in-flight request when a new request is made", async () => {
-    const client = LucraClient.initialize(baseConfig);
+    const client = markOpen(LucraClient.initialize(baseConfig));
     markInitialized(client);
     const first = client.api.tournaments();
     client.api.tournaments().catch(() => {});
@@ -299,8 +299,29 @@ describe("LucraClient.api.tournaments", () => {
     await expect(first).rejects.toBe("Cancelled by new tournaments request");
   });
 
+  it("waits for initialization before sending on an open client", async () => {
+    const client = markOpen(LucraClient.initialize(baseConfig));
+    const sendMessage = mock(() => {});
+    (client as any)._sendMessage = sendMessage;
+
+    client.api.tournaments().catch(() => {});
+    await flush();
+    expect(sendMessage).not.toHaveBeenCalled();
+
+    await (client as any)._eventListener({
+      origin: "https://test-tenant.sandbox.lucrasports.com",
+      data: { type: "initialized", data: { success: true } },
+    });
+    await flush();
+
+    expect(sendMessage).toHaveBeenCalledWith({
+      type: "tournamentsRequest",
+      body: null,
+    });
+  });
+
   it("fetches tournaments without a logged-in user once the iframe is initialized", async () => {
-    const client = LucraClient.initialize(baseConfig);
+    const client = markOpen(LucraClient.initialize(baseConfig));
     // A pre-auth consumer never awaits `ready`; the internal guard in
     // `_createReadyPromise` keeps its logged-out rejection from going unhandled.
     const promise = client.api.tournaments();
@@ -325,7 +346,7 @@ describe("LucraClient.api.tournaments", () => {
   });
 
   it("rejects when the iframe fails to initialize", async () => {
-    const client = LucraClient.initialize(baseConfig);
+    const client = markOpen(LucraClient.initialize(baseConfig));
     const promise = client.api.tournaments();
 
     await (client as any)._eventListener({
@@ -1078,12 +1099,13 @@ describe("LucraClientNotOpen", () => {
     expect(element.appendChild).toHaveBeenCalledWith(iframe);
   });
 
-  it("each guarded api.* rejects before open and posts nothing", async () => {
+  it("each api.* rejects before open and posts nothing", async () => {
     const client = LucraClient.initialize(baseConfig);
     const sendMessage = mock(() => {});
     (client as any)._sendMessage = sendMessage;
     const calls: Array<() => Promise<unknown>> = [
       () => client.api.achievements(),
+      () => client.api.tournaments(),
       () => client.api.tournament("abc"),
       () => client.api.tournamentLeaderboard("abc"),
       () => client.api.joinTournament("abc"),

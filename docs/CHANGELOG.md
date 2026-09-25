@@ -5,13 +5,13 @@
 ### Added
 
 - `currentValue` and `targetValue` on `LucraAchievement`, the raw progress toward an achievement and its goal (e.g. `261` of `700`). Render `currentValue / targetValue` as text; `currentProgress` stays the floored percentage for progress bar fill. See [Achievements](2.0_headless.md#achievements).
-- `LucraClientNotOpen` error (exported), for methods that need the Lucra iframe but run before `open()` or after `close()`. `api.tournaments()` is exempt: it waits for initialization. See [Headless on Web: Errors](2.0_headless.md#lucraclientnotopen).
+- `LucraClientNotOpen` error (exported), for methods that need the Lucra iframe but run before `open()` or after `close()`. See [Headless on Web: Errors](2.0_headless.md#lucraclientnotopen).
 
 ### Breaking
 
 - `hide()`, `show()`, `moveTo()`, and `sendMessage.userUpdated/navigate/enableConvertToCredit/availableRewards` now throw `LucraClientNotOpen` before `open()` or after `close()` instead of silently doing nothing. The replies `sendMessage.deepLinkResponse/convertToCreditResponse` stay lenient.
 - The methods returned by `redirect()` and `dialog()`, and `logout()`, now throw `LucraClientNotOpen` instead of `Error`. The message keeps its prefix and `instanceof Error` is still true.
-- `api.achievements/tournament/tournamentLeaderboard/joinTournament/autoJoinTournaments` reject with `LucraClientNotOpen` immediately instead of the 15s `"Timeout"`. See [Headless on Web](2.0_headless.md#api-functions).
+- `api.achievements/tournament/tournamentLeaderboard/joinTournament/autoJoinTournaments` reject with `LucraClientNotOpen` immediately instead of the 15s `"Timeout"`, and `api.tournaments()` rejects with it instead of waiting indefinitely when there is no iframe. See [Headless on Web](2.0_headless.md#api-functions).
 
 ### Deprecated
 

@@ -36,11 +36,11 @@ that exists solely to run the Lucra app and post results back.
 Everything else about Web headless follows from this:
 
 - **Nothing works until the iframe is mounted and its app has booted.** Calls made before `open()`
-  (or after `close()`) fail fast with `LucraClientNotOpen`, except `api.tournaments()`, which waits
-  for `open()` and init. Calls posted after `open()` but before the app has booted are silently
-  dropped (no error: the message just lands nowhere) and surface 15 seconds later as a timeout.
-  Sequence behind the lifecycle gates: the `initialized` event / `client.ready`. Mount once at
-  startup, right after `initialize`, so the boot starts as early as possible: see
+  (or after `close()`) fail fast with `LucraClientNotOpen`. Calls posted after `open()` but before
+  the app has booted are silently dropped (no error: the message just lands nowhere) and surface
+  15 seconds later as a timeout. Sequence behind the lifecycle gates: the `initialized` event /
+  `client.ready`. Mount once at startup, right after `initialize`, so the boot starts as early as
+  possible: see
   [Mount the iframe at startup](../../1.2_initialize_client.md#mount-the-iframe-at-startup-recommended).
 - **Headless and UI share the one iframe.** The hidden frame answering your `api.*` calls is the
   same frame `show()`, `redirect()`, and `dialog()` present. Navigating or reloading it (forcing

@@ -802,16 +802,15 @@ export class LucraClientBase extends EventTarget {
       this._assertOpen("call api.achievements");
       return this._achievementsRequest.send();
     },
-    // Fetching all tournaments is allowed before auth, so it only waits for the
-    // embedded app to be initialized (not `ready`, which also asserts login).
-    // Awaiting init also keeps the request from racing initialization -- it is
-    // sent once the iframe is ready to receive it. The others need auth (called
-    // after `ready`) and an open iframe; without one they reject with
-    // LucraClientNotOpen.
+    // Every request needs an open iframe and rejects with LucraClientNotOpen
+    // without one. Fetching all tournaments is also allowed before auth, so it
+    // additionally waits for the embedded app to be initialized (not `ready`,
+    // which also asserts login); the others need auth (called after `ready`).
     // Note: if `close()` runs while this is still awaiting a not-yet-resolved
     // init, the captured promise never settles and this call stays pending --
     // an accepted edge given the narrow window.
     tournaments: async (): Promise<LucraTournamentsResponse> => {
+      this._assertOpen("call api.tournaments");
       await this._initializedPromise;
       return this._tournamentsRequest.send();
     },
