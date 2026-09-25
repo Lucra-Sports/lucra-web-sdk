@@ -39,7 +39,9 @@ Everything else about Web headless follows from this:
   (or after `close()`) fail fast with `LucraClientNotOpen`, except `api.tournaments()`, which waits
   for `open()` and init. Calls posted after `open()` but before the app has booted are silently
   dropped (no error: the message just lands nowhere) and surface 15 seconds later as a timeout.
-  Sequence behind the lifecycle gates: the `initialized` event / `client.ready`.
+  Sequence behind the lifecycle gates: the `initialized` event / `client.ready`. Mount once at
+  startup, right after `initialize`, so the boot starts as early as possible: see
+  [Mount the iframe at startup](../../1.2_initialize_client.md#mount-the-iframe-at-startup-recommended).
 - **Headless and UI share the one iframe.** The hidden frame answering your `api.*` calls is the
   same frame `show()`, `redirect()`, and `dialog()` present. Navigating or reloading it (forcing
   `open(...).login()`, or re-parenting it with the deprecated `moveTo()`) kills any in-flight
@@ -138,13 +140,16 @@ drive the SDK, not from the SDK itself.
 - **Route changes that move the iframe**: `moveTo()` (deprecated) re-parents and therefore reloads
   the iframe (see [Lucra Flows](../../1.3_lucraflows.md#visibility-and-placement)). A router that
   mounts a new container per route and calls `moveTo()` reloads Lucra on every navigation and
-  drops any in-flight request. Keep one host element alive across routes, or present Lucra UI with
-  a dialog instead.
+  drops any in-flight request. `open(newContainer)` does not move it either: once the iframe
+  exists, `open()` navigates in place, and if the router removes the original container the iframe
+  goes with it. Keep one host element alive across routes, mounted once at startup, and present
+  Lucra UI with a dialog: see
+  [Mount the iframe at startup](../../1.2_initialize_client.md#mount-the-iframe-at-startup-recommended).
 
 ## Recipes
 
-- **Pre-auth tournament list**: mount hidden → `api.tournaments()` → render your cards → on tap,
-  either your own detail view (`api.tournament` after `ready`) or hand off to
+- **Pre-auth tournament list**: mount hidden at startup → `api.tournaments()` → render your
+  cards → on tap, either your own detail view (`api.tournament` after `ready`) or hand off to
   `dialog().tournamentDetails(matchupId)`.
 - **Gated join from your own button**: `await client.ready` (login on `LucraUserNotLoggedIn`) →
   `api.joinTournament(id)` → remediation loop above → `tournamentJoined` event confirms, same as
