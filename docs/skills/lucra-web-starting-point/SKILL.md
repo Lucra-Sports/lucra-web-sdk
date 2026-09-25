@@ -34,7 +34,7 @@ You are integrating Lucra's Web SDK (`lucra-web-sdk`): an iframe-embedding JavaS
 | Install / project setup | [Project Setup](../../1.0_project_setup.md) |
 | Initialize the client | [Initialize LucraClient](../../1.2_initialize_client.md) |
 | Open Lucra screens (flows) | [Lucra Flows](../../1.3_lucraflows.md) |
-| Deposit (Add Funds) | [Lucra Flows → Popups](../../1.3_lucraflows.md#popups): `popup().deposit()` from a user gesture. `deposit()` on `open()`, `redirect()`, and `dialog()` is deprecated |
+| Deposit (Add Funds) | [Lucra Flows → Popups](../../1.3_lucraflows.md#popups): `popup().deposit()` from a user gesture, or open `wallet()` / `profile()`, where the Lucra app opens Add Funds in a popup on its own. `deposit()` on `open()`, `redirect()`, and `dialog()` is deprecated |
 | Deep links / matchup invites | [Deeplinks](../../1.4_deeplinks.md) |
 | React to Lucra events | [Lucra Event Listener](../../1.6_lucra_event_listener.md) |
 | Fetch Lucra data into your own UI (tournaments, leaderboards, achievements) or join headlessly | [Headless on Web](../../2.0_headless.md), [Tournaments Headless](../../2.1_tournaments_headless.md) — load the companion skill `lucra-web-headless` for the mental model first |

@@ -47,7 +47,7 @@ const ISLOGGEDIN_CANCELLED = "Cancelled by new isLoggedIn request";
 // Shared by open(), redirect(), and dialog() deposit (dialog routes through
 // redirect), so one key warns once for all three.
 const DEPOSIT_DEPRECATION =
-  "deposit() on open(), redirect(), and dialog() is deprecated and will be removed in a future major version. Add Funds must run in a popup: use popup().deposit() from a user gesture.";
+  "deposit() on open(), redirect(), and dialog() is deprecated and will be removed in a future major version. Add Funds must run in a popup: use popup().deposit() from a user gesture, or open wallet() or profile(), where the Lucra app opens Add Funds in a popup on its own.";
 
 type LucraNavigation = {
   profile: () => LucraClientBase;
@@ -55,7 +55,8 @@ type LucraNavigation = {
   home: (locationId?: string) => LucraClientBase;
   /**
    * @deprecated Add Funds must run in a popup (Apple Pay does not run in a
-   * cross-origin iframe). Use popup().deposit() from a user gesture.
+   * cross-origin iframe). Use popup().deposit() from a user gesture, or open
+   * wallet() or profile(): from there the Lucra app opens Add Funds in a popup.
    */
   deposit: () => LucraClientBase;
   withdraw: () => LucraClientBase;
@@ -81,7 +82,8 @@ type LucraDialogNavigation = {
   home: (locationId?: string) => LucraDialog;
   /**
    * @deprecated Add Funds must run in a popup (Apple Pay does not run in a
-   * cross-origin iframe). Use popup().deposit() from a user gesture.
+   * cross-origin iframe). Use popup().deposit() from a user gesture, or open
+   * wallet() or profile(): from there the Lucra app opens Add Funds in a popup.
    */
   deposit: () => LucraDialog;
   withdraw: () => LucraDialog;
