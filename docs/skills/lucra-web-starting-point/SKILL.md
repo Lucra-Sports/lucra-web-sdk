@@ -34,6 +34,7 @@ You are integrating Lucra's Web SDK (`lucra-web-sdk`): an iframe-embedding JavaS
 | Install / project setup | [Project Setup](../../1.0_project_setup.md) |
 | Initialize the client | [Initialize LucraClient](../../1.2_initialize_client.md) |
 | Open Lucra screens (flows) | [Lucra Flows](../../1.3_lucraflows.md) |
+| Deposit (Add Funds) | [Lucra Flows](../../1.3_lucraflows.md#open-lucra): open `wallet()` or `profile()` (e.g. `dialog().wallet()`), where the Lucra app opens Add Funds in a popup on its own. `deposit()` on `open()`, `redirect()`, and `dialog()` is deprecated |
 | Deep links / matchup invites | [Deeplinks](../../1.4_deeplinks.md) |
 | React to Lucra events | [Lucra Event Listener](../../1.6_lucra_event_listener.md) |
 | Fetch Lucra data into your own UI (tournaments, leaderboards, achievements) or join headlessly | [Headless on Web](../../2.0_headless.md), [Tournaments Headless](../../2.1_tournaments_headless.md) — load the companion skill `lucra-web-headless` for the mental model first |
@@ -43,9 +44,9 @@ You are integrating Lucra's Web SDK (`lucra-web-sdk`): an iframe-embedding JavaS
 
 ## Checkpoints — confirm each stage before building the next
 
-1. **Init**: `LucraClient.initialize({ apiKey, tenantId, env })` succeeded and the `initialized` event fired (or `client.isInitialized` is true). If not: wrong apiKey/env pairing is the usual cause — keys are per-environment.
+1. **Init and mount**: call `LucraClient.initialize({ apiKey, tenantId, env })`, then right away mount the iframe once, hidden, into a host element that lives for the whole app: `client.open(host, undefined, { hidden: true }).home()` (see [Mount the iframe at startup](../../1.2_initialize_client.md#mount-the-iframe-at-startup-recommended)). Confirm the `initialized` event fired (or `client.isInitialized` is true). If not, and the iframe is mounted: wrong apiKey/env pairing is the usual cause — keys are per-environment.
 2. **Iframe reachable**: the iframe loads `https://<tenantId>.<env>.lucrasports.com` (production omits the env segment). Curl that host yourself if the iframe stays blank.
-3. **Login state**: gate on `client.ready` — it resolves only when initialized *and* logged in, and rejects with `LucraUserNotLoggedIn` otherwise. Listen for `loginSuccess` and `userInfo`. Do **not** navigate flows before init completes: navigation postMessages sent while the embedded app is still loading can be silently dropped. Make your first-rendered screen decide the initial iframe destination instead of boot-then-redirect.
+3. **Login state**: gate on `client.ready` — it resolves only when initialized *and* logged in, and rejects with `LucraUserNotLoggedIn` otherwise. Listen for `loginSuccess` and `userInfo`. Do **not** navigate flows before init completes: navigation postMessages sent while the embedded app is still loading can be silently dropped. If a specific Lucra route is needed from the start, mount straight to it (e.g. `.tournamentDetails(id)` instead of `.home()`) rather than mounting and redirecting during boot. After the first mount, navigate with `redirect()` or `dialog()`: calling `open()` again does not move the iframe.
 4. **Don't orchestrate auth yourself**: a `ready` rejection does NOT mean "force the login flow." Pre-login headless reads (e.g. `api.tournaments()`) are legitimate, and forcing a login navigation reloads the shared iframe and drops any in-flight request. Open the destination you actually want; Lucra's app gates it and shows login itself when needed.
 5. **Re-assert your destination after login**: Lucra's post-login landing is *its own default screen*, not the route you originally requested. Remember the last destination your app asked for and re-issue that navigation (e.g. via `redirect()`) when `loginSuccess` fires.
 6. **Round-trip**: `client.api.tournaments()` works pre-auth and proves the postMessage channel end-to-end. Note: `api.*` requests are single-flight — issuing a new call cancels the in-flight one, which rejects with `"Cancelled by new <name> request"`. Treat that specific rejection as benign, not an error. Frameworks that double-invoke effects in development trigger it constantly; the `lucra-web-headless` skill's framework notes cover the known cases.
@@ -53,6 +54,7 @@ You are integrating Lucra's Web SDK (`lucra-web-sdk`): an iframe-embedding JavaS
 ## Troubleshooting
 
 - **Silent nothing** (no error, no event): usually a dropped postMessage (see checkpoint 3) or a request that ended in the SDK's 15s timeout — see [Headless on Web → Request timeout](../../2.0_headless.md#request-timeout) for the cause table.
+- **`LucraClientNotOpen`** (thrown, or rejected by `api.*`): a call that needs the iframe ran before `open()` or after `close()`. See [Headless on Web → Errors](../../2.0_headless.md#lucraclientnotopen).
 - **401s** from non-SDK Lucra endpoints: key-class mismatch (web key vs server key) — expected; not fixable client-side.
 - **Iframe blank**: verify the tenant host resolves for your env; verify the apiKey query param is present on the iframe src.
 - **`api.*` calls hang, time out, or reject with typed errors**: load the companion skill `lucra-web-headless` and see [Headless on Web → Errors](../../2.0_headless.md#errors).

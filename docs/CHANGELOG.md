@@ -5,6 +5,22 @@
 ### Added
 
 - `currentValue` and `targetValue` on `LucraAchievement`, the raw progress toward an achievement and its goal (e.g. `261` of `700`). Render `currentValue / targetValue` as text; `currentProgress` stays the floored percentage for progress bar fill. See [Achievements](2.0_headless.md#achievements).
+- `LucraClientNotOpen` error (exported), for methods that need the Lucra iframe but run before `open()` or after `close()`. See [Headless on Web: Errors](2.0_headless.md#lucraclientnotopen).
+
+### Breaking
+
+- `hide()`, `show()`, `moveTo()`, and `sendMessage.userUpdated/navigate/enableConvertToCredit/availableRewards` now throw `LucraClientNotOpen` before `open()` or after `close()` instead of silently doing nothing. The replies `sendMessage.deepLinkResponse/convertToCreditResponse` stay lenient.
+- The methods returned by `redirect()` and `dialog()`, and `logout()`, now throw `LucraClientNotOpen` instead of `Error`. The message keeps its prefix and `instanceof Error` is still true.
+- `api.achievements/tournament/tournamentLeaderboard/joinTournament/autoJoinTournaments` reject with `LucraClientNotOpen` immediately instead of the 15s `"Timeout"`, and `api.tournaments()` rejects with it instead of waiting indefinitely when there is no iframe. See [Headless on Web](2.0_headless.md#api-functions).
+
+### Deprecated
+
+- `moveTo()`: re-parenting the iframe reloads it, losing page state and any in-flight request. Keep the iframe in one persistent container ([mounted at startup](1.2_initialize_client.md#mount-the-iframe-at-startup-recommended)) and use `show()`/`hide()`, or present routes with `dialog()`. It keeps working, logs a one-time console warning, and will be removed in a future major version. See [Visibility and Placement](1.3_lucraflows.md#visibility-and-placement).
+- `deposit()` on `open()`, `redirect()`, and `dialog()`: Add Funds must run in a top-level popup because Apple Pay does not run in a cross-origin iframe. Open `wallet()` or `profile()` instead: from there the Lucra app opens Add Funds in a popup on its own. It keeps working, logs a one-time console warning, and will be removed in a future major version. See [Lucra Flows](1.3_lucraflows.md#open-lucra).
+
+### Fixed
+
+- `on('exitLucra')` now enables the in-app exit control whenever it is registered: before `open()`, before the Lucra app finished loading, or across an iframe reload. The SDK re-sends it each time the iframe reports `initialized`. Hosts that registered it before `open()` or before the Lucra app loaded now actually see the exit control (the back arrow, and the wallet X exits instead of going home), which previously never appeared. See [Exiting Lucra](1.5_exiting_lucra.md).
 
 ## [v1.12.0]
 

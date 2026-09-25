@@ -3,6 +3,11 @@ type LucraNavigation = {
     profile: () => LucraClientBase;
     wallet: () => LucraClientBase;
     home: (locationId?: string) => LucraClientBase;
+    /**
+     * @deprecated Add Funds must run in a popup (Apple Pay does not run in a
+     * cross-origin iframe). Open wallet() or profile() instead: from there the
+     * Lucra app opens Add Funds in a popup on its own.
+     */
     deposit: () => LucraClientBase;
     withdraw: () => LucraClientBase;
     createMatchup: (gameId?: string) => LucraClientBase;
@@ -21,6 +26,11 @@ type LucraDialogNavigation = {
     profile: () => LucraDialog;
     wallet: () => LucraDialog;
     home: (locationId?: string) => LucraDialog;
+    /**
+     * @deprecated Add Funds must run in a popup (Apple Pay does not run in a
+     * cross-origin iframe). Open wallet() or profile() instead: from there the
+     * Lucra app opens Add Funds in a popup on its own.
+     */
     deposit: () => LucraDialog;
     withdraw: () => LucraDialog;
     createMatchup: (gameId?: string) => LucraDialog;
@@ -63,6 +73,7 @@ export declare class LucraClientBase extends EventTarget {
     private _host;
     private _activeDialog;
     private _activePopup;
+    private _warnedDeprecations;
     private _readyResolve;
     private _readyReject;
     private _initializedPromise;
@@ -80,6 +91,8 @@ export declare class LucraClientBase extends EventTarget {
     private _buildIframeUrl;
     private _open;
     private _minigamesTrigger;
+    private _assertOpen;
+    private _warnDeprecated;
     private _redirect;
     logout(): LucraClientBase;
     redirect(): LucraNavigation;
@@ -93,6 +106,10 @@ export declare class LucraClientBase extends EventTarget {
         hidden?: boolean;
     }): LucraOpenNavigation;
     close(): void;
+    /**
+     * @deprecated Re-parenting the iframe reloads it, losing page state and any
+     * in-flight request. Keep it in one container and use show()/hide(), or dialog().
+     */
     moveTo(element: HTMLElement): LucraClientBase;
     hide(): LucraClientBase;
     show(): LucraClientBase;

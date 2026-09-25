@@ -3,11 +3,11 @@ name: lucra-web-headless
 description: >
   Understand Lucra's headless surface on Web before writing code against it — fetching tournaments,
   leaderboards, or achievements into your own UI, joining tournaments programmatically, or debugging
-  api.* calls that time out, hang, reject with LucraUserNotLoggedIn / LucraApiError, or silently do
-  nothing. Teaches the mental model (headless is still an invisible iframe), the async postMessage
-  contract, which calls need auth, and the call → typed error → remediation flow → retry loop.
-  The reference is in the docs this skill points to; load lucra-web-starting-point first if the SDK
-  isn't set up yet.
+  api.* calls that time out, hang, reject with LucraUserNotLoggedIn / LucraClientNotOpen /
+  LucraApiError, or silently do nothing. Teaches the mental model (headless is still an invisible
+  iframe), the async postMessage contract, which calls need auth, and the call → typed error →
+  remediation flow → retry loop. The reference is in the docs this skill points to; load
+  lucra-web-starting-point first if the SDK isn't set up yet.
 ---
 
 # Lucra Web — Understanding Headless
@@ -35,13 +35,17 @@ that exists solely to run the Lucra app and post results back.
 
 Everything else about Web headless follows from this:
 
-- **Nothing works until the iframe is mounted and its app has booted.** Calls posted earlier are
-  silently dropped (no error — the message just lands nowhere) and surface 15 seconds later as a
-  timeout. Sequence behind the lifecycle gates: the `initialized` event / `client.ready`.
+- **Nothing works until the iframe is mounted and its app has booted.** Calls made before `open()`
+  (or after `close()`) fail fast with `LucraClientNotOpen`. Calls posted after `open()` but before
+  the app has booted are silently dropped (no error: the message just lands nowhere) and surface
+  15 seconds later as a timeout. Sequence behind the lifecycle gates: the `initialized` event /
+  `client.ready`. Mount once at startup, right after `initialize`, so the boot starts as early as
+  possible: see
+  [Mount the iframe at startup](../../1.2_initialize_client.md#mount-the-iframe-at-startup-recommended).
 - **Headless and UI share the one iframe.** The hidden frame answering your `api.*` calls is the
-  same frame `show()`, `redirect()`, and `dialog()` present. Navigating or reloading it — forcing
-  `open(...).login()`, or re-parenting it with `moveTo()` — kills any in-flight request. Dialogs
-  present Lucra UI without a reload.
+  same frame `show()`, `redirect()`, and `dialog()` present. Navigating or reloading it (forcing
+  `open(...).login()`, or re-parenting it with the deprecated `moveTo()`) kills any in-flight
+  request. Dialogs present Lucra UI without a reload.
 - **Deposits complete in a real popup window**, because Apple Pay won't run in a cross-origin
   iframe. `client.popup().deposit()` opens that popup directly and is the path to use from a
   headless remediation. Navigating the user to the Wallet or Profile screen in the iframe also
@@ -61,11 +65,12 @@ posts a response message back → SDK resolves your Promise. Three properties ma
   [Framework notes](#framework-notes).
 - **15-second timeout, rejected as the string `"Timeout"`.** A timeout usually means the
   request was never received or never answered (not-yet-initialized iframe, logged-out session on
-  a gated call, no iframe at all, mid-request reload) — treat it as a sequencing bug first, a
-  Lucra outage last. The cause table: [Headless on Web → Request timeout](../../2.0_headless.md#request-timeout).
-- **Typed errors vs strings.** `LucraUserNotLoggedIn` and `LucraApiError` are real Error classes —
-  check with `instanceof`. Timeouts and cancellations are plain strings. Anything you can't
-  classify with `instanceof` is one of the strings.
+  a gated call, mid-request reload or `close()`): treat it as a sequencing bug first, a Lucra
+  outage last. The cause table: [Headless on Web → Request timeout](../../2.0_headless.md#request-timeout).
+- **Typed errors vs strings.** `LucraUserNotLoggedIn`, `LucraClientNotOpen`, and `LucraApiError`
+  are real Error classes: check with `instanceof`. A failed iframe initialization rejects
+  `client.ready` and `api.tournaments()` with the body `{ success: false }`; handle it separately.
+  Timeouts and cancellations are plain strings, and anything else is one of them.
 
 ## 3. Auth: exactly one call works logged-out
 
@@ -128,20 +133,24 @@ drive the SDK, not from the SDK itself.
   double-invoke, so do not add workarounds that change behavior.
 - **Effect cleanup that calls `client.close()`** runs, then the effect re-runs under StrictMode.
   The iframe is removed and mounted again, so expect one extra iframe load in development and
-  gate on `initialized` / `ready` again after the remount.
+  gate on `initialized` / `ready` again after the remount. Calls that need the iframe and run
+  between `close()` and the remount throw or reject with `LucraClientNotOpen`.
 - **Module re-execution (hot reload, dev servers)**: `LucraClient.initialize()` throws if the
   client already exists. Call it once at your app's entry point, not inside a component or a
   module that hot-reloads, and use `LucraClient.getInstance()` everywhere else.
-- **Route changes that move the iframe**: `moveTo()` re-parents and therefore reloads the iframe
-  (see [Lucra Flows](../../1.3_lucraflows.md#visibility-and-placement)). A router that
+- **Route changes that move the iframe**: `moveTo()` (deprecated) re-parents and therefore reloads
+  the iframe (see [Lucra Flows](../../1.3_lucraflows.md#visibility-and-placement)). A router that
   mounts a new container per route and calls `moveTo()` reloads Lucra on every navigation and
-  drops any in-flight request. Keep one host element alive across routes, or present Lucra UI with
-  a dialog instead.
+  drops any in-flight request. `open(newContainer)` does not move it either: once the iframe
+  exists, `open()` navigates in place, and if the router removes the original container the iframe
+  goes with it. Keep one host element alive across routes, mounted once at startup, and present
+  Lucra UI with a dialog: see
+  [Mount the iframe at startup](../../1.2_initialize_client.md#mount-the-iframe-at-startup-recommended).
 
 ## Recipes
 
-- **Pre-auth tournament list**: mount hidden → `api.tournaments()` → render your cards → on tap,
-  either your own detail view (`api.tournament` after `ready`) or hand off to
+- **Pre-auth tournament list**: mount hidden at startup → `api.tournaments()` → render your
+  cards → on tap, either your own detail view (`api.tournament` after `ready`) or hand off to
   `dialog().tournamentDetails(matchupId)`.
 - **Gated join from your own button**: `await client.ready` (login on `LucraUserNotLoggedIn`) →
   `api.joinTournament(id)` → remediation loop above → `tournamentJoined` event confirms, same as

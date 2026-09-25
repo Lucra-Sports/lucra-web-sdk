@@ -36,7 +36,7 @@ import {
 import { createApiRequest } from "./api-request.js";
 import { createDialog } from "./dialog.js";
 import { createPopup, type LucraPopupHandle } from "./popup.js";
-import { LucraUserNotLoggedIn, LucraApiError } from "./errors.js";
+import { LucraUserNotLoggedIn, LucraClientNotOpen, LucraApiError } from "./errors.js";
 
 // Reason the in-flight isLoggedIn request is rejected with when a newer one
 // supersedes it (e.g. `loginSuccess` rebuilds `ready`). This is an internal
@@ -44,10 +44,20 @@ import { LucraUserNotLoggedIn, LucraApiError } from "./errors.js";
 // swallows it and defers to the rebuilt promise rather than surfacing it.
 const ISLOGGEDIN_CANCELLED = "Cancelled by new isLoggedIn request";
 
+// Shared by open(), redirect(), and dialog() deposit (dialog routes through
+// redirect), so one key warns once for all three.
+const DEPOSIT_DEPRECATION =
+  "deposit() on open(), redirect(), and dialog() is deprecated and will be removed in a future major version. Add Funds must run in a popup: open wallet() or profile() instead, where the Lucra app opens Add Funds in a popup on its own.";
+
 type LucraNavigation = {
   profile: () => LucraClientBase;
   wallet: () => LucraClientBase;
   home: (locationId?: string) => LucraClientBase;
+  /**
+   * @deprecated Add Funds must run in a popup (Apple Pay does not run in a
+   * cross-origin iframe). Open wallet() or profile() instead: from there the
+   * Lucra app opens Add Funds in a popup on its own.
+   */
   deposit: () => LucraClientBase;
   withdraw: () => LucraClientBase;
   createMatchup: (gameId?: string) => LucraClientBase;
@@ -70,6 +80,11 @@ type LucraDialogNavigation = {
   profile: () => LucraDialog;
   wallet: () => LucraDialog;
   home: (locationId?: string) => LucraDialog;
+  /**
+   * @deprecated Add Funds must run in a popup (Apple Pay does not run in a
+   * cross-origin iframe). Open wallet() or profile() instead: from there the
+   * Lucra app opens Add Funds in a popup on its own.
+   */
   deposit: () => LucraDialog;
   withdraw: () => LucraDialog;
   createMatchup: (gameId?: string) => LucraDialog;
@@ -154,6 +169,7 @@ export class LucraClientBase extends EventTarget {
   private _host: HTMLElement | null = null;
   private _activeDialog: LucraDialog | null = null;
   private _activePopup: LucraPopupHandle | null = null;
+  private _warnedDeprecations = new Set<string>();
   private _readyResolve!: () => void;
   private _readyReject!: (reason?: unknown) => void;
   private _initializedPromise: Promise<void> = this._createInitializedPromise();
@@ -391,14 +407,31 @@ export class LucraClientBase extends EventTarget {
     });
   }
 
+  // Fails loudly when there is no iframe to act on, instead of the call silently
+  // doing nothing before open() or after close().
+  private _assertOpen(action: string): HTMLIFrameElement {
+    if (!this.iframe) {
+      throw new LucraClientNotOpen(
+        `Cannot ${action}. LucraClient is not open. Call client.open(element) first.`
+      );
+    }
+    return this.iframe;
+  }
+
+  // Warns once per key per client so a deprecated call in a render loop or
+  // effect does not flood the console.
+  private _warnDeprecated(key: string, message: string): void {
+    if (this._warnedDeprecations.has(key)) return;
+    this._warnedDeprecations.add(key);
+    console.warn(`LucraClient: ${message}`);
+  }
+
   private _redirect(
     path: string,
     params: URLSearchParams = new URLSearchParams(),
     deepLinkUrl?: string
   ) {
-    if (!this.iframe) {
-      throw new Error("Cannot redirect. LucraClient is not open.");
-    }
+    this._assertOpen("redirect");
 
     const url = new URL(
       deepLinkUrl || `${this.urlOrigin}/${path}?${params.toString()}`
@@ -433,7 +466,10 @@ export class LucraClientBase extends EventTarget {
         }
         return this._redirect("app/home", params);
       },
-      deposit: () => this._redirect("app/add-funds"),
+      deposit: () => {
+        this._warnDeprecated("deposit", DEPOSIT_DEPRECATION);
+        return this._redirect("app/add-funds");
+      },
       withdraw: () => this._redirect("app/withdraw-funds"),
       createMatchup: (gameId?: string) => {
         const params = new URLSearchParams();
@@ -489,7 +525,9 @@ export class LucraClientBase extends EventTarget {
   private _presentDialog(navigate: () => LucraClientBase): LucraDialog {
     const host = this._host;
     if (!this.iframe || !host) {
-      throw new Error("Cannot open a dialog. LucraClient is not open.");
+      throw new LucraClientNotOpen(
+        "Cannot open a dialog. LucraClient is not open. Call client.open(element) first."
+      );
     }
 
     this._activeDialog?.close();
@@ -567,6 +605,7 @@ export class LucraClientBase extends EventTarget {
         return this._open({ element, path: "app/home", params, hidden: options?.hidden });
       },
       deposit: () => {
+        this._warnDeprecated("deposit", DEPOSIT_DEPRECATION);
         const params = addDefinedSearchParams({ phoneNumber });
         return this._open({ element, path: "app/add-funds", params, hidden: options?.hidden });
       },
@@ -643,25 +682,27 @@ export class LucraClientBase extends EventTarget {
     this._readyPromise = this._createReadyPromise();
   }
 
+  /**
+   * @deprecated Re-parenting the iframe reloads it, losing page state and any
+   * in-flight request. Keep it in one container and use show()/hide(), or dialog().
+   */
   moveTo(element: HTMLElement): LucraClientBase {
-    if (this.iframe) {
-      element.appendChild(this.iframe);
-      this._host = element;
-    }
+    this._warnDeprecated(
+      "moveTo",
+      "moveTo() is deprecated and will be removed in a future major version. Re-parenting the iframe reloads it: keep it in one container and use show()/hide(), or dialog()."
+    );
+    element.appendChild(this._assertOpen("moveTo"));
+    this._host = element;
     return this;
   }
 
   hide(): LucraClientBase {
-    if (this.iframe) {
-      this.iframe.style.display = "none";
-    }
+    this._assertOpen("hide").style.display = "none";
     return this;
   }
 
   show(): LucraClientBase {
-    if (this.iframe) {
-      this.iframe.style.display = "block";
-    }
+    this._assertOpen("show").style.display = "block";
     return this;
   }
 
@@ -757,40 +798,50 @@ export class LucraClientBase extends EventTarget {
   }
 
   api = {
-    achievements: (): Promise<LucraAchievementsResponse> =>
-      this._achievementsRequest.send(),
-    // Fetching all tournaments is allowed before auth, so it only waits for the
-    // embedded app to be initialized (not `ready`, which also asserts login).
-    // Awaiting init also keeps the request from racing initialization -- it is
-    // sent once the iframe is ready to receive it. The detail and leaderboard
-    // reads require auth, so callers reach them after `ready` (init guaranteed)
-    // and they send immediately.
+    achievements: async (): Promise<LucraAchievementsResponse> => {
+      this._assertOpen("call api.achievements");
+      return this._achievementsRequest.send();
+    },
+    // Every request needs an open iframe and rejects with LucraClientNotOpen
+    // without one. Fetching all tournaments is also allowed before auth, so it
+    // additionally waits for the embedded app to be initialized (not `ready`,
+    // which also asserts login); the others need auth (called after `ready`).
     // Note: if `close()` runs while this is still awaiting a not-yet-resolved
     // init, the captured promise never settles and this call stays pending --
     // an accepted edge given the narrow window.
     tournaments: async (): Promise<LucraTournamentsResponse> => {
+      this._assertOpen("call api.tournaments");
       await this._initializedPromise;
       return this._tournamentsRequest.send();
     },
-    tournament: (matchupId: string): Promise<LucraTournamentResponse> =>
-      this._tournamentRequest.send({ matchupId }),
-    tournamentLeaderboard: (
+    tournament: async (matchupId: string): Promise<LucraTournamentResponse> => {
+      this._assertOpen("call api.tournament");
+      return this._tournamentRequest.send({ matchupId });
+    },
+    tournamentLeaderboard: async (
       matchupId: string,
       pagination?: { limit?: number; offset?: number }
-    ): Promise<LucraTournamentLeaderboardResponse> =>
-      this._tournamentLeaderboardRequest.send({
+    ): Promise<LucraTournamentLeaderboardResponse> => {
+      this._assertOpen("call api.tournamentLeaderboard");
+      return this._tournamentLeaderboardRequest.send({
         matchupId,
         limit: pagination?.limit,
         offset: pagination?.offset,
-      }),
-    joinTournament: (tournamentId: string): Promise<LucraJoinTournamentResponse> =>
-      this._joinTournamentRequest.send({ matchupId: tournamentId }),
-    autoJoinTournaments: (): Promise<LucraAutoJoinedTournamentsBody> =>
-      this._autoJoinTournamentsRequest.send(),
+      });
+    },
+    joinTournament: async (tournamentId: string): Promise<LucraJoinTournamentResponse> => {
+      this._assertOpen("call api.joinTournament");
+      return this._joinTournamentRequest.send({ matchupId: tournamentId });
+    },
+    autoJoinTournaments: async (): Promise<LucraAutoJoinedTournamentsBody> => {
+      this._assertOpen("call api.autoJoinTournaments");
+      return this._autoJoinTournamentsRequest.send();
+    },
   };
 
   sendMessage: LucraClientSendMessage = {
     userUpdated: (data: SDKClientUser) => {
+      this._assertOpen("call sendMessage.userUpdated");
       if (!validateMetadata(data.metadata)) {
         throw new Error(
           "Invalid metadata: must be an object with string keys and string values, or null"
@@ -801,6 +852,9 @@ export class LucraClientBase extends EventTarget {
         body: data,
       });
     },
+    // convertToCreditResponse and deepLinkResponse reply to iframe-initiated
+    // requests, so they stay unguarded like _matchupInviteUrlResponse: a
+    // delayed reply after close() is dropped rather than throwing.
     convertToCreditResponse: (data: LucraConvertToCreditResponse) => {
       this._sendMessage({
         type: MessageTypeToLucraClient.convertToCreditResponse,
@@ -808,6 +862,7 @@ export class LucraClientBase extends EventTarget {
       });
     },
     enableConvertToCredit: () => {
+      this._assertOpen("call sendMessage.enableConvertToCredit");
       this._sendMessage({
         type: MessageTypeToLucraClient.enableConvertToCredit,
         body: null,
@@ -820,12 +875,14 @@ export class LucraClientBase extends EventTarget {
       });
     },
     navigate: (data: LucraNavigateRequest) => {
+      this._assertOpen("call sendMessage.navigate");
       this._sendMessage({
         type: MessageTypeToLucraClient.navigate,
         body: data,
       });
     },
     availableRewards: (data: LucraAvailableRewards) => {
+      this._assertOpen("call sendMessage.availableRewards");
       this._sendMessage({
         type: MessageTypeToLucraClient.availableRewards,
         body: data,
