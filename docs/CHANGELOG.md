@@ -16,7 +16,7 @@
 ### Deprecated
 
 - `moveTo()`: re-parenting the iframe reloads it, losing page state and any in-flight request. Keep the iframe in one persistent container ([mounted at startup](1.2_initialize_client.md#mount-the-iframe-at-startup-recommended)) and use `show()`/`hide()`, or present routes with `dialog()`. It keeps working, logs a one-time console warning, and will be removed in a future major version. See [Visibility and Placement](1.3_lucraflows.md#visibility-and-placement).
-- `deposit()` on `open()`, `redirect()`, and `dialog()`: Add Funds must run in a top-level popup because Apple Pay does not run in a cross-origin iframe. Use `popup().deposit()` from a user gesture. Opening `wallet()` or `profile()` directly is also fine: from there the Lucra app opens Add Funds in a popup on its own. It keeps working, logs a one-time console warning, and will be removed in a future major version. See [Popups](1.3_lucraflows.md#popups).
+- `deposit()` on `open()`, `redirect()`, and `dialog()`: Add Funds must run in a top-level popup because Apple Pay does not run in a cross-origin iframe. Open `wallet()` or `profile()` instead: from there the Lucra app opens Add Funds in a popup on its own. It keeps working, logs a one-time console warning, and will be removed in a future major version. See [Lucra Flows](1.3_lucraflows.md#open-lucra).
 
 ### Fixed
 

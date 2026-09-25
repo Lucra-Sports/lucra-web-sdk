@@ -12,7 +12,7 @@ import { LucraUserNotLoggedIn, LucraClientNotOpen, LucraApiError } from "./error
 const ISLOGGEDIN_CANCELLED = "Cancelled by new isLoggedIn request";
 // Shared by open(), redirect(), and dialog() deposit (dialog routes through
 // redirect), so one key warns once for all three.
-const DEPOSIT_DEPRECATION = "deposit() on open(), redirect(), and dialog() is deprecated and will be removed in a future major version. Add Funds must run in a popup: use popup().deposit() from a user gesture, or open wallet() or profile(), where the Lucra app opens Add Funds in a popup on its own.";
+const DEPOSIT_DEPRECATION = "deposit() on open(), redirect(), and dialog() is deprecated and will be removed in a future major version. Add Funds must run in a popup: open wallet() or profile() instead, where the Lucra app opens Add Funds in a popup on its own.";
 export class LucraClientBase extends EventTarget {
     iframe;
     apiKey = "";
