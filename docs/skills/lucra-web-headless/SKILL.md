@@ -68,8 +68,9 @@ posts a response message back → SDK resolves your Promise. Three properties ma
   a gated call, mid-request reload or `close()`): treat it as a sequencing bug first, a Lucra
   outage last. The cause table: [Headless on Web → Request timeout](../../2.0_headless.md#request-timeout).
 - **Typed errors vs strings.** `LucraUserNotLoggedIn`, `LucraClientNotOpen`, and `LucraApiError`
-  are real Error classes: check with `instanceof`. Timeouts and cancellations are plain strings.
-  Anything you can't classify with `instanceof` is one of the strings.
+  are real Error classes: check with `instanceof`. A failed iframe initialization rejects
+  `client.ready` and `api.tournaments()` with the body `{ success: false }`; handle it separately.
+  Timeouts and cancellations are plain strings, and anything else is one of them.
 
 ## 3. Auth: exactly one call works logged-out
 
