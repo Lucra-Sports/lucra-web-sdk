@@ -174,3 +174,7 @@ out
 .DS_Store
 
 .projects
+
+# Claude Code local state (worktrees and personal settings)
+.claude/worktrees/
+.claude/settings.local.json
