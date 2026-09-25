@@ -41,9 +41,9 @@ Everything else about Web headless follows from this:
   dropped (no error: the message just lands nowhere) and surface 15 seconds later as a timeout.
   Sequence behind the lifecycle gates: the `initialized` event / `client.ready`.
 - **Headless and UI share the one iframe.** The hidden frame answering your `api.*` calls is the
-  same frame `show()`, `redirect()`, and `dialog()` present. Navigating or reloading it — forcing
-  `open(...).login()`, or re-parenting it with `moveTo()` — kills any in-flight request. Dialogs
-  present Lucra UI without a reload.
+  same frame `show()`, `redirect()`, and `dialog()` present. Navigating or reloading it (forcing
+  `open(...).login()`, or re-parenting it with the deprecated `moveTo()`) kills any in-flight
+  request. Dialogs present Lucra UI without a reload.
 - **Deposits complete in a real popup window**, because Apple Pay won't run in a cross-origin
   iframe. `client.popup().deposit()` opens that popup directly and is the path to use from a
   headless remediation. Navigating the user to the Wallet or Profile screen in the iframe also
@@ -63,8 +63,8 @@ posts a response message back → SDK resolves your Promise. Three properties ma
   [Framework notes](#framework-notes).
 - **15-second timeout, rejected as the string `"Timeout"`.** A timeout usually means the
   request was never received or never answered (not-yet-initialized iframe, logged-out session on
-  a gated call, mid-request reload) — treat it as a sequencing bug first, a
-  Lucra outage last. The cause table: [Headless on Web → Request timeout](../../2.0_headless.md#request-timeout).
+  a gated call, mid-request reload or `close()`): treat it as a sequencing bug first, a Lucra
+  outage last. The cause table: [Headless on Web → Request timeout](../../2.0_headless.md#request-timeout).
 - **Typed errors vs strings.** `LucraUserNotLoggedIn`, `LucraClientNotOpen`, and `LucraApiError`
   are real Error classes: check with `instanceof`. Timeouts and cancellations are plain strings.
   Anything you can't classify with `instanceof` is one of the strings.
@@ -130,7 +130,8 @@ drive the SDK, not from the SDK itself.
   double-invoke, so do not add workarounds that change behavior.
 - **Effect cleanup that calls `client.close()`** runs, then the effect re-runs under StrictMode.
   The iframe is removed and mounted again, so expect one extra iframe load in development and
-  gate on `initialized` / `ready` again after the remount.
+  gate on `initialized` / `ready` again after the remount. Calls that need the iframe and run
+  between `close()` and the remount throw or reject with `LucraClientNotOpen`.
 - **Module re-execution (hot reload, dev servers)**: `LucraClient.initialize()` throws if the
   client already exists. Call it once at your app's entry point, not inside a component or a
   module that hot-reloads, and use `LucraClient.getInstance()` everywhere else.

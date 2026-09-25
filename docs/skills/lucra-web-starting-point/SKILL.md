@@ -34,6 +34,7 @@ You are integrating Lucra's Web SDK (`lucra-web-sdk`): an iframe-embedding JavaS
 | Install / project setup | [Project Setup](../../1.0_project_setup.md) |
 | Initialize the client | [Initialize LucraClient](../../1.2_initialize_client.md) |
 | Open Lucra screens (flows) | [Lucra Flows](../../1.3_lucraflows.md) |
+| Deposit (Add Funds) | [Lucra Flows → Popups](../../1.3_lucraflows.md#popups): `popup().deposit()` from a user gesture. `deposit()` on `open()`, `redirect()`, and `dialog()` is deprecated |
 | Deep links / matchup invites | [Deeplinks](../../1.4_deeplinks.md) |
 | React to Lucra events | [Lucra Event Listener](../../1.6_lucra_event_listener.md) |
 | Fetch Lucra data into your own UI (tournaments, leaderboards, achievements) or join headlessly | [Headless on Web](../../2.0_headless.md), [Tournaments Headless](../../2.1_tournaments_headless.md) — load the companion skill `lucra-web-headless` for the mental model first |
@@ -53,6 +54,7 @@ You are integrating Lucra's Web SDK (`lucra-web-sdk`): an iframe-embedding JavaS
 ## Troubleshooting
 
 - **Silent nothing** (no error, no event): usually a dropped postMessage (see checkpoint 3) or a request that ended in the SDK's 15s timeout — see [Headless on Web → Request timeout](../../2.0_headless.md#request-timeout) for the cause table.
+- **`LucraClientNotOpen`** (thrown, or rejected by `api.*`): a call that needs the iframe ran before `open()` or after `close()`. See [Headless on Web → Errors](../../2.0_headless.md#lucraclientnotopen).
 - **401s** from non-SDK Lucra endpoints: key-class mismatch (web key vs server key) — expected; not fixable client-side.
 - **Iframe blank**: verify the tenant host resolves for your env; verify the apiKey query param is present on the iframe src.
 - **`api.*` calls hang, time out, or reject with typed errors**: load the companion skill `lucra-web-headless` and see [Headless on Web → Errors](../../2.0_headless.md#errors).
