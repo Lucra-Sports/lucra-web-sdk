@@ -134,8 +134,8 @@ drive the SDK, not from the SDK itself.
 - **Module re-execution (hot reload, dev servers)**: `LucraClient.initialize()` throws if the
   client already exists. Call it once at your app's entry point, not inside a component or a
   module that hot-reloads, and use `LucraClient.getInstance()` everywhere else.
-- **Route changes that move the iframe**: `moveTo()` re-parents and therefore reloads the iframe
-  (see [Lucra Flows](../../1.3_lucraflows.md#visibility-and-placement)). A router that
+- **Route changes that move the iframe**: `moveTo()` (deprecated) re-parents and therefore reloads
+  the iframe (see [Lucra Flows](../../1.3_lucraflows.md#visibility-and-placement)). A router that
   mounts a new container per route and calls `moveTo()` reloads Lucra on every navigation and
   drops any in-flight request. Keep one host element alive across routes, or present Lucra UI with
   a dialog instead.

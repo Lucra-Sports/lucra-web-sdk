@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach, mock } from "bun:test";
+import { describe, it, expect, beforeEach, afterEach, mock, spyOn } from "bun:test";
 import { LucraClient } from "./v1.ts";
 import { createPopup } from "./popup.ts";
 import { LucraUserNotLoggedIn, LucraClientNotOpen, LucraApiError } from "./errors.ts";
@@ -11,7 +11,14 @@ const baseConfig: LucraV1ClientConstructor = {
   env: "sandbox",
 };
 
+// Silence deprecation warnings (e.g. moveTo) and let tests assert on them.
+let warn: ReturnType<typeof spyOn>;
+beforeEach(() => {
+  warn = spyOn(console, "warn").mockImplementation(() => {});
+});
+
 afterEach(() => {
+  warn.mockRestore();
   LucraClient.destroy();
 });
 
@@ -1113,6 +1120,87 @@ describe("LucraClientNotOpen", () => {
     await expect(client.api.joinTournament("abc")).rejects.toBeInstanceOf(
       LucraClientNotOpen
     );
+  });
+});
+
+describe("LucraClient deprecations", () => {
+  let restore: (() => void) | undefined;
+  afterEach(() => {
+    restore?.();
+    restore = undefined;
+  });
+
+  function openedClient() {
+    restore = installFakeWindow().restore;
+    const client = markOpen(LucraClient.initialize(baseConfig));
+    const sendMessage = mock(() => {});
+    (client as any)._sendMessage = sendMessage;
+    return { client, sendMessage };
+  }
+
+  const navigatedPathname = (sendMessage: any) =>
+    new URL(sendMessage.mock.calls[0][0].body.pathname, LUCRA_ORIGIN).pathname;
+
+  it("moveTo() still re-parents the iframe and warns once", () => {
+    const client = markOpen(LucraClient.initialize(baseConfig));
+    const element = { appendChild: mock(() => {}) } as any;
+
+    client.moveTo(element);
+    client.moveTo(element);
+
+    expect(element.appendChild).toHaveBeenCalledTimes(2);
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0][0]).toContain("moveTo() is deprecated");
+  });
+
+  it("redirect().deposit() still navigates to app/add-funds and warns once", () => {
+    const { client, sendMessage } = openedClient();
+
+    client.redirect().deposit();
+    client.redirect().deposit();
+
+    expect(navigatedPathname(sendMessage)).toBe("/app/add-funds");
+    expect(sendMessage).toHaveBeenCalledTimes(2);
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0][0]).toContain(
+      "deposit() on open(), redirect(), and dialog() is deprecated"
+    );
+  });
+
+  it("open().deposit() on an open client navigates to app/add-funds and warns", () => {
+    const { client, sendMessage } = openedClient();
+
+    client.open({} as HTMLElement).deposit();
+
+    expect(navigatedPathname(sendMessage)).toBe("/app/add-funds");
+    expect(warn).toHaveBeenCalledTimes(1);
+  });
+
+  it("dialog().deposit() warns and shares the deposit key with redirect()", () => {
+    const { client, sendMessage } = openedClient();
+    // Presenting styles the host element, which needs a DOM; run the navigation
+    // the dialog would perform and hand back a stub handle.
+    (client as any)._presentDialog = mock((navigate: () => unknown) => {
+      navigate();
+      return { close: mock(() => {}), onClose: mock(() => {}) };
+    });
+
+    client.dialog().deposit();
+    expect(warn).toHaveBeenCalledTimes(1);
+
+    client.redirect().deposit();
+    expect(sendMessage).toHaveBeenCalledTimes(2);
+    expect(warn).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not warn for non-deprecated calls", () => {
+    const { client } = openedClient();
+
+    client.redirect().wallet();
+    client.hide();
+    client.popup().deposit();
+
+    expect(warn).not.toHaveBeenCalled();
   });
 });
 

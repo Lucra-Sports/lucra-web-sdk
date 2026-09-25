@@ -44,10 +44,19 @@ import { LucraUserNotLoggedIn, LucraClientNotOpen, LucraApiError } from "./error
 // swallows it and defers to the rebuilt promise rather than surfacing it.
 const ISLOGGEDIN_CANCELLED = "Cancelled by new isLoggedIn request";
 
+// Shared by open(), redirect(), and dialog() deposit (dialog routes through
+// redirect), so one key warns once for all three.
+const DEPOSIT_DEPRECATION =
+  "deposit() on open(), redirect(), and dialog() is deprecated and will be removed in a future major version. Add Funds must run in a popup: use popup().deposit() from a user gesture.";
+
 type LucraNavigation = {
   profile: () => LucraClientBase;
   wallet: () => LucraClientBase;
   home: (locationId?: string) => LucraClientBase;
+  /**
+   * @deprecated Add Funds must run in a popup (Apple Pay does not run in a
+   * cross-origin iframe). Use popup().deposit() from a user gesture.
+   */
   deposit: () => LucraClientBase;
   withdraw: () => LucraClientBase;
   createMatchup: (gameId?: string) => LucraClientBase;
@@ -70,6 +79,10 @@ type LucraDialogNavigation = {
   profile: () => LucraDialog;
   wallet: () => LucraDialog;
   home: (locationId?: string) => LucraDialog;
+  /**
+   * @deprecated Add Funds must run in a popup (Apple Pay does not run in a
+   * cross-origin iframe). Use popup().deposit() from a user gesture.
+   */
   deposit: () => LucraDialog;
   withdraw: () => LucraDialog;
   createMatchup: (gameId?: string) => LucraDialog;
@@ -154,6 +167,7 @@ export class LucraClientBase extends EventTarget {
   private _host: HTMLElement | null = null;
   private _activeDialog: LucraDialog | null = null;
   private _activePopup: LucraPopupHandle | null = null;
+  private _warnedDeprecations = new Set<string>();
   private _readyResolve!: () => void;
   private _readyReject!: (reason?: unknown) => void;
   private _initializedPromise: Promise<void> = this._createInitializedPromise();
@@ -402,6 +416,14 @@ export class LucraClientBase extends EventTarget {
     return this.iframe;
   }
 
+  // Warns once per key per client so a deprecated call in a render loop or
+  // effect does not flood the console.
+  private _warnDeprecated(key: string, message: string): void {
+    if (this._warnedDeprecations.has(key)) return;
+    this._warnedDeprecations.add(key);
+    console.warn(`LucraClient: ${message}`);
+  }
+
   private _redirect(
     path: string,
     params: URLSearchParams = new URLSearchParams(),
@@ -442,7 +464,10 @@ export class LucraClientBase extends EventTarget {
         }
         return this._redirect("app/home", params);
       },
-      deposit: () => this._redirect("app/add-funds"),
+      deposit: () => {
+        this._warnDeprecated("deposit", DEPOSIT_DEPRECATION);
+        return this._redirect("app/add-funds");
+      },
       withdraw: () => this._redirect("app/withdraw-funds"),
       createMatchup: (gameId?: string) => {
         const params = new URLSearchParams();
@@ -578,6 +603,7 @@ export class LucraClientBase extends EventTarget {
         return this._open({ element, path: "app/home", params, hidden: options?.hidden });
       },
       deposit: () => {
+        this._warnDeprecated("deposit", DEPOSIT_DEPRECATION);
         const params = addDefinedSearchParams({ phoneNumber });
         return this._open({ element, path: "app/add-funds", params, hidden: options?.hidden });
       },
@@ -654,7 +680,15 @@ export class LucraClientBase extends EventTarget {
     this._readyPromise = this._createReadyPromise();
   }
 
+  /**
+   * @deprecated Re-parenting the iframe reloads it, losing page state and any
+   * in-flight request. Keep it in one container and use show()/hide(), or dialog().
+   */
   moveTo(element: HTMLElement): LucraClientBase {
+    this._warnDeprecated(
+      "moveTo",
+      "moveTo() is deprecated and will be removed in a future major version. Re-parenting the iframe reloads it: keep it in one container and use show()/hide(), or dialog()."
+    );
     element.appendChild(this._assertOpen("moveTo"));
     this._host = element;
     return this;

@@ -10,6 +10,9 @@ import { LucraUserNotLoggedIn, LucraClientNotOpen, LucraApiError } from "./error
 // single-flight cancellation, not an auth failure, so `_createReadyPromise`
 // swallows it and defers to the rebuilt promise rather than surfacing it.
 const ISLOGGEDIN_CANCELLED = "Cancelled by new isLoggedIn request";
+// Shared by open(), redirect(), and dialog() deposit (dialog routes through
+// redirect), so one key warns once for all three.
+const DEPOSIT_DEPRECATION = "deposit() on open(), redirect(), and dialog() is deprecated and will be removed in a future major version. Add Funds must run in a popup: use popup().deposit() from a user gesture.";
 export class LucraClientBase extends EventTarget {
     iframe;
     apiKey = "";
@@ -63,6 +66,7 @@ export class LucraClientBase extends EventTarget {
     _host = null;
     _activeDialog = null;
     _activePopup = null;
+    _warnedDeprecations = new Set();
     _readyResolve;
     _readyReject;
     _initializedPromise = this._createInitializedPromise();
@@ -249,6 +253,14 @@ export class LucraClientBase extends EventTarget {
         }
         return this.iframe;
     }
+    // Warns once per key per client so a deprecated call in a render loop or
+    // effect does not flood the console.
+    _warnDeprecated(key, message) {
+        if (this._warnedDeprecations.has(key))
+            return;
+        this._warnedDeprecations.add(key);
+        console.warn(`LucraClient: ${message}`);
+    }
     _redirect(path, params = new URLSearchParams(), deepLinkUrl) {
         this._assertOpen("redirect");
         const url = new URL(deepLinkUrl || `${this.urlOrigin}/${path}?${params.toString()}`);
@@ -280,7 +292,10 @@ export class LucraClientBase extends EventTarget {
                 }
                 return this._redirect("app/home", params);
             },
-            deposit: () => this._redirect("app/add-funds"),
+            deposit: () => {
+                this._warnDeprecated("deposit", DEPOSIT_DEPRECATION);
+                return this._redirect("app/add-funds");
+            },
             withdraw: () => this._redirect("app/withdraw-funds"),
             createMatchup: (gameId) => {
                 const params = new URLSearchParams();
@@ -396,6 +411,7 @@ export class LucraClientBase extends EventTarget {
                 return this._open({ element, path: "app/home", params, hidden: options?.hidden });
             },
             deposit: () => {
+                this._warnDeprecated("deposit", DEPOSIT_DEPRECATION);
                 const params = addDefinedSearchParams({ phoneNumber });
                 return this._open({ element, path: "app/add-funds", params, hidden: options?.hidden });
             },
@@ -466,7 +482,12 @@ export class LucraClientBase extends EventTarget {
         this._initializedPromise = this._createInitializedPromise();
         this._readyPromise = this._createReadyPromise();
     }
+    /**
+     * @deprecated Re-parenting the iframe reloads it, losing page state and any
+     * in-flight request. Keep it in one container and use show()/hide(), or dialog().
+     */
     moveTo(element) {
+        this._warnDeprecated("moveTo", "moveTo() is deprecated and will be removed in a future major version. Re-parenting the iframe reloads it: keep it in one container and use show()/hide(), or dialog().");
         element.appendChild(this._assertOpen("moveTo"));
         this._host = element;
         return this;
