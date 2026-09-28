@@ -20,7 +20,7 @@
 
 ### Fixed
 
-- `on('exitLucra')` now enables the in-app exit control whenever it is registered: before `open()`, before the Lucra app finished loading, or across an iframe reload. The SDK re-sends it each time the iframe reports `initialized`. Hosts that registered it before `open()` or before the Lucra app loaded now actually see the exit control (the back arrow, and the wallet X exits instead of going home), which previously never appeared. See [Exiting Lucra](1.5_exiting_lucra.md).
+- `on('exitLucra')` now enables the in-app exit control whenever it is registered: before `open()`, before the Lucra app finished loading, or across an iframe reload. The SDK re-sends it each time the iframe reports `initialized` or `loginSuccess`, so it also survives Auth0 popup login. Hosts that registered it before `open()` or before the Lucra app loaded now actually see the exit control (the back arrow, and the wallet X exits instead of going home), which previously never appeared. See [Exiting Lucra](1.5_exiting_lucra.md).
 
 ## [v1.12.0]
 

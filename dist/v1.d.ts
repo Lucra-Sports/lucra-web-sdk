@@ -6,6 +6,7 @@ export declare class LucraClient extends LucraClientBase {
     private matchupInviteUrlTransformer?;
     private constructor();
     protected _eventListener: (event: MessageEvent<any>) => Promise<void>;
+    private _replayEnableExitLucra;
     on<K extends keyof LucraEventMap>(type: K, listener: (data: LucraEventMap[K]) => void): void;
     off<K extends keyof LucraEventMap>(type: K, listener: (data: LucraEventMap[K]) => void): void;
     setMatchupDeepLinkHandler(transformer: LucraMatchupInviteUrlTransformer): void;

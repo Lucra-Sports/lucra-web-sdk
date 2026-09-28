@@ -232,6 +232,43 @@ describe("LucraClient.on / off", () => {
 
     expect(enableExitCalls(sendMessage)).toHaveLength(0);
   });
+
+  const loginSuccess = (client: LucraClient) =>
+    (client as any)._eventListener({
+      origin: "https://test-tenant.sandbox.lucrasports.com",
+      data: { type: "loginSuccess", data: {} },
+    });
+
+  it("re-enables exitLucra on loginSuccess, so it survives the app remounting during popup login", async () => {
+    const client = LucraClient.initialize(baseConfig);
+    client.on("exitLucra", () => {});
+    const loginHandler = mock(() => {});
+    client.on("loginSuccess", loginHandler);
+    const sendMessage = mock(() => {});
+    (client as any)._sendMessage = sendMessage;
+
+    await loginSuccess(client);
+
+    expect(enableExitCalls(sendMessage)).toEqual([
+      [{ type: "enableExitLucra", body: true }],
+    ]);
+    expect(loginHandler).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not send enableExitLucra on loginSuccess without an exitLucra listener", async () => {
+    const client = LucraClient.initialize(baseConfig);
+    const handler = () => {};
+    const sendMessage = mock(() => {});
+    (client as any)._sendMessage = sendMessage;
+
+    await loginSuccess(client);
+    client.on("exitLucra", handler);
+    client.off("exitLucra", handler);
+    sendMessage.mockClear();
+    await loginSuccess(client);
+
+    expect(enableExitCalls(sendMessage)).toHaveLength(0);
+  });
 });
 
 describe("LucraClient.api.tournaments", () => {
