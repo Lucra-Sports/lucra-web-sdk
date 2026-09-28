@@ -16,3 +16,5 @@
 
 - **Never edit the `version` field in `package.json`.** The version is bumped by a manual GitHub Action that owns releases. Leave it untouched even when adding CHANGELOG entries or new features.
 - Document public-facing changes in `docs/CHANGELOG.md` under the next version heading (the heading may precede the automated version bump), and update the relevant `docs/*.md` when changing the public API.
+- Releases are mirrored into the Linear **Web SDK** pipeline. Merges to `main` attach their issues to an open, unversioned release named **Next release**; merging the `Release:` PR stamps that same release with the tag and marks it **Released**. Work merged while a release PR is open still ships in that version — the tag lands on `main` after the release PR merges — so it belongs to that release and no reconciliation is needed.
+- Linear finds issues through the **pull request**, not the commit message: merge commits carry `Merge pull request #N`, and Linear maps that back to whatever issue is linked to the PR. Branch names and commit subjects here rarely carry an identifier, so **a PR with no Linear issue linked to it is invisible to release tracking**.

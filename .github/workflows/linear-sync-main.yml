@@ -1,0 +1,60 @@
+name: Linear - Sync Main
+
+# Attaches issues merged to main to the unversioned release in the Linear
+# "Web SDK" pipeline, so a ticket shows up at merge rather than at release.
+#
+# Runs with no version on purpose: the version does not exist until "Update
+# version and create Release's PR" bumps package.json, and a version is
+# write-once -- asking for a different one later forks a new release and
+# orphans this one's issues. tag-and-release.yml stamps this same release in
+# place once the tag is cut.
+#
+# No issue_pattern is needed. PRs here are merge-committed, so the subject is
+# "Merge pull request #N from <branch>", and the CLI reads both the branch name
+# and the PR number from that. Linear resolves the PR number back to whatever
+# issue is linked to it, which is how work lands even when neither the branch
+# nor the commit mentions an identifier.
+
+on:
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  sync_main:
+    name: Accumulate merges into the open Linear release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve scan base
+        id: base
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          # Pin the range rather than relying on the CLI's implicit baseline,
+          # which is the previous release's commit. github.event.before is
+          # all-zeros on a branch's first push and can name a dropped commit
+          # after a force-push, so fall back to letting the CLI choose.
+          if [ -n "$BEFORE" ] \
+             && [ "$BEFORE" != "0000000000000000000000000000000000000000" ] \
+             && git cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then
+            echo "base_ref=$BEFORE" >> "$GITHUB_OUTPUT"
+            echo "Scanning ${BEFORE}..HEAD"
+          else
+            echo "base_ref=" >> "$GITHUB_OUTPUT"
+            echo "No usable github.event.before; letting the CLI choose its baseline"
+          fi
+
+      - name: Accumulate into the open release
+        uses: linear/linear-release-action@v0
+        with:
+          access_key: ${{ secrets.LINEAR_ACCESS_KEY }}
+          name: Next release
+          base_ref: ${{ steps.base.outputs.base_ref }}

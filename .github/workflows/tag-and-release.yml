@@ -12,6 +12,10 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          # Full history and tags: the changelog diff below walks tags, and the
+          # Linear sync resolves the previous release tag to bound its scan.
+          fetch-depth: 0
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
@@ -56,5 +60,43 @@ jobs:
           body_path: ./release_notes.md
           draft: false
           prerelease: false
+      # Stamps the release that has been accumulating issues since the last tag
+      # (see linear-sync-main.yml) with this version, then completes it. Runs
+      # before release_notes.md is deleted so Linear gets the same notes as the
+      # GitHub release.
+      - name: Resolve previous tag for the Linear scan
+        id: prev_tag
+        env:
+          # Through env, never interpolated into the script: git allows $ and
+          # parens in tag names, so a crafted tag would otherwise execute here.
+          TAG: ${{ steps.get_tag.outputs.version }}
+        run: |
+          set -euo pipefail
+          # grep exits 1 when it filters every tag out, which would kill the
+          # pipeline under pipefail on the very first release.
+          PREV_TAG=$( { git tag --merged HEAD --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' || true; } \
+            | awk -v v="$TAG" '$0 == v { found = 1; next } found { print; exit }')
+          echo "prev_tag=$PREV_TAG" >> "$GITHUB_OUTPUT"
+          echo "Release $TAG; scanning commits after ${PREV_TAG:-<none>}"
+      - name: Stamp the Linear release with this version
+        uses: linear/linear-release-action@v0
+        with:
+          access_key: ${{ secrets.LINEAR_ACCESS_KEY }}
+          version: ${{ steps.get_tag.outputs.version }}
+          name: ${{ steps.get_tag.outputs.version }}
+          base_ref: ${{ steps.prev_tag.outputs.prev_tag }}
+          release_notes: release_notes.md
+          links: |
+            https://github.com/${{ github.repository }}/releases/tag/${{ steps.get_tag.outputs.version }}
+      - name: Complete the Linear release
+        uses: linear/linear-release-action@v0
+        with:
+          access_key: ${{ secrets.LINEAR_ACCESS_KEY }}
+          command: complete
+          version: ${{ steps.get_tag.outputs.version }}
+          # Re-applied here: a push to main landing between the two steps would
+          # rename this release back to "Next release" and it would complete
+          # under the wrong label. complete targets by exact version.
+          name: ${{ steps.get_tag.outputs.version }}
       - name: Delete release_notes file
         run: rm release_notes.md
