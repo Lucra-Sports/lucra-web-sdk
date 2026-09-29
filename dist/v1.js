@@ -90,9 +90,11 @@ export class LucraClient extends LucraClientBase {
         }
         if (event.data.type === LucraClientMessageType.initialized) {
             this._handleInitialized(event.data.data);
+            this._replayEnableExitLucra();
         }
         if (event.data.type === LucraClientMessageType.loginSuccess) {
             this._handleLoginSuccess();
+            this._replayEnableExitLucra();
         }
         if (event.data.type === LucraClientMessageType.exitLucra &&
             this._closeActiveDialog()) {
@@ -100,6 +102,17 @@ export class LucraClient extends LucraClientBase {
         }
         this.dispatchEvent(new CustomEvent(event.data.type, { detail: event.data.data }));
     };
+    // The Lucra app drops messages sent before it initializes, and a reload or the
+    // remount during popup login resets it, so replay the exit control enable for
+    // existing listeners on initialized and on loginSuccess.
+    _replayEnableExitLucra() {
+        if (this.listenerMap.get("exitLucra")?.size) {
+            this._sendMessage({
+                type: MessageTypeToLucraClient.enableExitLucra,
+                body: true,
+            });
+        }
+    }
     on(type, listener) {
         const wrapped = (e) => listener(e.detail);
         if (!this.listenerMap.has(type)) {

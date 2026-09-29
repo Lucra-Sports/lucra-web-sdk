@@ -58,4 +58,4 @@ export type {
 
 export { LucraApiErrorCode } from "./types/types.js";
 export { LucraClient } from "./v1.js";
-export { LucraUserNotLoggedIn, LucraApiError } from "./errors.js";
+export { LucraUserNotLoggedIn, LucraClientNotOpen, LucraApiError } from "./errors.js";
