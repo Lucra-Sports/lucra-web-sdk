@@ -50,6 +50,9 @@ const cancelReason = (name: string) => `Cancelled by new ${name} request`;
 // swallows it and defers to the rebuilt promise rather than surfacing it.
 const ISLOGGEDIN_CANCELLED = cancelReason("isLoggedIn");
 
+const MATCHUP_DETAILS_SUBSCRIPTION_CANCELLED =
+  "Cancelled by cancelMatchupDetailsSubscription";
+
 // Shared by open(), redirect(), and dialog() deposit (dialog routes through
 // redirect), so one key warns once for all three.
 const DEPOSIT_DEPRECATION =
@@ -170,6 +173,19 @@ export class LucraClientBase extends EventTarget {
     LucraClientMessageType.gamesMatchupFeeResponse,
     "gamesMatchupFee"
   );
+  private _subscribeMatchupDetailsRequest = this._request<
+    LucraMatchupDetails,
+    { matchupId: string }
+  >(
+    MessageTypeToLucraClient.subscribeMatchupDetailsRequest,
+    LucraClientMessageType.subscribeMatchupDetailsResponse,
+    "subscribeToMatchupDetails",
+    { singleFlight: true }
+  );
+  // The matchup whose matchupDetailsUpdated events reach listeners, and a counter that
+  // every subscribe, cancel, and close() bumps so a superseded subscribe never activates.
+  private _matchupDetailsSubscriptionId: string | null = null;
+  private _matchupDetailsGeneration = 0;
   private _joinTournamentRequest = this._request<
     LucraJoinTournamentResponse,
     { matchupId: string }
@@ -708,6 +724,7 @@ export class LucraClientBase extends EventTarget {
     this.iframe = undefined;
     this._user = null;
     this._isInitialized = false;
+    this._resetMatchupDetailsSubscription();
     this._initializedPromise = this._createInitializedPromise();
     this._readyPromise = this._createReadyPromise();
   }
@@ -825,6 +842,27 @@ export class LucraClientBase extends EventTarget {
     this._readyPromise = this._createReadyPromise();
   }
 
+  // Stops delivering matchupDetailsUpdated and supersedes any subscribe in progress.
+  private _resetMatchupDetailsSubscription(): number {
+    this._matchupDetailsSubscriptionId = null;
+    return ++this._matchupDetailsGeneration;
+  }
+
+  protected _isActiveMatchupDetailsUpdate(details: any): boolean {
+    const matchupId = this._matchupDetailsSubscriptionId;
+    return matchupId !== null && details?.matchup?.id === matchupId;
+  }
+
+  // An iframe reload (login src reload, moveTo) drops the Lucra app's subscription and
+  // re-sends `initialized`, so subscribe again to the active matchup once it succeeds.
+  protected _resumeMatchupDetailsSubscription(): void {
+    const matchupId = this._matchupDetailsSubscriptionId;
+    if (!this._isInitialized || !matchupId || this._subscribeMatchupDetailsRequest.hasPending()) {
+      return;
+    }
+    this._subscribeMatchupDetailsRequest.send({ matchupId }).catch(() => {});
+  }
+
   api = {
     achievements: async (): Promise<LucraAchievementsResponse> => {
       this._assertOpen("call api.achievements");
@@ -878,6 +916,36 @@ export class LucraClientBase extends EventTarget {
       this._assertOpen("call api.gamesMatchupFee");
       await this._initializedPromise;
       return this._gamesMatchupFeeRequest.send();
+    },
+    // Resolves with the current details, then delivers each change as a
+    // matchupDetailsUpdated event until cancelled, close(), or the next subscribe.
+    subscribeToMatchupDetails: async (
+      matchupId: string
+    ): Promise<LucraMatchupDetails> => {
+      this._assertOpen("call api.subscribeToMatchupDetails");
+      const generation = this._resetMatchupDetailsSubscription();
+      await this._initializedPromise;
+      // Cancelled or superseded while waiting for init: never post the request.
+      if (generation !== this._matchupDetailsGeneration) {
+        throw MATCHUP_DETAILS_SUBSCRIPTION_CANCELLED;
+      }
+      const details = await this._subscribeMatchupDetailsRequest.send({ matchupId });
+      if (generation === this._matchupDetailsGeneration) {
+        // The id the Lucra app resolved, which is what its updates carry.
+        this._matchupDetailsSubscriptionId = details.matchup.id;
+      }
+      return details;
+    },
+    // Never throws, so it is safe in effect cleanup before open() or after close().
+    cancelMatchupDetailsSubscription: (): void => {
+      this._resetMatchupDetailsSubscription();
+      this._subscribeMatchupDetailsRequest.reject(MATCHUP_DETAILS_SUBSCRIPTION_CANCELLED);
+      if (this.iframe) {
+        this._sendMessage({
+          type: MessageTypeToLucraClient.cancelMatchupDetailsSubscription,
+          body: null,
+        });
+      }
     },
   };
 

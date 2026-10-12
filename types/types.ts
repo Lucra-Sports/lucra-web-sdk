@@ -45,6 +45,8 @@ export enum LucraClientMessageType {
   matchupResponse = "matchupResponse",
   matchupDetailsResponse = "matchupDetailsResponse",
   gamesMatchupFeeResponse = "gamesMatchupFeeResponse",
+  subscribeMatchupDetailsResponse = "subscribeMatchupDetailsResponse",
+  matchupDetailsUpdated = "matchupDetailsUpdated",
 }
 
 export enum MessageTypeToLucraClient {
@@ -66,6 +68,8 @@ export enum MessageTypeToLucraClient {
   matchupRequest = "matchupRequest",
   matchupDetailsRequest = "matchupDetailsRequest",
   gamesMatchupFeeRequest = "gamesMatchupFeeRequest",
+  subscribeMatchupDetailsRequest = "subscribeMatchupDetailsRequest",
+  cancelMatchupDetailsSubscription = "cancelMatchupDetailsSubscription",
 }
 
 export type LucraConvertToCreditResponse = {
@@ -161,6 +165,7 @@ export type LucraEventMap = {
   locationGranted: void;
   demographicComplete: void;
   initialized: LucraInitializedBody;
+  matchupDetailsUpdated: LucraMatchupDetails;
 };
 
 export type LucraClientSendMessage = {

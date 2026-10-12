@@ -5,6 +5,7 @@ export type ApiRequest<TResponse, TBody = void> = {
     send: (body: TBody) => Promise<TResponse>;
     resolve: (data: TResponse, requestId?: string) => void;
     reject: (reason: unknown, requestId?: string) => void;
+    hasPending: () => boolean;
 };
 /**
  * Creates a request/response pair backed by promises. Each `send` posts the message with

@@ -62,6 +62,12 @@ export class LucraClient extends LucraClientBase {
             }
             return;
         }
+        // Only the active subscription's updates reach listeners: drop those for a
+        // superseded or cancelled matchup, and any arriving after close().
+        if (event.data.type === LucraClientMessageType.matchupDetailsUpdated &&
+            !this._isActiveMatchupDetailsUpdate(body)) {
+            return;
+        }
         const settled = this._settleApiResponse(event.data.type, body, requestId);
         // No return for autoJoinedTournaments, unlike other responses: it also falls through
         // to dispatchEvent so manual and automatic triggers report through the same event.
@@ -81,6 +87,7 @@ export class LucraClient extends LucraClientBase {
         if (event.data.type === LucraClientMessageType.initialized) {
             this._handleInitialized(event.data.data);
             this._replayEnableExitLucra();
+            this._resumeMatchupDetailsSubscription();
         }
         if (event.data.type === LucraClientMessageType.loginSuccess) {
             this._handleLoginSuccess();

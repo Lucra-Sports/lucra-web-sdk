@@ -1193,6 +1193,231 @@ describe("LucraClient.api.gamesMatchupFee", () => {
   });
 });
 
+describe("LucraClient.api.subscribeToMatchupDetails", () => {
+  const CANCELLED = "Cancelled by cancelMatchupDetailsSubscription";
+  const detailsFor = (id: string) => ({ matchup: { id }, groups: [], participantScores: [] });
+
+  // An open client, initialized unless told otherwise, with a matchupDetailsUpdated listener.
+  function setup({ initialized = true } = {}) {
+    const client = markOpen(LucraClient.initialize(baseConfig));
+    const sendMessage = mock((_message: any) => {});
+    (client as any)._sendMessage = sendMessage;
+    if (initialized) markInitialized(client);
+    const received: string[] = [];
+    client.on("matchupDetailsUpdated", (details) => received.push(details.matchup.id));
+    const update = (id: string) =>
+      deliver(client, { type: "matchupDetailsUpdated", data: detailsFor(id) });
+    const subscribePosts = () =>
+      sendMessage.mock.calls.filter(([m]) => m.type === "subscribeMatchupDetailsRequest")
+        .length;
+    return { client, sendMessage, received, update, subscribePosts };
+  }
+
+  async function subscribe(client: LucraClient, matchupId: string) {
+    const promise = client.api.subscribeToMatchupDetails(matchupId);
+    await flush();
+    await deliver(client, {
+      type: "subscribeMatchupDetailsResponse",
+      data: detailsFor(matchupId),
+    });
+    return promise;
+  }
+
+  it("posts a subscribeMatchupDetailsRequest once the iframe is initialized", async () => {
+    const client = markOpen(LucraClient.initialize(baseConfig));
+    const sendMessage = mock(() => {});
+    (client as any)._sendMessage = sendMessage;
+
+    client.api.subscribeToMatchupDetails("m1").catch(() => {});
+    await flush();
+    expect(sendMessage).not.toHaveBeenCalled();
+
+    await deliver(client, { type: "initialized", data: { success: true } });
+    await flush();
+
+    expect(sendMessage).toHaveBeenCalledWith({
+      type: "subscribeMatchupDetailsRequest",
+      body: { matchupId: "m1" },
+      requestId: expect.any(String),
+    });
+  });
+
+  it("resolves with the snapshot, and the active matchup's updates reach listeners", async () => {
+    const { client, received, update } = setup();
+
+    expect(await subscribe(client, "m1")).toEqual(detailsFor("m1"));
+    await update("m1");
+
+    expect(received).toEqual(["m1"]);
+  });
+
+  it("drops updates for another matchup, after cancel, and after close()", async () => {
+    const { client, received, update } = setup();
+    await subscribe(client, "m1");
+
+    await update("m2");
+    expect(received).toEqual([]);
+
+    client.api.cancelMatchupDetailsSubscription();
+    await update("m1");
+    expect(received).toEqual([]);
+
+    await subscribe(client, "m1");
+    client.close();
+    await update("m1");
+    expect(received).toEqual([]);
+  });
+
+  it("subscribing again cancels the pending call and drops the old matchup's updates", async () => {
+    const { client, sendMessage, received, update } = setup();
+    const first = client.api.subscribeToMatchupDetails("m1").catch((e) => e);
+    await flush();
+    const second = client.api.subscribeToMatchupDetails("m2");
+    await flush();
+
+    expect(await first).toBe("Cancelled by new subscribeToMatchupDetails request");
+    await deliver(client, {
+      type: "subscribeMatchupDetailsResponse",
+      data: detailsFor("m1"),
+      requestId: sendMessage.mock.calls[0][0].requestId,
+    });
+    await deliver(client, {
+      type: "subscribeMatchupDetailsResponse",
+      data: detailsFor("m2"),
+      requestId: sendMessage.mock.calls[1][0].requestId,
+    });
+    expect(await second).toEqual(detailsFor("m2"));
+
+    await update("m1");
+    await update("m2");
+    expect(received).toEqual(["m2"]);
+  });
+
+  it("cancel rejects a pending subscribe and posts cancelMatchupDetailsSubscription", async () => {
+    const { client, sendMessage } = setup();
+    const promise = client.api.subscribeToMatchupDetails("m1");
+    await flush();
+
+    client.api.cancelMatchupDetailsSubscription();
+
+    await expect(promise).rejects.toBe(CANCELLED);
+    expect(sendMessage).toHaveBeenLastCalledWith({
+      type: "cancelMatchupDetailsSubscription",
+      body: null,
+    });
+  });
+
+  it("cancel while waiting for initialization never posts the subscribe", async () => {
+    const { client, subscribePosts } = setup({ initialized: false });
+    const promise = client.api.subscribeToMatchupDetails("m1");
+
+    client.api.cancelMatchupDetailsSubscription();
+    await deliver(client, { type: "initialized", data: { success: true } });
+
+    await expect(promise).rejects.toBe(CANCELLED);
+    expect(subscribePosts()).toBe(0);
+  });
+
+  it("a subscribe superseded before initialization rejects as cancelled and the newer one goes live", async () => {
+    const { client, received, update, subscribePosts } = setup({ initialized: false });
+    const first = client.api.subscribeToMatchupDetails("m1").catch((e) => e);
+    const second = client.api.subscribeToMatchupDetails("m2");
+
+    await deliver(client, { type: "initialized", data: { success: true } });
+    expect(await first).toStartWith("Cancelled by");
+    await flush();
+    expect(subscribePosts()).toBe(1);
+
+    await deliver(client, {
+      type: "subscribeMatchupDetailsResponse",
+      data: detailsFor("m2"),
+    });
+    expect(await second).toEqual(detailsFor("m2"));
+    await update("m1");
+    await update("m2");
+    expect(received).toEqual(["m2"]);
+  });
+
+  it("cancel does not throw or post before open() or after close()", () => {
+    const client = LucraClient.initialize(baseConfig);
+    const sendMessage = mock(() => {});
+    (client as any)._sendMessage = sendMessage;
+
+    expect(() => client.api.cancelMatchupDetailsSubscription()).not.toThrow();
+    markOpen(client).close();
+    expect(() => client.api.cancelMatchupDetailsSubscription()).not.toThrow();
+    expect(sendMessage).not.toHaveBeenCalled();
+  });
+
+  it("re-posts the subscribe for the active matchup when the iframe re-initializes", async () => {
+    const { client, sendMessage } = setup();
+    await subscribe(client, "m1");
+    sendMessage.mockClear();
+
+    await deliver(client, { type: "initialized", data: { success: true } });
+
+    expect(sendMessage).toHaveBeenCalledWith({
+      type: "subscribeMatchupDetailsRequest",
+      body: { matchupId: "m1" },
+      requestId: expect.any(String),
+    });
+  });
+
+  it("posts nothing new when initialized arrives while a subscribe is pending", async () => {
+    const { client, subscribePosts } = setup();
+    await subscribe(client, "m1");
+
+    // The first re-initialization resubscribes; that request is still pending at the second.
+    await deliver(client, { type: "initialized", data: { success: true } });
+    await deliver(client, { type: "initialized", data: { success: true } });
+    expect(subscribePosts()).toBe(2);
+
+    client.api.subscribeToMatchupDetails("m2").catch(() => {});
+    await flush();
+    await deliver(client, { type: "initialized", data: { success: true } });
+    expect(subscribePosts()).toBe(3);
+  });
+
+  it("does not resubscribe when the iframe fails to re-initialize", async () => {
+    const { client, sendMessage } = setup();
+    await subscribe(client, "m1");
+    sendMessage.mockClear();
+
+    await deliver(client, { type: "initialized", data: { success: false } });
+
+    expect(sendMessage).not.toHaveBeenCalled();
+  });
+
+  it("rejects on apiRequestError and leaves nothing active", async () => {
+    const { client, sendMessage, received, update } = setup();
+    const promise = client.api.subscribeToMatchupDetails("missing");
+    await flush();
+
+    await deliver(client, {
+      type: "apiRequestError",
+      data: {
+        code: "API_ERROR",
+        message: "Recreational game matchup not found",
+        requestType: "subscribeMatchupDetailsRequest",
+      },
+      requestId: sendMessage.mock.calls[0][0].requestId,
+    });
+
+    await expectApiError(
+      promise,
+      LucraApiErrorCode.apiError,
+      "Recreational game matchup not found"
+    );
+    await update("missing");
+    expect(received).toEqual([]);
+    sendMessage.mockClear();
+    await deliver(client, { type: "initialized", data: { success: true } });
+    expect(sendMessage.mock.calls.map(([m]) => m.type)).not.toContain(
+      "subscribeMatchupDetailsRequest"
+    );
+  });
+});
+
 describe("LucraClient.ready", () => {
   it("sends an isLoggedInRequest once initialization succeeds", async () => {
     const client = LucraClient.initialize(baseConfig);
@@ -1599,6 +1824,7 @@ describe("LucraClientNotOpen", () => {
       () => client.api.matchup("abc"),
       () => client.api.matchupDetails("abc"),
       () => client.api.gamesMatchupFee(),
+      () => client.api.subscribeToMatchupDetails("abc"),
     ];
 
     for (const call of calls) {
