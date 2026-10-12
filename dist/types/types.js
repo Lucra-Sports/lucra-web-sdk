@@ -1,7 +1,14 @@
+// postMessage envelopes between the SDK and the web-app iframe:
+// - SDK -> web-app: { type: MessageTypeToLucraClient, body, requestId? }. Every api.*
+//   request carries a string requestId; fire-and-forget messages carry none.
+// - web-app -> SDK: { type: LucraClientMessageType, data, requestId? }. A response or
+//   apiRequestError echoes the requestId of the request it answers; events carry none.
+// requestId lives on the envelope, never inside a body type.
 export var LucraClientMessageType;
 (function (LucraClientMessageType) {
     LucraClientMessageType["achievementsResponse"] = "achievementsResponse";
     LucraClientMessageType["activeMatchupStarted"] = "activeMatchupStarted";
+    LucraClientMessageType["apiRequestError"] = "apiRequestError";
     LucraClientMessageType["autoJoinedTournaments"] = "autoJoinedTournaments";
     LucraClientMessageType["autoJoinTournamentsError"] = "autoJoinTournamentsError";
     LucraClientMessageType["claimReward"] = "claimReward";

@@ -1,43 +1,41 @@
 const API_REQUEST_TIMEOUT_MS = 15_000;
+// Unique per page load. crypto.randomUUID needs a secure context, so a counter it is.
+let lastRequestId = 0;
 /**
- * Creates a single-flight request/response pair backed by a promise.
- * A new `send` cancels any in-flight request, times out after 15s, and the
- * matching `resolve` (called from the iframe message listener) settles it.
+ * Creates a request/response pair backed by promises. Each `send` posts the message with
+ * a fresh `requestId`, which the web-app echoes on its response so concurrent calls settle
+ * independently. Every request times out on its own after `timeoutMs`. With `singleFlight`
+ * a new `send` cancels any pending request with `cancelReason` instead.
  */
-export function createApiRequest({ type, cancelReason, sendMessage, }) {
-    let pendingResolve;
-    let pendingReject;
-    let timer;
-    const clear = () => {
-        if (timer) {
-            clearTimeout(timer);
+export function createApiRequest({ type, responseType, cancelReason, sendMessage, singleFlight = false, timeoutMs = API_REQUEST_TIMEOUT_MS, }) {
+    // Insertion order is send order, which the id-less fallback relies on.
+    const pending = new Map();
+    const take = (requestId) => {
+        const id = requestId ?? pending.keys().next().value;
+        if (id === undefined)
+            return undefined;
+        const entry = pending.get(id);
+        if (entry) {
+            clearTimeout(entry.timer);
+            pending.delete(id);
         }
-        pendingResolve = undefined;
-        pendingReject = undefined;
-        timer = undefined;
+        return entry;
     };
     return {
+        type,
+        responseType,
         send: (body) => {
-            pendingReject?.(cancelReason);
-            clear();
-            const promise = new Promise((resolve, reject) => {
-                pendingResolve = resolve;
-                pendingReject = reject;
-                sendMessage({ type, body: body ?? null });
+            // Single-flight keeps at most one request pending, so cancelling the oldest is enough.
+            if (singleFlight)
+                take()?.reject(cancelReason);
+            const requestId = String(++lastRequestId);
+            return new Promise((resolve, reject) => {
+                const timer = setTimeout(() => take(requestId)?.reject("Timeout"), timeoutMs);
+                pending.set(requestId, { resolve, reject, timer });
+                sendMessage({ type, body: body ?? null, requestId });
             });
-            timer = setTimeout(() => {
-                pendingReject?.("Timeout");
-                clear();
-            }, API_REQUEST_TIMEOUT_MS);
-            return promise;
         },
-        resolve: (data) => {
-            pendingResolve?.(data);
-            clear();
-        },
-        reject: (reason) => {
-            pendingReject?.(reason);
-            clear();
-        },
+        resolve: (data, requestId) => take(requestId)?.resolve(data),
+        reject: (reason, requestId) => take(requestId)?.reject(reason),
     };
 }

@@ -59,11 +59,13 @@ Everything else about Web headless follows from this:
 An `api.*` call is: SDK posts a request message into the iframe → Lucra app does the work → app
 posts a response message back → SDK resolves your Promise. Three properties matter:
 
-- **Single-flight per function.** A new call to the same function cancels the in-flight one, which
-  rejects with the string `"Cancelled by new <name> request"`. That rejection is benign — never
-  surface it as an error. Development-mode behavior in some frameworks triggers it constantly; see
-  [Framework notes](#framework-notes).
-- **15-second timeout, rejected as the string `"Timeout"`.** A timeout usually means the
+- **Reads run concurrently; writes are single-flight.** Each request carries its own id, so
+  concurrent calls to a read (`achievements`, `tournaments`, `tournament`, `tournamentLeaderboard`)
+  each settle with their own response. A new call to a write (`joinTournament`,
+  `autoJoinTournaments`) cancels the in-flight one, which rejects with the string
+  `"Cancelled by new <name> request"`. That rejection is benign: never surface it as an error.
+  Development-mode behavior in some frameworks triggers it; see [Framework notes](#framework-notes).
+- **15-second timeout per request, rejected as the string `"Timeout"`.** A timeout usually means the
   request was never received or never answered (not-yet-initialized iframe, logged-out session on
   a gated call, mid-request reload or `close()`): treat it as a sequencing bug first, a Lucra
   outage last. The cause table: [Headless on Web → Request timeout](../../2.0_headless.md#request-timeout).
@@ -128,7 +130,8 @@ does not know about components, effects, or routers. The issues below come from 
 drive the SDK, not from the SDK itself.
 
 - **React StrictMode (development only)** double-invokes effects. An effect that issues an `api.*`
-  call fires twice; the second call cancels the first, which rejects with
+  call fires twice. Reads run concurrently, so both calls settle with a result. For a write
+  (`joinTournament`, `autoJoinTournaments`) the second call cancels the first, which rejects with
   `"Cancelled by new <name> request"`. Treat that rejection as benign. Production builds do not
   double-invoke, so do not add workarounds that change behavior.
 - **Effect cleanup that calls `client.close()`** runs, then the effect re-runs under StrictMode.

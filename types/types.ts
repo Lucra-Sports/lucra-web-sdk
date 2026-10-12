@@ -6,9 +6,16 @@ export type LucraEnvironment =
   | "sandbox"
   | "production";
 
+// postMessage envelopes between the SDK and the web-app iframe:
+// - SDK -> web-app: { type: MessageTypeToLucraClient, body, requestId? }. Every api.*
+//   request carries a string requestId; fire-and-forget messages carry none.
+// - web-app -> SDK: { type: LucraClientMessageType, data, requestId? }. A response or
+//   apiRequestError echoes the requestId of the request it answers; events carry none.
+// requestId lives on the envelope, never inside a body type.
 export enum LucraClientMessageType {
   achievementsResponse = "achievementsResponse",
   activeMatchupStarted = "activeMatchupStarted",
+  apiRequestError = "apiRequestError",
   autoJoinedTournaments = "autoJoinedTournaments",
   autoJoinTournamentsError = "autoJoinTournamentsError",
   claimReward = "claimReward",
@@ -162,6 +169,7 @@ export type LucraClientSendMessage = {
 export type LucraClientMessage = (body: {
   type: LucraClientMessageType;
   data: any;
+  requestId?: string;
 }) => void;
 
 export type LucraPage =
@@ -621,6 +629,12 @@ export enum LucraApiErrorCode {
 export type LucraApiErrorBody = {
   code: LucraApiErrorCode;
   message?: string;
+};
+
+// Data of an apiRequestError message: the failure plus the request type it answers, so
+// the SDK can reject the matching api.* call.
+export type LucraApiRequestErrorBody = LucraApiErrorBody & {
+  requestType: MessageTypeToLucraClient;
 };
 
 export type LucraIsLoggedInResponse = {
