@@ -62,8 +62,9 @@ posts a response message back → SDK resolves your Promise. Three properties ma
 - **Reads run concurrently; writes are single-flight.** Each request carries its own id, so
   concurrent calls to a read (`achievements`, `tournaments`, `tournament`, `tournamentLeaderboard`,
   `matchup`, `matchupDetails`, `gamesMatchupFee`) each settle with their own response. A new call
-  to a write (`joinTournament`, `autoJoinTournaments`) cancels the in-flight one, which rejects with the string
-  `"Cancelled by new <name> request"`. That rejection is benign: never surface it as an error.
+  to a write (`joinTournament`, `autoJoinTournaments`) or to `subscribeToMatchupDetails` cancels the
+  in-flight one, which rejects with a string starting with `"Cancelled by"`. That rejection is benign:
+  never surface it as an error.
   Development-mode behavior in some frameworks triggers it; see [Framework notes](#framework-notes).
 - **15-second timeout per request, rejected as the string `"Timeout"`.** A timeout usually means the
   request was never received or never answered (not-yet-initialized iframe, logged-out session on
@@ -76,7 +77,7 @@ posts a response message back → SDK resolves your Promise. Three properties ma
 
 ## 3. Auth: only the pre-auth reads work logged-out
 
-`api.tournaments()`, `api.matchup()`, `api.matchupDetails()`, and `api.gamesMatchupFee()` are the pre-auth calls; all await initialization
+`api.tournaments()`, `api.matchup()`, `api.matchupDetails()`, `api.gamesMatchupFee()`, and `api.subscribeToMatchupDetails()` are the pre-auth calls; all await initialization
 internally. `api.tournaments()` is the best end-to-end probe that the postMessage channel works
 at all. Everything else
 (`achievements`, `tournament`, `tournamentLeaderboard`, `joinTournament`, `autoJoinTournaments`)
@@ -133,8 +134,10 @@ drive the SDK, not from the SDK itself.
 - **React StrictMode (development only)** double-invokes effects. An effect that issues an `api.*`
   call fires twice. Reads run concurrently, so both calls settle with a result. For a write
   (`joinTournament`, `autoJoinTournaments`) the second call cancels the first, which rejects with
-  `"Cancelled by new <name> request"`. Treat that rejection as benign. Production builds do not
-  double-invoke, so do not add workarounds that change behavior.
+  `"Cancelled by new <name> request"`. Treat that rejection as benign. An effect that subscribes with
+  `subscribeToMatchupDetails` and cancels in cleanup also gets a benign `"Cancelled by"` rejection
+  from the first mount; ignore it. Production builds do not double-invoke, so do not add workarounds
+  that change behavior.
 - **Effect cleanup that calls `client.close()`** runs, then the effect re-runs under StrictMode.
   The iframe is removed and mounted again, so expect one extra iframe load in development and
   gate on `initialized` / `ready` again after the remount. Calls that need the iframe and run

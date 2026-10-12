@@ -31,7 +31,9 @@ export declare enum LucraClientMessageType {
     isLoggedInResponse = "isLoggedInResponse",
     matchupResponse = "matchupResponse",
     matchupDetailsResponse = "matchupDetailsResponse",
-    gamesMatchupFeeResponse = "gamesMatchupFeeResponse"
+    gamesMatchupFeeResponse = "gamesMatchupFeeResponse",
+    subscribeMatchupDetailsResponse = "subscribeMatchupDetailsResponse",
+    matchupDetailsUpdated = "matchupDetailsUpdated"
 }
 export declare enum MessageTypeToLucraClient {
     achievementsRequest = "achievementsRequest",
@@ -51,7 +53,9 @@ export declare enum MessageTypeToLucraClient {
     isLoggedInRequest = "isLoggedInRequest",
     matchupRequest = "matchupRequest",
     matchupDetailsRequest = "matchupDetailsRequest",
-    gamesMatchupFeeRequest = "gamesMatchupFeeRequest"
+    gamesMatchupFeeRequest = "gamesMatchupFeeRequest",
+    subscribeMatchupDetailsRequest = "subscribeMatchupDetailsRequest",
+    cancelMatchupDetailsSubscription = "cancelMatchupDetailsSubscription"
 }
 export type LucraConvertToCreditResponse = {
     id: string;
@@ -155,6 +159,7 @@ export type LucraEventMap = {
     locationGranted: void;
     demographicComplete: void;
     initialized: LucraInitializedBody;
+    matchupDetailsUpdated: LucraMatchupDetails;
 };
 export type LucraClientSendMessage = {
     userUpdated: (data: SDKClientUser) => void;

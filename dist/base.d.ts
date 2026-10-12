@@ -68,6 +68,9 @@ export declare class LucraClientBase extends EventTarget {
     private _matchupRequest;
     private _matchupDetailsRequest;
     private _gamesMatchupFeeRequest;
+    private _subscribeMatchupDetailsRequest;
+    private _matchupDetailsSubscriptionId;
+    private _matchupDetailsGeneration;
     private _joinTournamentRequest;
     private _autoJoinTournamentsRequest;
     private _isLoggedInRequest;
@@ -126,6 +129,9 @@ export declare class LucraClientBase extends EventTarget {
     protected _handleInitialized(body: LucraInitializedBody): void;
     protected _handleUserInfo(body: SDKLucraUser): void;
     protected _handleLoginSuccess(): void;
+    private _resetMatchupDetailsSubscription;
+    protected _isActiveMatchupDetailsUpdate(details: any): boolean;
+    protected _resumeMatchupDetailsSubscription(): void;
     api: {
         achievements: () => Promise<LucraAchievementsResponse>;
         tournaments: () => Promise<LucraTournamentsResponse>;
@@ -139,6 +145,8 @@ export declare class LucraClientBase extends EventTarget {
         matchup: (matchupId: string) => Promise<LucraMatchup>;
         matchupDetails: (matchupId: string) => Promise<LucraMatchupDetails>;
         gamesMatchupFee: () => Promise<number>;
+        subscribeToMatchupDetails: (matchupId: string) => Promise<LucraMatchupDetails>;
+        cancelMatchupDetailsSubscription: () => void;
     };
     sendMessage: LucraClientSendMessage;
 }

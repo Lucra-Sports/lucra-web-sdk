@@ -115,4 +115,16 @@ describe("createApiRequest", () => {
     request.resolve("data", sentId(0));
     expect(await first).toBe("data");
   });
+
+  it("hasPending reports whether any request is still pending", async () => {
+    const { request, sentId } = setup();
+    expect(request.hasPending()).toBe(false);
+
+    const promise = request.send({ matchupId: "a" });
+    expect(request.hasPending()).toBe(true);
+
+    request.resolve("data", sentId(0));
+    await promise;
+    expect(request.hasPending()).toBe(false);
+  });
 });

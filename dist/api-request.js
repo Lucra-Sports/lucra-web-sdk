@@ -37,5 +37,6 @@ export function createApiRequest({ type, responseType, cancelReason, sendMessage
         },
         resolve: (data, requestId) => take(requestId)?.resolve(data),
         reject: (reason, requestId) => take(requestId)?.reject(reason),
+        hasPending: () => pending.size > 0,
     };
 }

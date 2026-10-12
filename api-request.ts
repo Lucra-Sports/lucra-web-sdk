@@ -20,6 +20,7 @@ export type ApiRequest<TResponse, TBody = void> = {
   // An id that matches nothing is ignored: it belongs to a superseded or timed-out request.
   resolve: (data: TResponse, requestId?: string) => void;
   reject: (reason: unknown, requestId?: string) => void;
+  hasPending: () => boolean;
 };
 
 /**
@@ -72,5 +73,6 @@ export function createApiRequest<TResponse, TBody = void>({
     },
     resolve: (data, requestId) => take(requestId)?.resolve(data),
     reject: (reason, requestId) => take(requestId)?.reject(reason),
+    hasPending: () => pending.size > 0,
   };
 }
