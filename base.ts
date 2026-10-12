@@ -17,6 +17,7 @@ import {
   type LucraAutoJoinedTournamentsBody,
   type LucraJoinTournamentResponse,
   type LucraMatchup,
+  type LucraMatchupDetails,
   type LucraApiErrorBody,
   type LucraIsLoggedInResponse,
   type LucraPage,
@@ -155,6 +156,14 @@ export class LucraClientBase extends EventTarget {
     MessageTypeToLucraClient.matchupRequest,
     LucraClientMessageType.matchupResponse,
     "matchup"
+  );
+  private _matchupDetailsRequest = this._request<
+    LucraMatchupDetails,
+    { matchupId: string }
+  >(
+    MessageTypeToLucraClient.matchupDetailsRequest,
+    LucraClientMessageType.matchupDetailsResponse,
+    "matchupDetails"
   );
   private _joinTournamentRequest = this._request<
     LucraJoinTournamentResponse,
@@ -854,6 +863,11 @@ export class LucraClientBase extends EventTarget {
       this._assertOpen("call api.matchup");
       await this._initializedPromise;
       return this._matchupRequest.send({ matchupId });
+    },
+    matchupDetails: async (matchupId: string): Promise<LucraMatchupDetails> => {
+      this._assertOpen("call api.matchupDetails");
+      await this._initializedPromise;
+      return this._matchupDetailsRequest.send({ matchupId });
     },
   };
 

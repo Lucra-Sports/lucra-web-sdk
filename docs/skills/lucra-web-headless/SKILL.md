@@ -76,7 +76,7 @@ posts a response message back → SDK resolves your Promise. Three properties ma
 
 ## 3. Auth: only the pre-auth reads work logged-out
 
-`api.tournaments()` and `api.matchup()` are the pre-auth calls; both await initialization
+`api.tournaments()`, `api.matchup()`, and `api.matchupDetails()` are the pre-auth calls; all await initialization
 internally. `api.tournaments()` is the best end-to-end probe that the postMessage channel works
 at all. Everything else
 (`achievements`, `tournament`, `tournamentLeaderboard`, `joinTournament`, `autoJoinTournaments`)

@@ -29,7 +29,8 @@ export declare enum LucraClientMessageType {
     userInfo = "userInfo",
     initialized = "initialized",
     isLoggedInResponse = "isLoggedInResponse",
-    matchupResponse = "matchupResponse"
+    matchupResponse = "matchupResponse",
+    matchupDetailsResponse = "matchupDetailsResponse"
 }
 export declare enum MessageTypeToLucraClient {
     achievementsRequest = "achievementsRequest",
@@ -47,7 +48,8 @@ export declare enum MessageTypeToLucraClient {
     tournamentLeaderboardRequest = "tournamentLeaderboardRequest",
     joinTournamentRequest = "joinTournamentRequest",
     isLoggedInRequest = "isLoggedInRequest",
-    matchupRequest = "matchupRequest"
+    matchupRequest = "matchupRequest",
+    matchupDetailsRequest = "matchupDetailsRequest"
 }
 export type LucraConvertToCreditResponse = {
     id: string;
@@ -447,6 +449,32 @@ export type LucraMatchup = {
     game: LucraRecreationalGame;
     atStake: LucraAtStake;
     participantGroups: LucraMatchupParticipantGroup[];
+};
+export type LucraMatchupParticipant = {
+    userId: string;
+    username: string;
+    avatarUrl?: string;
+    individualPayout?: number;
+};
+export type LucraMatchupGroup = {
+    id: string;
+    outcome?: "WIN" | "LOSS" | "TIE";
+    score?: number;
+    participants: LucraMatchupParticipant[];
+};
+export type LucraMatchupParticipantScore = {
+    userId?: string;
+    username?: string;
+    avatarUrl?: string;
+    place?: number;
+    score?: number;
+    finishedAt?: string;
+    groupId?: string;
+};
+export type LucraMatchupDetails = {
+    matchup: LucraMatchup;
+    groups: LucraMatchupGroup[];
+    participantScores: LucraMatchupParticipantScore[];
 };
 export declare enum LucraApiErrorCode {
     unverified = "UNVERIFIED",

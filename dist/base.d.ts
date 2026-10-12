@@ -1,4 +1,4 @@
-import { type LucraClientSendMessage, type LucraDeepLinkResponse, type LucraClientConstructor, type LucraAchievementsResponse, type LucraTournamentsResponse, type LucraTournamentResponse, type LucraTournamentLeaderboardResponse, type LucraAutoJoinedTournamentsBody, type LucraJoinTournamentResponse, type LucraMatchup, type LucraApiErrorBody, type SDKLucraUser, type LucraMinigamesTriggerInput, type LucraStartMinigamesSessionResponse, type LucraInitializedBody, type LucraDialog, type LucraPopup, type LucraPopupResult } from "./types/types.js";
+import { type LucraClientSendMessage, type LucraDeepLinkResponse, type LucraClientConstructor, type LucraAchievementsResponse, type LucraTournamentsResponse, type LucraTournamentResponse, type LucraTournamentLeaderboardResponse, type LucraAutoJoinedTournamentsBody, type LucraJoinTournamentResponse, type LucraMatchup, type LucraMatchupDetails, type LucraApiErrorBody, type SDKLucraUser, type LucraMinigamesTriggerInput, type LucraStartMinigamesSessionResponse, type LucraInitializedBody, type LucraDialog, type LucraPopup, type LucraPopupResult } from "./types/types.js";
 type LucraNavigation = {
     profile: () => LucraClientBase;
     wallet: () => LucraClientBase;
@@ -66,6 +66,7 @@ export declare class LucraClientBase extends EventTarget {
     private _tournamentRequest;
     private _tournamentLeaderboardRequest;
     private _matchupRequest;
+    private _matchupDetailsRequest;
     private _joinTournamentRequest;
     private _autoJoinTournamentsRequest;
     private _isLoggedInRequest;
@@ -135,6 +136,7 @@ export declare class LucraClientBase extends EventTarget {
         joinTournament: (tournamentId: string) => Promise<LucraJoinTournamentResponse>;
         autoJoinTournaments: () => Promise<LucraAutoJoinedTournamentsBody>;
         matchup: (matchupId: string) => Promise<LucraMatchup>;
+        matchupDetails: (matchupId: string) => Promise<LucraMatchupDetails>;
     };
     sendMessage: LucraClientSendMessage;
 }
