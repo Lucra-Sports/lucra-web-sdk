@@ -1,15 +1,17 @@
-import { MessageTypeToLucraClient, } from "./types/types.js";
+import { LucraClientMessageType, MessageTypeToLucraClient, } from "./types/types.js";
 import { LucraClientIframeId, States } from "./constants.js";
 import { addDefinedSearchParams, validatePhoneNumber, validateMetadata, } from "./utils.js";
 import { createApiRequest } from "./api-request.js";
 import { createDialog } from "./dialog.js";
 import { createPopup } from "./popup.js";
 import { LucraUserNotLoggedIn, LucraClientNotOpen, LucraApiError } from "./errors.js";
+// Reason a single-flight request is rejected with when a newer one supersedes it.
+const cancelReason = (name) => `Cancelled by new ${name} request`;
 // Reason the in-flight isLoggedIn request is rejected with when a newer one
 // supersedes it (e.g. `loginSuccess` rebuilds `ready`). This is an internal
 // single-flight cancellation, not an auth failure, so `_createReadyPromise`
 // swallows it and defers to the rebuilt promise rather than surfacing it.
-const ISLOGGEDIN_CANCELLED = "Cancelled by new isLoggedIn request";
+const ISLOGGEDIN_CANCELLED = cancelReason("isLoggedIn");
 // Shared by open(), redirect(), and dialog() deposit (dialog routes through
 // redirect), so one key warns once for all three.
 const DEPOSIT_DEPRECATION = "deposit() on open(), redirect(), and dialog() is deprecated and will be removed in a future major version. Add Funds must run in a popup: open wallet() or profile() instead, where the Lucra app opens Add Funds in a popup on its own.";
@@ -24,41 +26,16 @@ export class LucraClientBase extends EventTarget {
     locationId = "";
     autoJoin = true;
     controller = new AbortController();
-    _achievementsRequest = createApiRequest({
-        type: MessageTypeToLucraClient.achievementsRequest,
-        cancelReason: "Cancelled by new achievements request",
-        sendMessage: (message) => this._sendMessage(message),
-    });
-    _tournamentsRequest = createApiRequest({
-        type: MessageTypeToLucraClient.tournamentsRequest,
-        cancelReason: "Cancelled by new tournaments request",
-        sendMessage: (message) => this._sendMessage(message),
-    });
-    _tournamentRequest = createApiRequest({
-        type: MessageTypeToLucraClient.tournamentRequest,
-        cancelReason: "Cancelled by new tournament request",
-        sendMessage: (message) => this._sendMessage(message),
-    });
-    _tournamentLeaderboardRequest = createApiRequest({
-        type: MessageTypeToLucraClient.tournamentLeaderboardRequest,
-        cancelReason: "Cancelled by new tournamentLeaderboard request",
-        sendMessage: (message) => this._sendMessage(message),
-    });
-    _joinTournamentRequest = createApiRequest({
-        type: MessageTypeToLucraClient.joinTournamentRequest,
-        cancelReason: "Cancelled by new joinTournament request",
-        sendMessage: (message) => this._sendMessage(message),
-    });
-    _autoJoinTournamentsRequest = createApiRequest({
-        type: MessageTypeToLucraClient.autoJoinTournamentsRequest,
-        cancelReason: "Cancelled by new autoJoinTournaments request",
-        sendMessage: (message) => this._sendMessage(message),
-    });
-    _isLoggedInRequest = createApiRequest({
-        type: MessageTypeToLucraClient.isLoggedInRequest,
-        cancelReason: ISLOGGEDIN_CANCELLED,
-        sendMessage: (message) => this._sendMessage(message),
-    });
+    // Every api.* request, so the router can settle one by its response or request type.
+    // Declared before the request fields below, which register themselves on creation.
+    _apiRequests = [];
+    _achievementsRequest = this._request(MessageTypeToLucraClient.achievementsRequest, LucraClientMessageType.achievementsResponse, "achievements");
+    _tournamentsRequest = this._request(MessageTypeToLucraClient.tournamentsRequest, LucraClientMessageType.tournamentsResponse, "tournaments");
+    _tournamentRequest = this._request(MessageTypeToLucraClient.tournamentRequest, LucraClientMessageType.tournamentResponse, "tournament");
+    _tournamentLeaderboardRequest = this._request(MessageTypeToLucraClient.tournamentLeaderboardRequest, LucraClientMessageType.tournamentLeaderboardResponse, "tournamentLeaderboard");
+    _joinTournamentRequest = this._request(MessageTypeToLucraClient.joinTournamentRequest, LucraClientMessageType.joinTournamentResponse, "joinTournament", { singleFlight: true });
+    _autoJoinTournamentsRequest = this._request(MessageTypeToLucraClient.autoJoinTournamentsRequest, LucraClientMessageType.autoJoinedTournaments, "autoJoinTournaments", { singleFlight: true });
+    _isLoggedInRequest = this._request(MessageTypeToLucraClient.isLoggedInRequest, LucraClientMessageType.isLoggedInResponse, "isLoggedIn", { singleFlight: true });
     triggerFrames = new Map();
     _user = null;
     _isInitialized = false;
@@ -515,35 +492,31 @@ export class LucraClientBase extends EventTarget {
             body: data,
         });
     }
-    _resolveAchievements(data) {
-        this._achievementsRequest.resolve(data);
+    _request(type, responseType, name, options = {}) {
+        const request = createApiRequest({
+            type,
+            responseType,
+            cancelReason: cancelReason(name),
+            sendMessage: (message) => this._sendMessage(message),
+            ...options,
+        });
+        this._apiRequests.push(request);
+        return request;
     }
-    _resolveTournaments(data) {
-        this._tournamentsRequest.resolve(data);
+    // Settles the api.* request answered by `responseType`. Returns false when the message
+    // is not an api.* response, so the router can treat it as an event. A response that
+    // matches no pending request (e.g. the automatic auto-join) is a no-op.
+    _settleApiResponse(responseType, data, requestId) {
+        const request = this._apiRequests.find((r) => r.responseType === responseType);
+        if (!request)
+            return false;
+        request.resolve(data, requestId);
+        return true;
     }
-    _resolveTournament(data) {
-        this._tournamentRequest.resolve(data);
-    }
-    _resolveTournamentLeaderboard(data) {
-        this._tournamentLeaderboardRequest.resolve(data);
-    }
-    _resolveJoinTournament(data) {
-        this._joinTournamentRequest.resolve(data);
-    }
-    _rejectJoinTournament(body) {
-        this._joinTournamentRequest.reject(new LucraApiError(body.code, body.message));
-    }
-    // Settles a pending manual autoJoinTournaments() call. The embedded app emits the
-    // same autoJoinedTournaments message for the automatic trigger, where no request is
-    // pending and this is a no-op.
-    _resolveAutoJoinTournaments(data) {
-        this._autoJoinTournamentsRequest.resolve(data);
-    }
-    _rejectAutoJoinTournaments(body) {
-        this._autoJoinTournamentsRequest.reject(new LucraApiError(body.code, body.message));
-    }
-    _resolveIsLoggedIn(data) {
-        this._isLoggedInRequest.resolve(data);
+    _rejectApiRequest(requestType, body, requestId) {
+        this._apiRequests
+            .find((r) => r.type === requestType)
+            ?.reject(new LucraApiError(body.code, body.message), requestId);
     }
     _resolveTrigger(win, data) {
         const handle = this.triggerFrames.get(win);

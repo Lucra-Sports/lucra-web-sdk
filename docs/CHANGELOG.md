@@ -5,6 +5,12 @@
 ### Added
 
 - `LucraApiErrorCode` members for recreational game matchups: `notAllowed` (`NOT_ALLOWED`), rejected when the user or the matchup's state does not permit the action, and `invalidAtStake` (`INVALID_AT_STAKE`), `invalidRewardType` (`INVALID_REWARD_TYPE`), `invalidPlayStyle` (`INVALID_PLAY_STYLE`), rejected when create input fails validation. All four are terminal: show `message`, do not retry. See [Headless on Web: Errors](2.0_headless.md#lucraapierror-by-code).
+- Request correlation: every `api.*` request carries a `requestId` that the Lucra app echoes on its response, so each call settles with its own response. No API change. See [API functions](2.0_headless.md#api-functions).
+- A failed read (`api.achievements/tournaments/tournament/tournamentLeaderboard`) now rejects with a typed `LucraApiError` (`API_ERROR`, `message` carries the detail) instead of the 15s `"Timeout"`. See [Headless on Web: Errors](2.0_headless.md#lucraapierror-by-code).
+
+### Changed
+
+- Reads (`api.achievements/tournaments/tournament/tournamentLeaderboard`) run concurrently and no longer cancel each other: a second call no longer rejects the first with `"Cancelled by new <name> request"`, and each call has its own 15s timeout. The writes (`joinTournament`, `autoJoinTournaments`) stay single-flight. See [Cancellation](2.0_headless.md#cancellation).
 
 ## [v1.13.0]
 

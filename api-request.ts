@@ -1,63 +1,76 @@
-import type { MessageTypeToLucraClient } from "./types/types.js";
+import type { LucraClientMessageType, MessageTypeToLucraClient } from "./types/types.js";
 
 const API_REQUEST_TIMEOUT_MS = 15_000;
 
-export type ApiRequest<TResponse, TBody = void> = {
-  send: (body: TBody) => Promise<TResponse>;
+// Unique per page load. crypto.randomUUID needs a secure context, so a counter it is.
+let lastRequestId = 0;
+
+type Pending<TResponse> = {
   resolve: (data: TResponse) => void;
   reject: (reason?: unknown) => void;
+  timer: ReturnType<typeof setTimeout>;
+};
+
+export type ApiRequest<TResponse, TBody = void> = {
+  readonly type: MessageTypeToLucraClient;
+  readonly responseType: LucraClientMessageType;
+  send: (body: TBody) => Promise<TResponse>;
+  // Settle the pending request whose id matches. Without an id (a web-app build that does
+  // not echo ids, or an app-initiated message such as automatic auto-join) settle the oldest.
+  // An id that matches nothing is ignored: it belongs to a superseded or timed-out request.
+  resolve: (data: TResponse, requestId?: string) => void;
+  reject: (reason: unknown, requestId?: string) => void;
 };
 
 /**
- * Creates a single-flight request/response pair backed by a promise.
- * A new `send` cancels any in-flight request, times out after 15s, and the
- * matching `resolve` (called from the iframe message listener) settles it.
+ * Creates a request/response pair backed by promises. Each `send` posts the message with
+ * a fresh `requestId`, which the web-app echoes on its response so concurrent calls settle
+ * independently. Every request times out on its own after `timeoutMs`. With `singleFlight`
+ * a new `send` cancels any pending request with `cancelReason` instead.
  */
 export function createApiRequest<TResponse, TBody = void>({
   type,
+  responseType,
   cancelReason,
   sendMessage,
+  singleFlight = false,
+  timeoutMs = API_REQUEST_TIMEOUT_MS,
 }: {
   type: MessageTypeToLucraClient;
+  responseType: LucraClientMessageType;
   cancelReason: string;
   sendMessage: (message: unknown) => void;
+  singleFlight?: boolean;
+  timeoutMs?: number;
 }): ApiRequest<TResponse, TBody> {
-  let pendingResolve: ((data: TResponse) => void) | undefined;
-  let pendingReject: ((reason?: unknown) => void) | undefined;
-  let timer: ReturnType<typeof setTimeout> | undefined;
+  // Insertion order is send order, which the id-less fallback relies on.
+  const pending = new Map<string, Pending<TResponse>>();
 
-  const clear = () => {
-    if (timer) {
-      clearTimeout(timer);
+  const take = (requestId?: string) => {
+    const id = requestId ?? pending.keys().next().value;
+    if (id === undefined) return undefined;
+    const entry = pending.get(id);
+    if (entry) {
+      clearTimeout(entry.timer);
+      pending.delete(id);
     }
-    pendingResolve = undefined;
-    pendingReject = undefined;
-    timer = undefined;
+    return entry;
   };
 
   return {
+    type,
+    responseType,
     send: (body) => {
-      pendingReject?.(cancelReason);
-      clear();
-
-      const promise = new Promise<TResponse>((resolve, reject) => {
-        pendingResolve = resolve;
-        pendingReject = reject;
-        sendMessage({ type, body: body ?? null });
+      // Single-flight keeps at most one request pending, so cancelling the oldest is enough.
+      if (singleFlight) take()?.reject(cancelReason);
+      const requestId = String(++lastRequestId);
+      return new Promise<TResponse>((resolve, reject) => {
+        const timer = setTimeout(() => take(requestId)?.reject("Timeout"), timeoutMs);
+        pending.set(requestId, { resolve, reject, timer });
+        sendMessage({ type, body: body ?? null, requestId });
       });
-      timer = setTimeout(() => {
-        pendingReject?.("Timeout");
-        clear();
-      }, API_REQUEST_TIMEOUT_MS);
-      return promise;
     },
-    resolve: (data: TResponse) => {
-      pendingResolve?.(data);
-      clear();
-    },
-    reject: (reason?: unknown) => {
-      pendingReject?.(reason);
-      clear();
-    },
+    resolve: (data, requestId) => take(requestId)?.resolve(data),
+    reject: (reason, requestId) => take(requestId)?.reject(reason),
   };
 }

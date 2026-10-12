@@ -2,6 +2,7 @@ export type LucraEnvironment = "local" | "dev1" | "dev2" | "staging" | "sandbox"
 export declare enum LucraClientMessageType {
     achievementsResponse = "achievementsResponse",
     activeMatchupStarted = "activeMatchupStarted",
+    apiRequestError = "apiRequestError",
     autoJoinedTournaments = "autoJoinedTournaments",
     autoJoinTournamentsError = "autoJoinTournamentsError",
     claimReward = "claimReward",
@@ -160,6 +161,7 @@ export type LucraClientSendMessage = {
 export type LucraClientMessage = (body: {
     type: LucraClientMessageType;
     data: any;
+    requestId?: string;
 }) => void;
 export type LucraPage = "add-funds" | "create-matchup" | "demographicform" | "home" | "id-scan-complete" | "kyc" | "logout" | "matchup-details" | "profile" | "search" | "tournament-details" | "transactions" | "withdraw-funds";
 export type StateFull = "Alaska" | "Alabama" | "Arkansas" | "Arizona" | "California" | "Colorado" | "Connecticut" | "District of Columbia" | "Delaware" | "Florida" | "Georgia" | "Hawaii" | "Iowa" | "Idaho" | "Illinois" | "Indiana" | "Kansas" | "Kentucky" | "Louisiana" | "Massachusetts" | "Maryland" | "Maine" | "Michigan" | "Minnesota" | "Missouri" | "Mississippi" | "Montana" | "North Carolina" | "North Dakota" | "Nebraska" | "New Hampshire" | "New Jersey" | "New Mexico" | "Nevada" | "New York" | "Ohio" | "Oklahoma" | "Oregon" | "Pennsylvania" | "Rhode Island" | "South Carolina" | "South Dakota" | "Tennessee" | "Texas" | "Utah" | "Virginia" | "Vermont" | "Washington" | "Wisconsin" | "West Virginia" | "Wyoming";
@@ -428,6 +430,9 @@ export declare enum LucraApiErrorCode {
 export type LucraApiErrorBody = {
     code: LucraApiErrorCode;
     message?: string;
+};
+export type LucraApiRequestErrorBody = LucraApiErrorBody & {
+    requestType: MessageTypeToLucraClient;
 };
 export type LucraIsLoggedInResponse = {
     isLoggedIn: boolean;
