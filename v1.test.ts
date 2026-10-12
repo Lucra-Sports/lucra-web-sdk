@@ -3,7 +3,11 @@ import { LucraClient } from "./v1.ts";
 import { createPopup } from "./popup.ts";
 import { LucraUserNotLoggedIn, LucraClientNotOpen, LucraApiError } from "./errors.ts";
 import { LucraApiErrorCode } from "./types/types.ts";
-import type { LucraV1ClientConstructor, LucraMatchup } from "./types/types.ts";
+import type {
+  LucraV1ClientConstructor,
+  LucraMatchup,
+  LucraMatchupDetails,
+} from "./types/types.ts";
 
 const baseConfig: LucraV1ClientConstructor = {
   apiKey: "test-api-key",
@@ -987,6 +991,120 @@ describe("LucraClient.api.matchup", () => {
   });
 });
 
+describe("LucraClient.api.matchupDetails", () => {
+  const details: LucraMatchupDetails = {
+    matchup: {
+      id: "m1",
+      status: "CLOSED",
+      playStyle: "GROUP_VS_GROUP",
+      isPublic: false,
+      creatorId: "user-1",
+      winningGroupId: "g1",
+      game: { gameId: "AIR-HOCKEY", name: "Air Hockey", minigameEnabled: false },
+      atStake: { type: "CASH", amount: 5 },
+      participantGroups: [
+        { id: "g1", userIds: ["user-1"] },
+        { id: "g2", userIds: [] },
+      ],
+    },
+    groups: [
+      {
+        id: "g1",
+        outcome: "WIN",
+        score: 11,
+        participants: [{ userId: "user-1", username: "ace", individualPayout: 9.5 }],
+      },
+      { id: "g2", outcome: "LOSS", participants: [] },
+    ],
+    participantScores: [
+      { userId: "user-1", username: "ace", place: 1, score: 11, groupId: "g1" },
+    ],
+  };
+
+  it("posts a matchupDetailsRequest message with the matchupId", async () => {
+    const client = markOpen(LucraClient.initialize(baseConfig));
+    const sendMessage = mock(() => {});
+    (client as any)._sendMessage = sendMessage;
+    markInitialized(client);
+
+    client.api.matchupDetails("m1").catch(() => {});
+    await flush();
+
+    expect(sendMessage).toHaveBeenCalledTimes(1);
+    expect(sendMessage).toHaveBeenCalledWith({
+      type: "matchupDetailsRequest",
+      body: { matchupId: "m1" },
+      requestId: expect.any(String),
+    });
+  });
+
+  it("waits for initialization before sending on an open client", async () => {
+    const client = markOpen(LucraClient.initialize(baseConfig));
+    const sendMessage = mock(() => {});
+    (client as any)._sendMessage = sendMessage;
+
+    client.api.matchupDetails("m1").catch(() => {});
+    await flush();
+    expect(sendMessage).not.toHaveBeenCalled();
+
+    await deliver(client, { type: "initialized", data: { success: true } });
+    await flush();
+
+    expect(sendMessage).toHaveBeenCalledWith({
+      type: "matchupDetailsRequest",
+      body: { matchupId: "m1" },
+      requestId: expect.any(String),
+    });
+  });
+
+  it("resolves with the details without a logged-in user once the iframe is initialized", async () => {
+    const client = markOpen(LucraClient.initialize(baseConfig));
+    const promise = client.api.matchupDetails("m1");
+
+    await deliver(client, { type: "initialized", data: { success: true } });
+    await deliver(client, { type: "isLoggedInResponse", data: { isLoggedIn: false } });
+    await deliver(client, { type: "matchupDetailsResponse", data: details });
+
+    expect(await promise).toEqual(details);
+  });
+
+  it("settles concurrent requests by requestId", async () => {
+    const client = markOpen(LucraClient.initialize(baseConfig));
+    markInitialized(client);
+
+    await expectSettledByRequestId(
+      client,
+      () => client.api.matchupDetails("m1"),
+      "matchupDetailsResponse"
+    );
+  });
+
+  it("rejects with a typed LucraApiError when an apiRequestError for it arrives", async () => {
+    const client = markOpen(LucraClient.initialize(baseConfig));
+    const sendMessage = mock((_message: any) => {});
+    (client as any)._sendMessage = sendMessage;
+    markInitialized(client);
+    const promise = client.api.matchupDetails("missing");
+    await flush();
+
+    await deliver(client, {
+      type: "apiRequestError",
+      data: {
+        code: "API_ERROR",
+        message: "Recreational game matchup not found",
+        requestType: "matchupDetailsRequest",
+      },
+      requestId: sendMessage.mock.calls[0][0].requestId,
+    });
+
+    await expectApiError(
+      promise,
+      LucraApiErrorCode.apiError,
+      "Recreational game matchup not found"
+    );
+  });
+});
+
 describe("LucraClient.ready", () => {
   it("sends an isLoggedInRequest once initialization succeeds", async () => {
     const client = LucraClient.initialize(baseConfig);
@@ -1391,6 +1509,7 @@ describe("LucraClientNotOpen", () => {
       () => client.api.joinTournament("abc"),
       () => client.api.autoJoinTournaments(),
       () => client.api.matchup("abc"),
+      () => client.api.matchupDetails("abc"),
     ];
 
     for (const call of calls) {
