@@ -25,12 +25,17 @@ const API_ERROR_MESSAGES: Record<LucraApiErrorCode, string> = {
     "Required demographic information is missing",
   [LucraApiErrorCode.locationError]: "User location could not be verified",
   [LucraApiErrorCode.locationNeeded]: "User location has not been granted",
+  [LucraApiErrorCode.notAllowed]:
+    "This action is not allowed for this user or matchup",
+  [LucraApiErrorCode.invalidAtStake]: "The stake is invalid",
+  [LucraApiErrorCode.invalidRewardType]: "The reward type is invalid",
+  [LucraApiErrorCode.invalidPlayStyle]: "The play style is invalid",
   [LucraApiErrorCode.apiError]: "The request could not be completed",
 };
 
 // Thrown (as a promise rejection) by Lucra API calls when the web-app reports a
-// known failure. Currently only api.joinTournament rejects with it. Inspect
-// `code` to react to the specific reason.
+// known failure. Inspect `code` to react to the specific reason;
+// docs/2.0_headless.md lists which calls reject with it.
 export class LucraApiError extends Error {
   readonly code: LucraApiErrorCode;
 

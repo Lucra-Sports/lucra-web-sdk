@@ -461,6 +461,10 @@ describe("LucraClient.api.joinTournament", () => {
       LucraApiErrorCode.demographicInformationMissing,
       LucraApiErrorCode.locationError,
       LucraApiErrorCode.locationNeeded,
+      LucraApiErrorCode.notAllowed,
+      LucraApiErrorCode.invalidAtStake,
+      LucraApiErrorCode.invalidRewardType,
+      LucraApiErrorCode.invalidPlayStyle,
       LucraApiErrorCode.apiError,
     ];
 
