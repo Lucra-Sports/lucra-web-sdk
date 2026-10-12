@@ -74,10 +74,11 @@ posts a response message back → SDK resolves your Promise. Three properties ma
   `client.ready` and `api.tournaments()` with the body `{ success: false }`; handle it separately.
   Timeouts and cancellations are plain strings, and anything else is one of them.
 
-## 3. Auth: exactly one call works logged-out
+## 3. Auth: only the pre-auth reads work logged-out
 
-`api.tournaments()` is the only pre-auth call — it also awaits initialization internally, making it
-the best end-to-end probe that the postMessage channel works at all. Everything else
+`api.tournaments()` and `api.matchup()` are the pre-auth calls; both await initialization
+internally. `api.tournaments()` is the best end-to-end probe that the postMessage channel works
+at all. Everything else
 (`achievements`, `tournament`, `tournamentLeaderboard`, `joinTournament`, `autoJoinTournaments`)
 needs a logged-in user and should be sequenced after `await client.ready`.
 
