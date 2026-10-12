@@ -30,7 +30,8 @@ export declare enum LucraClientMessageType {
     initialized = "initialized",
     isLoggedInResponse = "isLoggedInResponse",
     matchupResponse = "matchupResponse",
-    matchupDetailsResponse = "matchupDetailsResponse"
+    matchupDetailsResponse = "matchupDetailsResponse",
+    gamesMatchupFeeResponse = "gamesMatchupFeeResponse"
 }
 export declare enum MessageTypeToLucraClient {
     achievementsRequest = "achievementsRequest",
@@ -49,7 +50,8 @@ export declare enum MessageTypeToLucraClient {
     joinTournamentRequest = "joinTournamentRequest",
     isLoggedInRequest = "isLoggedInRequest",
     matchupRequest = "matchupRequest",
-    matchupDetailsRequest = "matchupDetailsRequest"
+    matchupDetailsRequest = "matchupDetailsRequest",
+    gamesMatchupFeeRequest = "gamesMatchupFeeRequest"
 }
 export type LucraConvertToCreditResponse = {
     id: string;

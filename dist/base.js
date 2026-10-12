@@ -35,6 +35,7 @@ export class LucraClientBase extends EventTarget {
     _tournamentLeaderboardRequest = this._request(MessageTypeToLucraClient.tournamentLeaderboardRequest, LucraClientMessageType.tournamentLeaderboardResponse, "tournamentLeaderboard");
     _matchupRequest = this._request(MessageTypeToLucraClient.matchupRequest, LucraClientMessageType.matchupResponse, "matchup");
     _matchupDetailsRequest = this._request(MessageTypeToLucraClient.matchupDetailsRequest, LucraClientMessageType.matchupDetailsResponse, "matchupDetails");
+    _gamesMatchupFeeRequest = this._request(MessageTypeToLucraClient.gamesMatchupFeeRequest, LucraClientMessageType.gamesMatchupFeeResponse, "gamesMatchupFee");
     _joinTournamentRequest = this._request(MessageTypeToLucraClient.joinTournamentRequest, LucraClientMessageType.joinTournamentResponse, "joinTournament", { singleFlight: true });
     _autoJoinTournamentsRequest = this._request(MessageTypeToLucraClient.autoJoinTournamentsRequest, LucraClientMessageType.autoJoinedTournaments, "autoJoinTournaments", { singleFlight: true });
     _isLoggedInRequest = this._request(MessageTypeToLucraClient.isLoggedInRequest, LucraClientMessageType.isLoggedInResponse, "isLoggedIn", { singleFlight: true });
@@ -592,6 +593,11 @@ export class LucraClientBase extends EventTarget {
             this._assertOpen("call api.matchupDetails");
             await this._initializedPromise;
             return this._matchupDetailsRequest.send({ matchupId });
+        },
+        gamesMatchupFee: async () => {
+            this._assertOpen("call api.gamesMatchupFee");
+            await this._initializedPromise;
+            return this._gamesMatchupFeeRequest.send();
         },
     };
     sendMessage = {

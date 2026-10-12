@@ -60,9 +60,9 @@ An `api.*` call is: SDK posts a request message into the iframe → Lucra app do
 posts a response message back → SDK resolves your Promise. Three properties matter:
 
 - **Reads run concurrently; writes are single-flight.** Each request carries its own id, so
-  concurrent calls to a read (`achievements`, `tournaments`, `tournament`, `tournamentLeaderboard`)
-  each settle with their own response. A new call to a write (`joinTournament`,
-  `autoJoinTournaments`) cancels the in-flight one, which rejects with the string
+  concurrent calls to a read (`achievements`, `tournaments`, `tournament`, `tournamentLeaderboard`,
+  `matchup`, `matchupDetails`, `gamesMatchupFee`) each settle with their own response. A new call
+  to a write (`joinTournament`, `autoJoinTournaments`) cancels the in-flight one, which rejects with the string
   `"Cancelled by new <name> request"`. That rejection is benign: never surface it as an error.
   Development-mode behavior in some frameworks triggers it; see [Framework notes](#framework-notes).
 - **15-second timeout per request, rejected as the string `"Timeout"`.** A timeout usually means the
@@ -76,7 +76,7 @@ posts a response message back → SDK resolves your Promise. Three properties ma
 
 ## 3. Auth: only the pre-auth reads work logged-out
 
-`api.tournaments()`, `api.matchup()`, and `api.matchupDetails()` are the pre-auth calls; all await initialization
+`api.tournaments()`, `api.matchup()`, `api.matchupDetails()`, and `api.gamesMatchupFee()` are the pre-auth calls; all await initialization
 internally. `api.tournaments()` is the best end-to-end probe that the postMessage channel works
 at all. Everything else
 (`achievements`, `tournament`, `tournamentLeaderboard`, `joinTournament`, `autoJoinTournaments`)

@@ -1105,6 +1105,94 @@ describe("LucraClient.api.matchupDetails", () => {
   });
 });
 
+describe("LucraClient.api.gamesMatchupFee", () => {
+  it("posts a gamesMatchupFeeRequest message with no body", async () => {
+    const client = markOpen(LucraClient.initialize(baseConfig));
+    const sendMessage = mock(() => {});
+    (client as any)._sendMessage = sendMessage;
+    markInitialized(client);
+
+    client.api.gamesMatchupFee().catch(() => {});
+    await flush();
+
+    expect(sendMessage).toHaveBeenCalledTimes(1);
+    expect(sendMessage).toHaveBeenCalledWith({
+      type: "gamesMatchupFeeRequest",
+      body: null,
+      requestId: expect.any(String),
+    });
+  });
+
+  it("waits for initialization before sending on an open client", async () => {
+    const client = markOpen(LucraClient.initialize(baseConfig));
+    const sendMessage = mock(() => {});
+    (client as any)._sendMessage = sendMessage;
+
+    client.api.gamesMatchupFee().catch(() => {});
+    await flush();
+    expect(sendMessage).not.toHaveBeenCalled();
+
+    await deliver(client, { type: "initialized", data: { success: true } });
+    await flush();
+
+    expect(sendMessage).toHaveBeenCalledWith({
+      type: "gamesMatchupFeeRequest",
+      body: null,
+      requestId: expect.any(String),
+    });
+  });
+
+  it("resolves with the fee without a logged-in user once the iframe is initialized", async () => {
+    const client = markOpen(LucraClient.initialize(baseConfig));
+    const promise = client.api.gamesMatchupFee();
+
+    await deliver(client, { type: "initialized", data: { success: true } });
+    await deliver(client, { type: "isLoggedInResponse", data: { isLoggedIn: false } });
+    await deliver(client, { type: "gamesMatchupFeeResponse", data: 0.05 });
+
+    expect(await promise).toBe(0.05);
+  });
+
+  it("resolves a zero fee", async () => {
+    const client = markOpen(LucraClient.initialize(baseConfig));
+    markInitialized(client);
+    const promise = client.api.gamesMatchupFee();
+    await flush();
+
+    await deliver(client, { type: "gamesMatchupFeeResponse", data: 0 });
+
+    expect(await promise).toBe(0);
+  });
+
+  it("settles concurrent requests by requestId", async () => {
+    const client = markOpen(LucraClient.initialize(baseConfig));
+    markInitialized(client);
+
+    await expectSettledByRequestId(
+      client,
+      () => client.api.gamesMatchupFee(),
+      "gamesMatchupFeeResponse"
+    );
+  });
+
+  it("rejects with a typed LucraApiError when an apiRequestError for it arrives", async () => {
+    const client = markOpen(LucraClient.initialize(baseConfig));
+    const sendMessage = mock((_message: any) => {});
+    (client as any)._sendMessage = sendMessage;
+    markInitialized(client);
+    const promise = client.api.gamesMatchupFee();
+    await flush();
+
+    await deliver(client, {
+      type: "apiRequestError",
+      data: { code: "API_ERROR", message: "boom", requestType: "gamesMatchupFeeRequest" },
+      requestId: sendMessage.mock.calls[0][0].requestId,
+    });
+
+    await expectApiError(promise, LucraApiErrorCode.apiError, "boom");
+  });
+});
+
 describe("LucraClient.ready", () => {
   it("sends an isLoggedInRequest once initialization succeeds", async () => {
     const client = LucraClient.initialize(baseConfig);
@@ -1510,6 +1598,7 @@ describe("LucraClientNotOpen", () => {
       () => client.api.autoJoinTournaments(),
       () => client.api.matchup("abc"),
       () => client.api.matchupDetails("abc"),
+      () => client.api.gamesMatchupFee(),
     ];
 
     for (const call of calls) {
