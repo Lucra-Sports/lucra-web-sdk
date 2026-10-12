@@ -67,6 +67,7 @@ export declare class LucraClientBase extends EventTarget {
     private _tournamentLeaderboardRequest;
     private _matchupRequest;
     private _matchupDetailsRequest;
+    private _gamesMatchupFeeRequest;
     private _joinTournamentRequest;
     private _autoJoinTournamentsRequest;
     private _isLoggedInRequest;
@@ -137,6 +138,7 @@ export declare class LucraClientBase extends EventTarget {
         autoJoinTournaments: () => Promise<LucraAutoJoinedTournamentsBody>;
         matchup: (matchupId: string) => Promise<LucraMatchup>;
         matchupDetails: (matchupId: string) => Promise<LucraMatchupDetails>;
+        gamesMatchupFee: () => Promise<number>;
     };
     sendMessage: LucraClientSendMessage;
 }

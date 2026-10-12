@@ -44,6 +44,7 @@ export enum LucraClientMessageType {
   isLoggedInResponse = "isLoggedInResponse",
   matchupResponse = "matchupResponse",
   matchupDetailsResponse = "matchupDetailsResponse",
+  gamesMatchupFeeResponse = "gamesMatchupFeeResponse",
 }
 
 export enum MessageTypeToLucraClient {
@@ -64,6 +65,7 @@ export enum MessageTypeToLucraClient {
   isLoggedInRequest = "isLoggedInRequest",
   matchupRequest = "matchupRequest",
   matchupDetailsRequest = "matchupDetailsRequest",
+  gamesMatchupFeeRequest = "gamesMatchupFeeRequest",
 }
 
 export type LucraConvertToCreditResponse = {
