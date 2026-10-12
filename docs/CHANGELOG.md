@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## [v1.14.0]
+
+### Added
+
+- `LucraApiErrorCode` members for recreational game matchups: `notAllowed` (`NOT_ALLOWED`), rejected when the user or the matchup's state does not permit the action, and `invalidAtStake` (`INVALID_AT_STAKE`), `invalidRewardType` (`INVALID_REWARD_TYPE`), `invalidPlayStyle` (`INVALID_PLAY_STYLE`), rejected when create input fails validation. All four are terminal: show `message`, do not retry. See [Headless on Web: Errors](2.0_headless.md#lucraapierror-by-code).
+
 ## [v1.13.0]
 
 ### Added

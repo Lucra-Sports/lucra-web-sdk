@@ -419,6 +419,10 @@ export declare enum LucraApiErrorCode {
     demographicInformationMissing = "DEMOGRAPHIC_INFORMATION_MISSING",
     locationError = "LOCATION_ERROR",
     locationNeeded = "LOCATION_NEEDED",
+    notAllowed = "NOT_ALLOWED",
+    invalidAtStake = "INVALID_AT_STAKE",
+    invalidRewardType = "INVALID_REWARD_TYPE",
+    invalidPlayStyle = "INVALID_PLAY_STYLE",
     apiError = "API_ERROR"
 }
 export type LucraApiErrorBody = {

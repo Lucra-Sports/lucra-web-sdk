@@ -80,8 +80,8 @@ var account_status_types_enum;
 // Error codes the web-app can surface for a failed API call. The web-app posts
 // an error message carrying one of these codes and the SDK rejects the matching
 // API promise with a LucraApiError so clients can react to the specific failure.
-// Currently only api.joinTournament throws these, but the codes are not specific
-// to it and other API calls may surface them in the future.
+// The codes are not specific to one call; docs/2.0_headless.md lists which calls
+// surface them.
 export var LucraApiErrorCode;
 (function (LucraApiErrorCode) {
     LucraApiErrorCode["unverified"] = "UNVERIFIED";
@@ -93,6 +93,15 @@ export var LucraApiErrorCode;
     // location-grant page via `dialog().locationGrant()` so a user gesture inside
     // the iframe can unlock location access, then retry the call.
     LucraApiErrorCode["locationNeeded"] = "LOCATION_NEEDED";
+    // The user or the matchup's state does not permit the action, for example a
+    // blocked account, a matchup that is no longer open, or a cancel by someone
+    // other than the creator. Terminal: show `message`, do not retry.
+    LucraApiErrorCode["notAllowed"] = "NOT_ALLOWED";
+    // Create input failed validation before any network call. Terminal: `message`
+    // names the invalid field; fix the input instead of retrying.
+    LucraApiErrorCode["invalidAtStake"] = "INVALID_AT_STAKE";
+    LucraApiErrorCode["invalidRewardType"] = "INVALID_REWARD_TYPE";
+    LucraApiErrorCode["invalidPlayStyle"] = "INVALID_PLAY_STYLE";
     // Catch-all for a failure with no more specific code: an API or network
     // error, or a rejection the web-app cannot classify. `message` carries the
     // detail returned by the API when there is one.
