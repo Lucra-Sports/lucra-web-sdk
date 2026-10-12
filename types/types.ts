@@ -41,7 +41,8 @@ export enum LucraClientMessageType {
   joinTournamentError = "joinTournamentError",
   userInfo = "userInfo",
   initialized = "initialized",
-  isLoggedInResponse = "isLoggedInResponse"
+  isLoggedInResponse = "isLoggedInResponse",
+  matchupResponse = "matchupResponse",
 }
 
 export enum MessageTypeToLucraClient {
@@ -60,6 +61,7 @@ export enum MessageTypeToLucraClient {
   tournamentLeaderboardRequest = "tournamentLeaderboardRequest",
   joinTournamentRequest = "joinTournamentRequest",
   isLoggedInRequest = "isLoggedInRequest",
+  matchupRequest = "matchupRequest",
 }
 
 export type LucraConvertToCreditResponse = {
@@ -594,6 +596,59 @@ export type LucraTournamentResponse = {
 
 export type LucraJoinTournamentResponse = {
   matchupId: string;
+};
+
+// ---------------------------------------------------------------------------
+// Games You Play (recreational game) matchups.
+//
+// Unlike the tournament shapes above, lucra-web-app maps these into camelCase
+// models. Only RECREATIONAL_GAME matchups are returned.
+// ---------------------------------------------------------------------------
+
+export type LucraPlayStyle = "GROUP_VS_GROUP" | "FREE_FOR_ALL";
+
+export type LucraMatchupStatus =
+  | "OPEN"
+  | "CONFIRMED"
+  | "LOCKED"
+  | "PENDING_OUTCOMES"
+  | "ON_HOLD"
+  | "DISPUTE"
+  | "CLOSED"
+  | "CLOSED_TIE"
+  | "CANCELED_BY_OWNER"
+  | "CANCELED_DISPUTE"
+  | "CANCELED_GAME_CANCELED"
+  | "CANCELED_NOT_ACCEPTED"
+  | "CANCELED_PLAYER_INACTIVE"
+  | "CANCELED_THROUGH_API"
+  | "CANCELED_TIMEOUT";
+
+// What a matchup is played for. `reward` reuses LucraReward (the availableRewards item).
+export type LucraAtStake =
+  | { type: "CASH"; amount: number }
+  | { type: "TENANT_REWARD"; reward: LucraReward };
+
+export type LucraRecreationalGame = {
+  gameId: string;
+  name: string;
+  iconUrl?: string;
+  minigameEnabled: boolean;
+};
+
+export type LucraMatchupParticipantGroup = { id: string; userIds: string[] };
+
+export type LucraMatchup = {
+  id: string;
+  status: LucraMatchupStatus;
+  playStyle: LucraPlayStyle;
+  isPublic: boolean;
+  createdAt?: string;
+  creatorId: string;
+  winningGroupId?: string;
+  game: LucraRecreationalGame;
+  atStake: LucraAtStake;
+  participantGroups: LucraMatchupParticipantGroup[];
 };
 
 // Error codes the web-app can surface for a failed API call. The web-app posts

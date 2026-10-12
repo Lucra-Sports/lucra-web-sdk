@@ -7,6 +7,7 @@
 - `LucraApiErrorCode` members for recreational game matchups: `notAllowed` (`NOT_ALLOWED`), rejected when the user or the matchup's state does not permit the action, and `invalidAtStake` (`INVALID_AT_STAKE`), `invalidRewardType` (`INVALID_REWARD_TYPE`), `invalidPlayStyle` (`INVALID_PLAY_STYLE`), rejected when create input fails validation. All four are terminal: show `message`, do not retry. See [Headless on Web: Errors](2.0_headless.md#lucraapierror-by-code).
 - Request correlation: every `api.*` request carries a `requestId` that the Lucra app echoes on its response, so each call settles with its own response. No API change. See [API functions](2.0_headless.md#api-functions).
 - A failed read (`api.achievements/tournaments/tournament/tournamentLeaderboard`) now rejects with a typed `LucraApiError` (`API_ERROR`, `message` carries the detail) instead of the 15s `"Timeout"`. See [Headless on Web: Errors](2.0_headless.md#lucraapierror-by-code).
+- `api.matchup(matchupId)`, which resolves with a Games You Play (recreational game) matchup as a `LucraMatchup` (status, play style, game, stake, participant group ids), with the new exported types `LucraMatchup`, `LucraMatchupStatus`, `LucraPlayStyle`, `LucraAtStake`, `LucraRecreationalGame`, and `LucraMatchupParticipantGroup`. Works before login: like `api.tournaments()`, it awaits initialization internally. An unknown id rejects with `LucraApiError` (`API_ERROR`, `"Recreational game matchup not found"`). See [Games You Play Headless](2.2_gyp_headless.md#reading-a-matchup).
 
 ### Changed
 

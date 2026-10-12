@@ -33,6 +33,7 @@ export class LucraClientBase extends EventTarget {
     _tournamentsRequest = this._request(MessageTypeToLucraClient.tournamentsRequest, LucraClientMessageType.tournamentsResponse, "tournaments");
     _tournamentRequest = this._request(MessageTypeToLucraClient.tournamentRequest, LucraClientMessageType.tournamentResponse, "tournament");
     _tournamentLeaderboardRequest = this._request(MessageTypeToLucraClient.tournamentLeaderboardRequest, LucraClientMessageType.tournamentLeaderboardResponse, "tournamentLeaderboard");
+    _matchupRequest = this._request(MessageTypeToLucraClient.matchupRequest, LucraClientMessageType.matchupResponse, "matchup");
     _joinTournamentRequest = this._request(MessageTypeToLucraClient.joinTournamentRequest, LucraClientMessageType.joinTournamentResponse, "joinTournament", { singleFlight: true });
     _autoJoinTournamentsRequest = this._request(MessageTypeToLucraClient.autoJoinTournamentsRequest, LucraClientMessageType.autoJoinedTournaments, "autoJoinTournaments", { singleFlight: true });
     _isLoggedInRequest = this._request(MessageTypeToLucraClient.isLoggedInRequest, LucraClientMessageType.isLoggedInResponse, "isLoggedIn", { singleFlight: true });
@@ -551,9 +552,8 @@ export class LucraClientBase extends EventTarget {
             return this._achievementsRequest.send();
         },
         // Every request needs an open iframe and rejects with LucraClientNotOpen
-        // without one. Fetching all tournaments is also allowed before auth, so it
-        // additionally waits for the embedded app to be initialized (not `ready`,
-        // which also asserts login); the others need auth (called after `ready`).
+        // without one. Reads that work before auth await `_initializedPromise` (not
+        // `ready`, which also asserts login); the others need auth (called after `ready`).
         // Note: if `close()` runs while this is still awaiting a not-yet-resolved
         // init, the captured promise never settles and this call stays pending --
         // an accepted edge given the narrow window.
@@ -581,6 +581,11 @@ export class LucraClientBase extends EventTarget {
         autoJoinTournaments: async () => {
             this._assertOpen("call api.autoJoinTournaments");
             return this._autoJoinTournamentsRequest.send();
+        },
+        matchup: async (matchupId) => {
+            this._assertOpen("call api.matchup");
+            await this._initializedPromise;
+            return this._matchupRequest.send({ matchupId });
         },
     };
     sendMessage = {
