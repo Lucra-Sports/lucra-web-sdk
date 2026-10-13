@@ -899,7 +899,7 @@ describe("LucraClient.api.matchup", () => {
     isPublic: false,
     createdAt: "2026-10-01T12:00:00Z",
     creatorId: "user-1",
-    game: { gameId: "AIR-HOCKEY", name: "Air Hockey", minigameEnabled: false },
+    game: { gameId: "AIR-HOCKEY", name: "Air Hockey" },
     atStake: { type: "CASH", amount: 5 },
     participantGroups: [
       { id: "g1", userIds: ["user-1"] },
@@ -1000,7 +1000,7 @@ describe("LucraClient.api.matchupDetails", () => {
       isPublic: false,
       creatorId: "user-1",
       winningGroupId: "g1",
-      game: { gameId: "AIR-HOCKEY", name: "Air Hockey", minigameEnabled: false },
+      game: { gameId: "AIR-HOCKEY", name: "Air Hockey" },
       atStake: { type: "CASH", amount: 5 },
       participantGroups: [
         { id: "g1", userIds: ["user-1"] },

@@ -637,16 +637,18 @@ export type LucraMatchupStatus =
   | "CANCELED_THROUGH_API"
   | "CANCELED_TIMEOUT";
 
+export type LucraCashStake = { type: "CASH"; amount: number };
+
 // What a matchup is played for. `reward` reuses LucraReward (the availableRewards item).
+// Read side only: headless create accepts LucraCashStake.
 export type LucraAtStake =
-  | { type: "CASH"; amount: number }
+  | LucraCashStake
   | { type: "TENANT_REWARD"; reward: LucraReward };
 
 export type LucraRecreationalGame = {
   gameId: string;
   name: string;
   iconUrl?: string;
-  minigameEnabled: boolean;
 };
 
 export type LucraMatchupParticipantGroup = { id: string; userIds: string[] };
@@ -696,7 +698,7 @@ export type LucraMatchupDetails = {
 
 export type LucraCreateRecreationalGameInput = {
   gameTypeId: string;
-  atStake: LucraAtStake;
+  atStake: LucraCashStake;
   playStyle: LucraPlayStyle;
 };
 

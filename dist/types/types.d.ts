@@ -432,10 +432,11 @@ export type LucraJoinTournamentResponse = {
 };
 export type LucraPlayStyle = "GROUP_VS_GROUP" | "FREE_FOR_ALL";
 export type LucraMatchupStatus = "OPEN" | "CONFIRMED" | "LOCKED" | "PENDING_OUTCOMES" | "ON_HOLD" | "DISPUTE" | "CLOSED" | "CLOSED_TIE" | "CANCELED_BY_OWNER" | "CANCELED_DISPUTE" | "CANCELED_GAME_CANCELED" | "CANCELED_NOT_ACCEPTED" | "CANCELED_PLAYER_INACTIVE" | "CANCELED_THROUGH_API" | "CANCELED_TIMEOUT";
-export type LucraAtStake = {
+export type LucraCashStake = {
     type: "CASH";
     amount: number;
-} | {
+};
+export type LucraAtStake = LucraCashStake | {
     type: "TENANT_REWARD";
     reward: LucraReward;
 };
@@ -443,7 +444,6 @@ export type LucraRecreationalGame = {
     gameId: string;
     name: string;
     iconUrl?: string;
-    minigameEnabled: boolean;
 };
 export type LucraMatchupParticipantGroup = {
     id: string;
@@ -489,7 +489,7 @@ export type LucraMatchupDetails = {
 };
 export type LucraCreateRecreationalGameInput = {
     gameTypeId: string;
-    atStake: LucraAtStake;
+    atStake: LucraCashStake;
     playStyle: LucraPlayStyle;
 };
 export type LucraRecreationalGameResult = {

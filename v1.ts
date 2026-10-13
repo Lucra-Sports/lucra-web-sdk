@@ -50,29 +50,23 @@ export class LucraClient extends LucraClientBase {
       }
       return;
     }
-    const requestId =
-      typeof event.data.requestId === "string" ? event.data.requestId : undefined;
+    const requestId = event.data.requestId;
     const body = event.data.data;
-    const hasErrorCode = typeof body?.code === "string";
     if (event.data.type === LucraClientMessageType.apiRequestError) {
-      if (hasErrorCode) this._rejectApiRequest(body.requestType, body, requestId);
+      this._rejectApiRequest(body.requestType, body, requestId);
       return;
     }
     // Per-call error messages that predate apiRequestError; the web-app still sends them.
     if (event.data.type === LucraClientMessageType.joinTournamentError) {
-      if (hasErrorCode) {
-        this._rejectApiRequest(MessageTypeToLucraClient.joinTournamentRequest, body, requestId);
-      }
+      this._rejectApiRequest(MessageTypeToLucraClient.joinTournamentRequest, body, requestId);
       return;
     }
     if (event.data.type === LucraClientMessageType.autoJoinTournamentsError) {
-      if (hasErrorCode) {
-        this._rejectApiRequest(
-          MessageTypeToLucraClient.autoJoinTournamentsRequest,
-          body,
-          requestId
-        );
-      }
+      this._rejectApiRequest(
+        MessageTypeToLucraClient.autoJoinTournamentsRequest,
+        body,
+        requestId
+      );
       return;
     }
     // Only the active subscription's updates reach listeners: drop those for a
