@@ -1,4 +1,9 @@
-import type { LucraClientMessageType, MessageTypeToLucraClient } from "./types/types.js";
+import { LucraApiError } from "./errors.js";
+import {
+  LucraApiErrorCode,
+  type LucraClientMessageType,
+  type MessageTypeToLucraClient,
+} from "./types/types.js";
 
 const API_REQUEST_TIMEOUT_MS = 15_000;
 
@@ -20,28 +25,37 @@ export type ApiRequest<TResponse, TBody = void> = {
   // An id that matches nothing is ignored: it belongs to a superseded or timed-out request.
   resolve: (data: TResponse, requestId?: string) => void;
   reject: (reason: unknown, requestId?: string) => void;
+  rejectAll: (reason: unknown) => void;
   hasPending: () => boolean;
 };
+
+// Reason a single-flight request is rejected with when a newer one supersedes it.
+export const cancelReason = (name: string) => `Cancelled by new ${name} request`;
 
 /**
  * Creates a request/response pair backed by promises. Each `send` posts the message with
  * a fresh `requestId`, which the web-app echoes on its response so concurrent calls settle
  * independently. Every request times out on its own after `timeoutMs`. With `singleFlight`
- * a new `send` cancels any pending request with `cancelReason` instead.
+ * a new `send` cancels any pending request instead. With `rejectWhilePending` a new `send`
+ * is refused with `NOT_ALLOWED` and posts nothing, so a write already running is never
+ * duplicated. A `sendMessage` that throws (e.g. a payload that cannot be cloned) rejects
+ * that request at once instead of leaving it to time out.
  */
 export function createApiRequest<TResponse, TBody = void>({
   type,
   responseType,
-  cancelReason,
+  name,
   sendMessage,
   singleFlight = false,
+  rejectWhilePending = false,
   timeoutMs = API_REQUEST_TIMEOUT_MS,
 }: {
   type: MessageTypeToLucraClient;
   responseType: LucraClientMessageType;
-  cancelReason: string;
+  name: string;
   sendMessage: (message: unknown) => void;
   singleFlight?: boolean;
+  rejectWhilePending?: boolean;
   timeoutMs?: number;
 }): ApiRequest<TResponse, TBody> {
   // Insertion order is send order, which the id-less fallback relies on.
@@ -63,16 +77,31 @@ export function createApiRequest<TResponse, TBody = void>({
     responseType,
     send: (body) => {
       // Single-flight keeps at most one request pending, so cancelling the oldest is enough.
-      if (singleFlight) take()?.reject(cancelReason);
+      if (singleFlight) take()?.reject(cancelReason(name));
+      if (rejectWhilePending && pending.size > 0) {
+        return Promise.reject(
+          new LucraApiError(
+            LucraApiErrorCode.notAllowed,
+            `A ${name} request is already in progress`
+          )
+        );
+      }
       const requestId = String(++lastRequestId);
       return new Promise<TResponse>((resolve, reject) => {
         const timer = setTimeout(() => take(requestId)?.reject("Timeout"), timeoutMs);
         pending.set(requestId, { resolve, reject, timer });
-        sendMessage({ type, body: body ?? null, requestId });
+        try {
+          sendMessage({ type, body: body ?? null, requestId });
+        } catch (e) {
+          take(requestId)?.reject(e);
+        }
       });
     },
     resolve: (data, requestId) => take(requestId)?.resolve(data),
     reject: (reason, requestId) => take(requestId)?.reject(reason),
+    rejectAll: (reason) => {
+      while (pending.size > 0) take()?.reject(reason);
+    },
     hasPending: () => pending.size > 0,
   };
 }

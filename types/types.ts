@@ -47,6 +47,7 @@ export enum LucraClientMessageType {
   gamesMatchupFeeResponse = "gamesMatchupFeeResponse",
   subscribeMatchupDetailsResponse = "subscribeMatchupDetailsResponse",
   matchupDetailsUpdated = "matchupDetailsUpdated",
+  createRecreationalGameResponse = "createRecreationalGameResponse",
 }
 
 export enum MessageTypeToLucraClient {
@@ -70,6 +71,7 @@ export enum MessageTypeToLucraClient {
   gamesMatchupFeeRequest = "gamesMatchupFeeRequest",
   subscribeMatchupDetailsRequest = "subscribeMatchupDetailsRequest",
   cancelMatchupDetailsSubscription = "cancelMatchupDetailsSubscription",
+  createRecreationalGameRequest = "createRecreationalGameRequest",
 }
 
 export type LucraConvertToCreditResponse = {
@@ -688,6 +690,18 @@ export type LucraMatchupDetails = {
   matchup: LucraMatchup;
   groups: LucraMatchupGroup[];
   participantScores: LucraMatchupParticipantScore[];
+};
+
+export type LucraCreateRecreationalGameInput = {
+  gameTypeId: string;
+  atStake: LucraAtStake;
+  playStyle: LucraPlayStyle;
+};
+
+// matchup is null only when the read after a successful create failed. The create succeeded.
+export type LucraRecreationalGameResult = {
+  matchupId: string;
+  matchup: LucraMatchup | null;
 };
 
 // Error codes the web-app can surface for a failed API call. The web-app posts
