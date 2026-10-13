@@ -44,6 +44,8 @@ export class LucraClientBase extends EventTarget {
     _matchupDetailsSubscriptionId = null;
     _matchupDetailsGeneration = 0;
     _createRecreationalGameRequest = this._request(MessageTypeToLucraClient.createRecreationalGameRequest, LucraClientMessageType.createRecreationalGameResponse, "createRecreationalGame", { rejectWhilePending: true, timeoutMs: 60_000 });
+    // Shared with the free-for-all accept, so both accepts use one in-flight slot.
+    _acceptRecreationalGameRequest = this._request(MessageTypeToLucraClient.acceptRecreationalGameRequest, LucraClientMessageType.acceptRecreationalGameResponse, "acceptRecreationalGame", { rejectWhilePending: true, timeoutMs: 60_000 });
     _joinTournamentRequest = this._request(MessageTypeToLucraClient.joinTournamentRequest, LucraClientMessageType.joinTournamentResponse, "joinTournament", { singleFlight: true });
     _autoJoinTournamentsRequest = this._request(MessageTypeToLucraClient.autoJoinTournamentsRequest, LucraClientMessageType.autoJoinedTournaments, "autoJoinTournaments", { singleFlight: true });
     _isLoggedInRequest = this._request(MessageTypeToLucraClient.isLoggedInRequest, LucraClientMessageType.isLoggedInResponse, "isLoggedIn", { singleFlight: true });
@@ -639,6 +641,14 @@ export class LucraClientBase extends EventTarget {
         createRecreationalGame: async (input) => {
             this._assertOpen("call api.createRecreationalGame");
             return this._createRecreationalGameRequest.send(input);
+        },
+        acceptVersusRecreationalGame: async (matchupId, teamId) => {
+            this._assertOpen("call api.acceptVersusRecreationalGame");
+            return this._acceptRecreationalGameRequest.send({
+                matchupId,
+                playStyle: "GROUP_VS_GROUP",
+                teamId,
+            });
         },
         // Resolves with the current details, then delivers each change as a
         // matchupDetailsUpdated event until cancelled, close(), or the next subscribe.

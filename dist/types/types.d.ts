@@ -34,7 +34,8 @@ export declare enum LucraClientMessageType {
     gamesMatchupFeeResponse = "gamesMatchupFeeResponse",
     subscribeMatchupDetailsResponse = "subscribeMatchupDetailsResponse",
     matchupDetailsUpdated = "matchupDetailsUpdated",
-    createRecreationalGameResponse = "createRecreationalGameResponse"
+    createRecreationalGameResponse = "createRecreationalGameResponse",
+    acceptRecreationalGameResponse = "acceptRecreationalGameResponse"
 }
 export declare enum MessageTypeToLucraClient {
     achievementsRequest = "achievementsRequest",
@@ -57,7 +58,8 @@ export declare enum MessageTypeToLucraClient {
     gamesMatchupFeeRequest = "gamesMatchupFeeRequest",
     subscribeMatchupDetailsRequest = "subscribeMatchupDetailsRequest",
     cancelMatchupDetailsSubscription = "cancelMatchupDetailsSubscription",
-    createRecreationalGameRequest = "createRecreationalGameRequest"
+    createRecreationalGameRequest = "createRecreationalGameRequest",
+    acceptRecreationalGameRequest = "acceptRecreationalGameRequest"
 }
 export type LucraConvertToCreditResponse = {
     id: string;
@@ -493,6 +495,11 @@ export type LucraCreateRecreationalGameInput = {
 export type LucraRecreationalGameResult = {
     matchupId: string;
     matchup: LucraMatchup | null;
+};
+export type LucraAcceptRecreationalGameBody = {
+    matchupId: string;
+    playStyle: LucraPlayStyle;
+    teamId?: string;
 };
 export declare enum LucraApiErrorCode {
     unverified = "UNVERIFIED",
