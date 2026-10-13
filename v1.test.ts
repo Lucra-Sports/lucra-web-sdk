@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, mock, spyOn, jest } from "bun:test";
+import { describe, it, expect, beforeEach, afterEach, mock, spyOn } from "bun:test";
 import { LucraClient } from "./v1.ts";
 import { createPopup } from "./popup.ts";
 import { LucraUserNotLoggedIn, LucraClientNotOpen, LucraApiError } from "./errors.ts";
@@ -1126,39 +1126,6 @@ describe("LucraClient.api.cancelRecreationalGame", () => {
       data: { matchupId: "m1" },
     });
     expect(await first).toEqual({ matchupId: "m1" });
-  });
-});
-
-describe("LucraClient.api recreational game timeout", () => {
-  const createInput = {
-    gameTypeId: "AIR-HOCKEY",
-    atStake: { type: "CASH" as const, amount: 5 },
-    playStyle: "GROUP_VS_GROUP" as const,
-  };
-
-  it.each([
-    ["createRecreationalGame", (c: LucraClient) => c.api.createRecreationalGame(createInput)],
-    ["acceptVersusRecreationalGame", (c: LucraClient) => c.api.acceptVersusRecreationalGame("m1", "t2")],
-    ["cancelRecreationalGame", (c: LucraClient) => c.api.cancelRecreationalGame("m1")],
-  ])("%s is still pending at 15s and times out at 60s", async (_name, call) => {
-    jest.useFakeTimers();
-    try {
-      const client = markOpen(LucraClient.initialize(baseConfig));
-      const promise = call(client);
-      let settled = false;
-      promise.catch(() => {
-        settled = true;
-      });
-
-      jest.advanceTimersByTime(15_000);
-      for (let i = 0; i < 5; i++) await Promise.resolve();
-      expect(settled).toBe(false);
-
-      jest.advanceTimersByTime(45_000);
-      await expect(promise).rejects.toBe("Timeout");
-    } finally {
-      jest.useRealTimers();
-    }
   });
 });
 

@@ -42,10 +42,10 @@ export class LucraClientBase extends EventTarget {
     // every subscribe, cancel, and close() bumps so a superseded subscribe never activates.
     _matchupDetailsSubscriptionId = null;
     _matchupDetailsGeneration = 0;
-    _createRecreationalGameRequest = this._request(MessageTypeToLucraClient.createRecreationalGameRequest, LucraClientMessageType.createRecreationalGameResponse, "createRecreationalGame", { rejectWhilePending: true, timeoutMs: 60_000 });
+    _createRecreationalGameRequest = this._request(MessageTypeToLucraClient.createRecreationalGameRequest, LucraClientMessageType.createRecreationalGameResponse, "createRecreationalGame", { rejectWhilePending: true });
     // Shared with the free-for-all accept, so both accepts use one in-flight slot.
-    _acceptRecreationalGameRequest = this._request(MessageTypeToLucraClient.acceptRecreationalGameRequest, LucraClientMessageType.acceptRecreationalGameResponse, "acceptRecreationalGame", { rejectWhilePending: true, timeoutMs: 60_000 });
-    _cancelRecreationalGameRequest = this._request(MessageTypeToLucraClient.cancelRecreationalGameRequest, LucraClientMessageType.cancelRecreationalGameResponse, "cancelRecreationalGame", { rejectWhilePending: true, timeoutMs: 60_000 });
+    _acceptRecreationalGameRequest = this._request(MessageTypeToLucraClient.acceptRecreationalGameRequest, LucraClientMessageType.acceptRecreationalGameResponse, "acceptRecreationalGame", { rejectWhilePending: true });
+    _cancelRecreationalGameRequest = this._request(MessageTypeToLucraClient.cancelRecreationalGameRequest, LucraClientMessageType.cancelRecreationalGameResponse, "cancelRecreationalGame", { rejectWhilePending: true });
     _joinTournamentRequest = this._request(MessageTypeToLucraClient.joinTournamentRequest, LucraClientMessageType.joinTournamentResponse, "joinTournament", { singleFlight: true });
     _autoJoinTournamentsRequest = this._request(MessageTypeToLucraClient.autoJoinTournamentsRequest, LucraClientMessageType.autoJoinedTournaments, "autoJoinTournaments", { singleFlight: true });
     _isLoggedInRequest = this._request(MessageTypeToLucraClient.isLoggedInRequest, LucraClientMessageType.isLoggedInResponse, "isLoggedIn", { singleFlight: true });
