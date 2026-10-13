@@ -1492,6 +1492,99 @@ describe("LucraClient.api.acceptFreeForAllRecreationalGame", () => {
   });
 });
 
+describe("LucraClient.api.cancelRecreationalGame", () => {
+  it("posts the matchupId and a requestId", () => {
+    const client = markOpen(LucraClient.initialize(baseConfig));
+    const sendMessage = mock(() => {});
+    (client as any)._sendMessage = sendMessage;
+
+    client.api.cancelRecreationalGame("m1").catch(() => {});
+
+    expect(sendMessage).toHaveBeenCalledTimes(1);
+    expect(sendMessage).toHaveBeenCalledWith({
+      type: "cancelRecreationalGameRequest",
+      body: { matchupId: "m1" },
+      requestId: expect.any(String),
+    });
+  });
+
+  it("resolves with the matchupId", async () => {
+    const client = markOpen(LucraClient.initialize(baseConfig));
+    const promise = client.api.cancelRecreationalGame("m1");
+
+    await deliver(client, {
+      type: "cancelRecreationalGameResponse",
+      data: { matchupId: "m1" },
+    });
+
+    expect(await promise).toEqual({ matchupId: "m1" });
+  });
+
+  it("refuses a second call while one is pending, posts nothing, and settles the first normally", async () => {
+    const client = markOpen(LucraClient.initialize(baseConfig));
+    const sendMessage = mock((_message: any) => {});
+    (client as any)._sendMessage = sendMessage;
+    const first = client.api.cancelRecreationalGame("m1");
+
+    await expectApiError(
+      client.api.cancelRecreationalGame("m2"),
+      LucraApiErrorCode.notAllowed,
+      "Another cancelRecreationalGame request is already in progress"
+    );
+    expect(sendMessage).toHaveBeenCalledTimes(1);
+
+    await deliver(client, {
+      type: "cancelRecreationalGameResponse",
+      data: { matchupId: "m1" },
+    });
+    expect(await first).toEqual({ matchupId: "m1" });
+  });
+
+  it("is still pending at 15s and times out at 60s", async () => {
+    jest.useFakeTimers();
+    try {
+      const client = markOpen(LucraClient.initialize(baseConfig));
+      const promise = client.api.cancelRecreationalGame("m1");
+      let settled = false;
+      promise.catch(() => {
+        settled = true;
+      });
+
+      jest.advanceTimersByTime(15_000);
+      for (let i = 0; i < 5; i++) await Promise.resolve();
+      expect(settled).toBe(false);
+
+      jest.advanceTimersByTime(45_000);
+      await expect(promise).rejects.toBe("Timeout");
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it("rejects with a typed LucraApiError for apiRequestError NOT_ALLOWED", async () => {
+    const client = markOpen(LucraClient.initialize(baseConfig));
+    const sendMessage = mock((_message: any) => {});
+    (client as any)._sendMessage = sendMessage;
+    const promise = client.api.cancelRecreationalGame("m1");
+
+    await deliver(client, {
+      type: "apiRequestError",
+      data: {
+        code: LucraApiErrorCode.notAllowed,
+        message: "Only the creator can cancel this matchup",
+        requestType: "cancelRecreationalGameRequest",
+      },
+      requestId: sendMessage.mock.calls[0][0].requestId,
+    });
+
+    await expectApiError(
+      promise,
+      LucraApiErrorCode.notAllowed,
+      "Only the creator can cancel this matchup"
+    );
+  });
+});
+
 describe("LucraClient.api.subscribeToMatchupDetails", () => {
   const CANCELLED = "Cancelled by cancelMatchupDetailsSubscription";
   const detailsFor = (id: string) => ({ matchup: { id }, groups: [], participantScores: [] });
@@ -2144,6 +2237,7 @@ describe("LucraClientNotOpen", () => {
       () => client.api.createRecreationalGame({} as any),
       () => client.api.acceptVersusRecreationalGame("abc", "t1"),
       () => client.api.acceptFreeForAllRecreationalGame("abc"),
+      () => client.api.cancelRecreationalGame("abc"),
     ];
 
     for (const call of calls) {
@@ -2177,6 +2271,7 @@ describe("LucraClientNotOpen", () => {
       const pending = [
         client.api.joinTournament("abc"),
         client.api.createRecreationalGame({} as any),
+        client.api.cancelRecreationalGame("abc"),
         accept(client),
       ];
 

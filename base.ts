@@ -20,6 +20,7 @@ import {
   type LucraMatchupDetails,
   type LucraCreateRecreationalGameInput,
   type LucraAcceptRecreationalGameBody,
+  type LucraCancelRecreationalGameResult,
   type LucraRecreationalGameResult,
   type LucraApiErrorBody,
   type LucraIsLoggedInResponse,
@@ -208,6 +209,15 @@ export class LucraClientBase extends EventTarget {
     MessageTypeToLucraClient.acceptRecreationalGameRequest,
     LucraClientMessageType.acceptRecreationalGameResponse,
     "acceptRecreationalGame",
+    { rejectWhilePending: true, timeoutMs: 60_000 }
+  );
+  private _cancelRecreationalGameRequest = this._request<
+    LucraCancelRecreationalGameResult,
+    { matchupId: string }
+  >(
+    MessageTypeToLucraClient.cancelRecreationalGameRequest,
+    LucraClientMessageType.cancelRecreationalGameResponse,
+    "cancelRecreationalGame",
     { rejectWhilePending: true, timeoutMs: 60_000 }
   );
   private _joinTournamentRequest = this._request<
@@ -979,6 +989,12 @@ export class LucraClientBase extends EventTarget {
         matchupId,
         playStyle: "FREE_FOR_ALL",
       });
+    },
+    cancelRecreationalGame: async (
+      matchupId: string
+    ): Promise<LucraCancelRecreationalGameResult> => {
+      this._assertOpen("call api.cancelRecreationalGame");
+      return this._cancelRecreationalGameRequest.send({ matchupId });
     },
     // Resolves with the current details, then delivers each change as a
     // matchupDetailsUpdated event until cancelled, close(), or the next subscribe.

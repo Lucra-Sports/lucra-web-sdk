@@ -49,6 +49,7 @@ export enum LucraClientMessageType {
   matchupDetailsUpdated = "matchupDetailsUpdated",
   createRecreationalGameResponse = "createRecreationalGameResponse",
   acceptRecreationalGameResponse = "acceptRecreationalGameResponse",
+  cancelRecreationalGameResponse = "cancelRecreationalGameResponse",
 }
 
 export enum MessageTypeToLucraClient {
@@ -74,6 +75,7 @@ export enum MessageTypeToLucraClient {
   cancelMatchupDetailsSubscription = "cancelMatchupDetailsSubscription",
   createRecreationalGameRequest = "createRecreationalGameRequest",
   acceptRecreationalGameRequest = "acceptRecreationalGameRequest",
+  cancelRecreationalGameRequest = "cancelRecreationalGameRequest",
 }
 
 export type LucraConvertToCreditResponse = {
@@ -704,6 +706,10 @@ export type LucraCreateRecreationalGameInput = {
 export type LucraRecreationalGameResult = {
   matchupId: string;
   matchup: LucraMatchup | null;
+};
+
+export type LucraCancelRecreationalGameResult = {
+  matchupId: string;
 };
 
 // Wire-only body of acceptRecreationalGameRequest, not exported from index.ts. teamId is
