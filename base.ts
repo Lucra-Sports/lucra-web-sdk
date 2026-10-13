@@ -174,11 +174,6 @@ export class LucraClientBase extends EventTarget {
     LucraClientMessageType.matchupDetailsResponse,
     "matchupDetails"
   );
-  private _gamesMatchupFeeRequest = this._request<number>(
-    MessageTypeToLucraClient.gamesMatchupFeeRequest,
-    LucraClientMessageType.gamesMatchupFeeResponse,
-    "gamesMatchupFee"
-  );
   private _subscribeMatchupDetailsRequest = this._request<
     LucraMatchupDetails,
     { matchupId: string }
@@ -958,11 +953,6 @@ export class LucraClientBase extends EventTarget {
       this._assertOpen("call api.matchupDetails");
       await this._initializedPromise;
       return this._matchupDetailsRequest.send({ matchupId });
-    },
-    gamesMatchupFee: async (): Promise<number> => {
-      this._assertOpen("call api.gamesMatchupFee");
-      await this._initializedPromise;
-      return this._gamesMatchupFeeRequest.send();
     },
     createRecreationalGame: async (
       input: LucraCreateRecreationalGameInput

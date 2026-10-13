@@ -37,7 +37,6 @@ export class LucraClientBase extends EventTarget {
     _tournamentLeaderboardRequest = this._request(MessageTypeToLucraClient.tournamentLeaderboardRequest, LucraClientMessageType.tournamentLeaderboardResponse, "tournamentLeaderboard");
     _matchupRequest = this._request(MessageTypeToLucraClient.matchupRequest, LucraClientMessageType.matchupResponse, "matchup");
     _matchupDetailsRequest = this._request(MessageTypeToLucraClient.matchupDetailsRequest, LucraClientMessageType.matchupDetailsResponse, "matchupDetails");
-    _gamesMatchupFeeRequest = this._request(MessageTypeToLucraClient.gamesMatchupFeeRequest, LucraClientMessageType.gamesMatchupFeeResponse, "gamesMatchupFee");
     _subscribeMatchupDetailsRequest = this._request(MessageTypeToLucraClient.subscribeMatchupDetailsRequest, LucraClientMessageType.subscribeMatchupDetailsResponse, "subscribeToMatchupDetails", { singleFlight: true });
     // The matchup whose matchupDetailsUpdated events reach listeners, and a counter that
     // every subscribe, cancel, and close() bumps so a superseded subscribe never activates.
@@ -633,11 +632,6 @@ export class LucraClientBase extends EventTarget {
             this._assertOpen("call api.matchupDetails");
             await this._initializedPromise;
             return this._matchupDetailsRequest.send({ matchupId });
-        },
-        gamesMatchupFee: async () => {
-            this._assertOpen("call api.gamesMatchupFee");
-            await this._initializedPromise;
-            return this._gamesMatchupFeeRequest.send();
         },
         createRecreationalGame: async (input) => {
             this._assertOpen("call api.createRecreationalGame");
