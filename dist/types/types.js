@@ -40,6 +40,7 @@ export var LucraClientMessageType;
     LucraClientMessageType["gamesMatchupFeeResponse"] = "gamesMatchupFeeResponse";
     LucraClientMessageType["subscribeMatchupDetailsResponse"] = "subscribeMatchupDetailsResponse";
     LucraClientMessageType["matchupDetailsUpdated"] = "matchupDetailsUpdated";
+    LucraClientMessageType["createRecreationalGameResponse"] = "createRecreationalGameResponse";
 })(LucraClientMessageType || (LucraClientMessageType = {}));
 export var MessageTypeToLucraClient;
 (function (MessageTypeToLucraClient) {
@@ -63,6 +64,7 @@ export var MessageTypeToLucraClient;
     MessageTypeToLucraClient["gamesMatchupFeeRequest"] = "gamesMatchupFeeRequest";
     MessageTypeToLucraClient["subscribeMatchupDetailsRequest"] = "subscribeMatchupDetailsRequest";
     MessageTypeToLucraClient["cancelMatchupDetailsSubscription"] = "cancelMatchupDetailsSubscription";
+    MessageTypeToLucraClient["createRecreationalGameRequest"] = "createRecreationalGameRequest";
 })(MessageTypeToLucraClient || (MessageTypeToLucraClient = {}));
 // Message the Lucra web app posts to the opener when a deposit finishes in a
 // popup (see client.popup()). The envelope is flat (no nested `data`).

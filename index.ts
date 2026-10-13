@@ -50,6 +50,8 @@ export type {
   LucraMatchupGroup,
   LucraMatchupParticipantScore,
   LucraMatchupDetails,
+  LucraCreateRecreationalGameInput,
+  LucraRecreationalGameResult,
   LucraApiErrorBody,
   LucraIsLoggedInResponse,
   LucraNavigateRequest,

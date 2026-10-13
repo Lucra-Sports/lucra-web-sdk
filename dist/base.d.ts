@@ -1,4 +1,4 @@
-import { type LucraClientSendMessage, type LucraDeepLinkResponse, type LucraClientConstructor, type LucraAchievementsResponse, type LucraTournamentsResponse, type LucraTournamentResponse, type LucraTournamentLeaderboardResponse, type LucraAutoJoinedTournamentsBody, type LucraJoinTournamentResponse, type LucraMatchup, type LucraMatchupDetails, type LucraApiErrorBody, type SDKLucraUser, type LucraMinigamesTriggerInput, type LucraStartMinigamesSessionResponse, type LucraInitializedBody, type LucraDialog, type LucraPopup, type LucraPopupResult } from "./types/types.js";
+import { type LucraClientSendMessage, type LucraDeepLinkResponse, type LucraClientConstructor, type LucraAchievementsResponse, type LucraTournamentsResponse, type LucraTournamentResponse, type LucraTournamentLeaderboardResponse, type LucraAutoJoinedTournamentsBody, type LucraJoinTournamentResponse, type LucraMatchup, type LucraMatchupDetails, type LucraCreateRecreationalGameInput, type LucraRecreationalGameResult, type LucraApiErrorBody, type SDKLucraUser, type LucraMinigamesTriggerInput, type LucraStartMinigamesSessionResponse, type LucraInitializedBody, type LucraDialog, type LucraPopup, type LucraPopupResult } from "./types/types.js";
 type LucraNavigation = {
     profile: () => LucraClientBase;
     wallet: () => LucraClientBase;
@@ -71,6 +71,7 @@ export declare class LucraClientBase extends EventTarget {
     private _subscribeMatchupDetailsRequest;
     private _matchupDetailsSubscriptionId;
     private _matchupDetailsGeneration;
+    private _createRecreationalGameRequest;
     private _joinTournamentRequest;
     private _autoJoinTournamentsRequest;
     private _isLoggedInRequest;
@@ -145,6 +146,7 @@ export declare class LucraClientBase extends EventTarget {
         matchup: (matchupId: string) => Promise<LucraMatchup>;
         matchupDetails: (matchupId: string) => Promise<LucraMatchupDetails>;
         gamesMatchupFee: () => Promise<number>;
+        createRecreationalGame: (input: LucraCreateRecreationalGameInput) => Promise<LucraRecreationalGameResult>;
         subscribeToMatchupDetails: (matchupId: string) => Promise<LucraMatchupDetails>;
         cancelMatchupDetailsSubscription: () => void;
     };

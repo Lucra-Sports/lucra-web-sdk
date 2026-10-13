@@ -1,17 +1,18 @@
 import { LucraClientMessageType, MessageTypeToLucraClient, } from "./types/types.js";
 import { LucraClientIframeId, States } from "./constants.js";
 import { addDefinedSearchParams, validatePhoneNumber, validateMetadata, } from "./utils.js";
-import { createApiRequest } from "./api-request.js";
+import { cancelReason, createApiRequest } from "./api-request.js";
 import { createDialog } from "./dialog.js";
 import { createPopup } from "./popup.js";
 import { LucraUserNotLoggedIn, LucraClientNotOpen, LucraApiError } from "./errors.js";
-// Reason a single-flight request is rejected with when a newer one supersedes it.
-const cancelReason = (name) => `Cancelled by new ${name} request`;
 // Reason the in-flight isLoggedIn request is rejected with when a newer one
 // supersedes it (e.g. `loginSuccess` rebuilds `ready`). This is an internal
 // single-flight cancellation, not an auth failure, so `_createReadyPromise`
 // swallows it and defers to the rebuilt promise rather than surfacing it.
 const ISLOGGEDIN_CANCELLED = cancelReason("isLoggedIn");
+// What close() rejects pending requests and `ready` with. A write may already have
+// run in the Lucra app, so the message warns against blind retries.
+const CLOSED_WHILE_PENDING = "LucraClient was closed while the request was pending. A write may still have completed: check before retrying.";
 const MATCHUP_DETAILS_SUBSCRIPTION_CANCELLED = "Cancelled by cancelMatchupDetailsSubscription";
 // Shared by open(), redirect(), and dialog() deposit (dialog routes through
 // redirect), so one key warns once for all three.
@@ -42,6 +43,7 @@ export class LucraClientBase extends EventTarget {
     // every subscribe, cancel, and close() bumps so a superseded subscribe never activates.
     _matchupDetailsSubscriptionId = null;
     _matchupDetailsGeneration = 0;
+    _createRecreationalGameRequest = this._request(MessageTypeToLucraClient.createRecreationalGameRequest, LucraClientMessageType.createRecreationalGameResponse, "createRecreationalGame", { rejectWhilePending: true, timeoutMs: 60_000 });
     _joinTournamentRequest = this._request(MessageTypeToLucraClient.joinTournamentRequest, LucraClientMessageType.joinTournamentResponse, "joinTournament", { singleFlight: true });
     _autoJoinTournamentsRequest = this._request(MessageTypeToLucraClient.autoJoinTournamentsRequest, LucraClientMessageType.autoJoinedTournaments, "autoJoinTournaments", { singleFlight: true });
     _isLoggedInRequest = this._request(MessageTypeToLucraClient.isLoggedInRequest, LucraClientMessageType.isLoggedInResponse, "isLoggedIn", { singleFlight: true });
@@ -466,6 +468,12 @@ export class LucraClientBase extends EventTarget {
         this._user = null;
         this._isInitialized = false;
         this._resetMatchupDetailsSubscription();
+        // Pending api requests and a `ready` still waiting for init would otherwise time out
+        // or hang. The reject is a no-op once initialization settled.
+        this._readyReject(new LucraClientNotOpen(CLOSED_WHILE_PENDING));
+        for (const request of this._apiRequests) {
+            request.rejectAll(new LucraClientNotOpen(CLOSED_WHILE_PENDING));
+        }
         this._initializedPromise = this._createInitializedPromise();
         this._readyPromise = this._createReadyPromise();
     }
@@ -492,6 +500,10 @@ export class LucraClientBase extends EventTarget {
             this.iframe?.contentWindow?.postMessage(message, this.urlOrigin);
         }
         catch (e) {
+            // An api request (it carries a requestId) rejects its promise with the error
+            // instead of timing out; every other message is fire-and-forget.
+            if (message?.requestId !== undefined)
+                throw e;
             console.error("Unable to send message to LucraClient iframe", e);
         }
         return this;
@@ -506,7 +518,7 @@ export class LucraClientBase extends EventTarget {
         const request = createApiRequest({
             type,
             responseType,
-            cancelReason: cancelReason(name),
+            name,
             sendMessage: (message) => this._sendMessage(message),
             ...options,
         });
@@ -623,6 +635,10 @@ export class LucraClientBase extends EventTarget {
             this._assertOpen("call api.gamesMatchupFee");
             await this._initializedPromise;
             return this._gamesMatchupFeeRequest.send();
+        },
+        createRecreationalGame: async (input) => {
+            this._assertOpen("call api.createRecreationalGame");
+            return this._createRecreationalGameRequest.send(input);
         },
         // Resolves with the current details, then delivers each change as a
         // matchupDetailsUpdated event until cancelled, close(), or the next subscribe.

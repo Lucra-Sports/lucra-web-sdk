@@ -1,13 +1,20 @@
 import { describe, it, expect, mock } from "bun:test";
 import { createApiRequest } from "./api-request.ts";
-import { LucraClientMessageType, MessageTypeToLucraClient } from "./types/types.ts";
+import { LucraApiError } from "./errors.ts";
+import {
+  LucraApiErrorCode,
+  LucraClientMessageType,
+  MessageTypeToLucraClient,
+} from "./types/types.ts";
 
-function setup(options: { singleFlight?: boolean; timeoutMs?: number } = {}) {
+function setup(
+  options: { singleFlight?: boolean; rejectWhilePending?: boolean; timeoutMs?: number } = {}
+) {
   const sendMessage = mock((_message: unknown) => {});
   const request = createApiRequest<string, { matchupId: string }>({
     type: MessageTypeToLucraClient.tournamentRequest,
     responseType: LucraClientMessageType.tournamentResponse,
-    cancelReason: "Cancelled by new tournament request",
+    name: "tournament",
     sendMessage,
     ...options,
   });
@@ -88,6 +95,47 @@ describe("createApiRequest", () => {
 
     request.resolve("fresh", sentId(1));
     expect(await second).toBe("fresh");
+  });
+
+  it("rejectWhilePending: refuses a send while one is pending without posting, then allows the next", async () => {
+    const { request, sendMessage, sentId } = setup({ rejectWhilePending: true });
+    const first = request.send({ matchupId: "a" });
+
+    const refused = await request.send({ matchupId: "b" }).catch((e) => e);
+    expect(refused).toBeInstanceOf(LucraApiError);
+    expect(refused.code).toBe(LucraApiErrorCode.notAllowed);
+    expect(refused.message).toBe("A tournament request is already in progress");
+    expect(sendMessage).toHaveBeenCalledTimes(1);
+    expect(await settledValue(first)).toBe("pending");
+
+    request.resolve("data", sentId(0));
+    expect(await first).toBe("data");
+    const next = request.send({ matchupId: "c" });
+    expect(sendMessage).toHaveBeenCalledTimes(2);
+    request.resolve("next", sentId(1));
+    expect(await next).toBe("next");
+  });
+
+  it("rejects at once, without waiting for the timeout, when sendMessage throws", async () => {
+    const { request, sendMessage } = setup({ timeoutMs: 60_000 });
+    sendMessage.mockImplementationOnce(() => {
+      throw new Error("DataCloneError");
+    });
+
+    await expect(request.send({ matchupId: "a" })).rejects.toThrow("DataCloneError");
+    expect(request.hasPending()).toBe(false);
+  });
+
+  it("rejectAll rejects every pending request", async () => {
+    const { request } = setup();
+    const first = request.send({ matchupId: "a" });
+    const second = request.send({ matchupId: "b" });
+
+    request.rejectAll("closed");
+
+    await expect(first).rejects.toBe("closed");
+    await expect(second).rejects.toBe("closed");
+    expect(request.hasPending()).toBe(false);
   });
 
   it("times out only the expired request", async () => {
