@@ -43,6 +43,7 @@ export type {
   LucraPlayStyle,
   LucraMatchupStatus,
   LucraAtStake,
+  LucraCashStake,
   LucraRecreationalGame,
   LucraMatchupParticipantGroup,
   LucraMatchup,
