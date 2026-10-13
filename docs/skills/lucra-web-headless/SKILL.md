@@ -74,7 +74,7 @@ posts a response message back → SDK resolves your Promise. Three properties ma
     share one slot. Disable the button while a call is pending.
 
   Development-mode behavior in some frameworks triggers both; see [Framework notes](#framework-notes).
-- **Per-request timeout, rejected as the string `"Timeout"`**: 15 seconds, 60 for the GYP writes. A
+- **Per-request timeout, rejected as the string `"Timeout"`**: 15 seconds. A
   timeout usually means the request was never received or never answered (not-yet-initialized
   iframe, a write from a logged-out session, a mid-request reload): treat it as a sequencing bug
   first, a Lucra outage last. A timed-out write may still have completed, so never retry it
@@ -107,14 +107,15 @@ Two points to note:
 ## 4. The loop that defines headless on Web: call → typed error → remediation flow → retry
 
 Buy-ins (`joinTournament`, `autoJoinTournaments` for free tournaments, and the GYP create and
-accepts) fail with a `LucraApiError` whose `code` names the *user's* missing prerequisite, not a
-bug. Your job is never to fix the condition yourself: present the matching Lucra flow, wait for
-its completion event, and retry:
+accepts) check funds (cash only), then demographics (always required), then location. There is no
+KYC check. A failed check rejects with a `LucraApiError` whose `code` names the *user's* missing
+prerequisite, not a bug. Your job is never to fix the condition yourself: present the matching
+Lucra flow, wait for its completion event, and retry:
 
 | `code` | Present | Completion signal | Retry? |
 | --- | --- | --- | --- |
-| `UNVERIFIED` | `dialog().kyc()` | `kycComplete` event | Yes |
-| `DEMOGRAPHIC_INFORMATION_MISSING` | `dialog().demographic()` | `demographicComplete` event | Yes |
+| `UNVERIFIED` | nothing: not returned by these headless prechecks (KYC moves to withdrawal flows); the code stays in `LucraApiErrorCode` for compatibility | none | No |
+| `DEMOGRAPHIC_INFORMATION_MISSING` | `dialog().demographic()` (always required by these prechecks) | `demographicComplete` event | Yes |
 | `INSUFFICIENT_FUNDS` | `popup().deposit()` — popup, not iframe | `popup.onClose(result)` | Yes, on success |
 | `LOCATION_NEEDED` | `dialog().locationGrant()` | `locationGranted` event | Yes |
 | `LOCATION_ERROR` | show `error.message` to the user as-is — it is a curated message carrying the geocompliance information they need; it also says whether Lucra rejected the region or the browser's geolocation failed | — | **No** for a rejected region; yes once a browser-side failure is fixed |

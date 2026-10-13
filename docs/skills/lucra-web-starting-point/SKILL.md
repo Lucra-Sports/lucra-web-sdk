@@ -53,7 +53,7 @@ You are integrating Lucra's Web SDK (`lucra-web-sdk`): an iframe-embedding JavaS
 
 ## Troubleshooting
 
-- **Silent nothing** (no error, no event): usually a dropped postMessage (see checkpoint 3) or a request that ended in the SDK's request timeout (15s, 60s for GYP writes): see [Headless on Web → Request timeout](../../2.0_headless.md#request-timeout) for the cause table.
+- **Silent nothing** (no error, no event): usually a dropped postMessage (see checkpoint 3) or a request that ended in the SDK's request timeout (15s): see [Headless on Web → Request timeout](../../2.0_headless.md#request-timeout) for the cause table.
 - **`LucraClientNotOpen`** (thrown, or rejected by `api.*`): a call that needs the iframe ran before `open()` or after `close()`. See [Headless on Web → Errors](../../2.0_headless.md#lucraclientnotopen).
 - **401s** from non-SDK Lucra endpoints: key-class mismatch (web key vs server key) — expected; not fixable client-side.
 - **Iframe blank**: verify the tenant host resolves for your env; verify the apiKey query param is present on the iframe src.

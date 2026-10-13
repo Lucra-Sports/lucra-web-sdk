@@ -194,7 +194,7 @@ export class LucraClientBase extends EventTarget {
     MessageTypeToLucraClient.createRecreationalGameRequest,
     LucraClientMessageType.createRecreationalGameResponse,
     "createRecreationalGame",
-    { rejectWhilePending: true, timeoutMs: 60_000 }
+    { rejectWhilePending: true }
   );
   // Shared with the free-for-all accept, so both accepts use one in-flight slot.
   private _acceptRecreationalGameRequest = this._request<
@@ -204,7 +204,7 @@ export class LucraClientBase extends EventTarget {
     MessageTypeToLucraClient.acceptRecreationalGameRequest,
     LucraClientMessageType.acceptRecreationalGameResponse,
     "acceptRecreationalGame",
-    { rejectWhilePending: true, timeoutMs: 60_000 }
+    { rejectWhilePending: true }
   );
   private _cancelRecreationalGameRequest = this._request<
     LucraCancelRecreationalGameResult,
@@ -213,7 +213,7 @@ export class LucraClientBase extends EventTarget {
     MessageTypeToLucraClient.cancelRecreationalGameRequest,
     LucraClientMessageType.cancelRecreationalGameResponse,
     "cancelRecreationalGame",
-    { rejectWhilePending: true, timeoutMs: 60_000 }
+    { rejectWhilePending: true }
   );
   private _joinTournamentRequest = this._request<
     LucraJoinTournamentResponse,
