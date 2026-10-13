@@ -63,7 +63,7 @@ posts a response message back → SDK resolves your Promise. Three properties ma
 
 - **Reads run concurrently; writes keep one call pending.** Each request carries its own id, so
   concurrent calls to a read (`achievements`, `tournaments`, `tournament`, `tournamentLeaderboard`,
-  `matchup`, `matchupDetails`, `gamesMatchupFee`) each settle with their own response. Two kinds of
+  `matchup`, `matchupDetails`) each settle with their own response. Two kinds of
   calls keep one in flight, in opposite ways:
   - `joinTournament`, `autoJoinTournaments`, and `subscribeToMatchupDetails`: a new call cancels the
     in-flight one, which rejects with a string starting with `"Cancelled by"`. That rejection is
@@ -88,7 +88,7 @@ posts a response message back → SDK resolves your Promise. Three properties ma
 ## 3. Auth: only the pre-auth reads work logged-out
 
 Several reads work before login: `api.tournaments()`, `api.matchup()`, `api.matchupDetails()`,
-`api.gamesMatchupFee()`, and `api.subscribeToMatchupDetails()`. All await initialization
+and `api.subscribeToMatchupDetails()`. All await initialization
 internally, so they need no `await client.ready`. `api.tournaments()` is the best end-to-end probe
 that the postMessage channel works at all. Everything else (`achievements`, `tournament`,
 `tournamentLeaderboard`, `joinTournament`, `autoJoinTournaments`, and the GYP writes
