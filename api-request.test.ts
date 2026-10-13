@@ -104,7 +104,7 @@ describe("createApiRequest", () => {
     const refused = await request.send({ matchupId: "b" }).catch((e) => e);
     expect(refused).toBeInstanceOf(LucraApiError);
     expect(refused.code).toBe(LucraApiErrorCode.notAllowed);
-    expect(refused.message).toBe("A tournament request is already in progress");
+    expect(refused.message).toBe("Another tournament request is already in progress");
     expect(sendMessage).toHaveBeenCalledTimes(1);
     expect(await settledValue(first)).toBe("pending");
 

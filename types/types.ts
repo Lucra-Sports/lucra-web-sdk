@@ -48,6 +48,7 @@ export enum LucraClientMessageType {
   subscribeMatchupDetailsResponse = "subscribeMatchupDetailsResponse",
   matchupDetailsUpdated = "matchupDetailsUpdated",
   createRecreationalGameResponse = "createRecreationalGameResponse",
+  acceptRecreationalGameResponse = "acceptRecreationalGameResponse",
 }
 
 export enum MessageTypeToLucraClient {
@@ -72,6 +73,7 @@ export enum MessageTypeToLucraClient {
   subscribeMatchupDetailsRequest = "subscribeMatchupDetailsRequest",
   cancelMatchupDetailsSubscription = "cancelMatchupDetailsSubscription",
   createRecreationalGameRequest = "createRecreationalGameRequest",
+  acceptRecreationalGameRequest = "acceptRecreationalGameRequest",
 }
 
 export type LucraConvertToCreditResponse = {
@@ -698,10 +700,18 @@ export type LucraCreateRecreationalGameInput = {
   playStyle: LucraPlayStyle;
 };
 
-// matchup is null only when the read after a successful create failed. The create succeeded.
+// matchup is null only when the read after a successful create or accept failed. The write succeeded.
 export type LucraRecreationalGameResult = {
   matchupId: string;
   matchup: LucraMatchup | null;
+};
+
+// Wire-only body of acceptRecreationalGameRequest, not exported from index.ts. teamId is
+// the group to join for GROUP_VS_GROUP.
+export type LucraAcceptRecreationalGameBody = {
+  matchupId: string;
+  playStyle: LucraPlayStyle;
+  teamId?: string;
 };
 
 // Error codes the web-app can surface for a failed API call. The web-app posts

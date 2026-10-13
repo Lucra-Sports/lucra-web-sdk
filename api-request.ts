@@ -82,7 +82,7 @@ export function createApiRequest<TResponse, TBody = void>({
         return Promise.reject(
           new LucraApiError(
             LucraApiErrorCode.notAllowed,
-            `A ${name} request is already in progress`
+            `Another ${name} request is already in progress`
           )
         );
       }

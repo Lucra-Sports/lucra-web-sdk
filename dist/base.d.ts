@@ -72,6 +72,7 @@ export declare class LucraClientBase extends EventTarget {
     private _matchupDetailsSubscriptionId;
     private _matchupDetailsGeneration;
     private _createRecreationalGameRequest;
+    private _acceptRecreationalGameRequest;
     private _joinTournamentRequest;
     private _autoJoinTournamentsRequest;
     private _isLoggedInRequest;
@@ -147,6 +148,7 @@ export declare class LucraClientBase extends EventTarget {
         matchupDetails: (matchupId: string) => Promise<LucraMatchupDetails>;
         gamesMatchupFee: () => Promise<number>;
         createRecreationalGame: (input: LucraCreateRecreationalGameInput) => Promise<LucraRecreationalGameResult>;
+        acceptVersusRecreationalGame: (matchupId: string, teamId: string) => Promise<LucraRecreationalGameResult>;
         subscribeToMatchupDetails: (matchupId: string) => Promise<LucraMatchupDetails>;
         cancelMatchupDetailsSubscription: () => void;
     };

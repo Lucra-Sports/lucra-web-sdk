@@ -36,7 +36,7 @@ export function createApiRequest({ type, responseType, name, sendMessage, single
             if (singleFlight)
                 take()?.reject(cancelReason(name));
             if (rejectWhilePending && pending.size > 0) {
-                return Promise.reject(new LucraApiError(LucraApiErrorCode.notAllowed, `A ${name} request is already in progress`));
+                return Promise.reject(new LucraApiError(LucraApiErrorCode.notAllowed, `Another ${name} request is already in progress`));
             }
             const requestId = String(++lastRequestId);
             return new Promise((resolve, reject) => {
