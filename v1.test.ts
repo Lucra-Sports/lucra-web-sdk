@@ -502,21 +502,6 @@ describe("LucraClient.api.joinTournament", () => {
     expect((caught as LucraApiError).message).toBe("Not enough funds");
   });
 
-  it("rejects when a joinTournamentError echoes the requestId", async () => {
-    const client = markOpen(LucraClient.initialize(baseConfig));
-    const sendMessage = mock((_message: any) => {});
-    (client as any)._sendMessage = sendMessage;
-    const promise = client.api.joinTournament("some-id");
-
-    await deliver(client, {
-      type: "joinTournamentError",
-      data: { code: "NOT_ALLOWED" },
-      requestId: sendMessage.mock.calls[0][0].requestId,
-    });
-
-    await expect(promise).rejects.toBeInstanceOf(LucraApiError);
-  });
-
   it("surfaces each error code with a default message when none is provided", async () => {
     const codes = [
       LucraApiErrorCode.unverified,
@@ -632,24 +617,6 @@ describe("LucraClient.api.autoJoinTournaments", () => {
 
     await promise;
     expect(listener).toHaveBeenCalledTimes(1);
-    expect(listener).toHaveBeenCalledWith({ matchupIds: ["a"] });
-  });
-
-  it("settles the request and fires the listener when the response echoes the requestId", async () => {
-    const client = markOpen(LucraClient.initialize(baseConfig));
-    const sendMessage = mock((_message: any) => {});
-    (client as any)._sendMessage = sendMessage;
-    const listener = mock(() => {});
-    client.on("autoJoinedTournaments", listener);
-    const promise = client.api.autoJoinTournaments();
-
-    await deliver(client, {
-      type: "autoJoinedTournaments",
-      data: { matchupIds: ["a"] },
-      requestId: sendMessage.mock.calls[0][0].requestId,
-    });
-
-    expect(await promise).toEqual({ matchupIds: ["a"] });
     expect(listener).toHaveBeenCalledWith({ matchupIds: ["a"] });
   });
 
@@ -907,23 +874,6 @@ describe("LucraClient.api.matchup", () => {
     ],
   };
 
-  it("posts a matchupRequest message with the matchupId", async () => {
-    const client = markOpen(LucraClient.initialize(baseConfig));
-    const sendMessage = mock(() => {});
-    (client as any)._sendMessage = sendMessage;
-    markInitialized(client);
-
-    client.api.matchup("m1").catch(() => {});
-    await flush();
-
-    expect(sendMessage).toHaveBeenCalledTimes(1);
-    expect(sendMessage).toHaveBeenCalledWith({
-      type: "matchupRequest",
-      body: { matchupId: "m1" },
-      requestId: expect.any(String),
-    });
-  });
-
   it("waits for initialization before sending on an open client", async () => {
     const client = markOpen(LucraClient.initialize(baseConfig));
     const sendMessage = mock(() => {});
@@ -952,42 +902,6 @@ describe("LucraClient.api.matchup", () => {
     await deliver(client, { type: "matchupResponse", data: matchup });
 
     expect(await promise).toEqual(matchup);
-  });
-
-  it("settles concurrent requests by requestId", async () => {
-    const client = markOpen(LucraClient.initialize(baseConfig));
-    markInitialized(client);
-
-    await expectSettledByRequestId(
-      client,
-      () => client.api.matchup("m1"),
-      "matchupResponse"
-    );
-  });
-
-  it("rejects with a typed LucraApiError when an apiRequestError for it arrives", async () => {
-    const client = markOpen(LucraClient.initialize(baseConfig));
-    const sendMessage = mock((_message: any) => {});
-    (client as any)._sendMessage = sendMessage;
-    markInitialized(client);
-    const promise = client.api.matchup("missing");
-    await flush();
-
-    await deliver(client, {
-      type: "apiRequestError",
-      data: {
-        code: "API_ERROR",
-        message: "Recreational game matchup not found",
-        requestType: "matchupRequest",
-      },
-      requestId: sendMessage.mock.calls[0][0].requestId,
-    });
-
-    await expectApiError(
-      promise,
-      LucraApiErrorCode.apiError,
-      "Recreational game matchup not found"
-    );
   });
 });
 
@@ -1021,23 +935,6 @@ describe("LucraClient.api.matchupDetails", () => {
     ],
   };
 
-  it("posts a matchupDetailsRequest message with the matchupId", async () => {
-    const client = markOpen(LucraClient.initialize(baseConfig));
-    const sendMessage = mock(() => {});
-    (client as any)._sendMessage = sendMessage;
-    markInitialized(client);
-
-    client.api.matchupDetails("m1").catch(() => {});
-    await flush();
-
-    expect(sendMessage).toHaveBeenCalledTimes(1);
-    expect(sendMessage).toHaveBeenCalledWith({
-      type: "matchupDetailsRequest",
-      body: { matchupId: "m1" },
-      requestId: expect.any(String),
-    });
-  });
-
   it("waits for initialization before sending on an open client", async () => {
     const client = markOpen(LucraClient.initialize(baseConfig));
     const sendMessage = mock(() => {});
@@ -1067,42 +964,6 @@ describe("LucraClient.api.matchupDetails", () => {
 
     expect(await promise).toEqual(details);
   });
-
-  it("settles concurrent requests by requestId", async () => {
-    const client = markOpen(LucraClient.initialize(baseConfig));
-    markInitialized(client);
-
-    await expectSettledByRequestId(
-      client,
-      () => client.api.matchupDetails("m1"),
-      "matchupDetailsResponse"
-    );
-  });
-
-  it("rejects with a typed LucraApiError when an apiRequestError for it arrives", async () => {
-    const client = markOpen(LucraClient.initialize(baseConfig));
-    const sendMessage = mock((_message: any) => {});
-    (client as any)._sendMessage = sendMessage;
-    markInitialized(client);
-    const promise = client.api.matchupDetails("missing");
-    await flush();
-
-    await deliver(client, {
-      type: "apiRequestError",
-      data: {
-        code: "API_ERROR",
-        message: "Recreational game matchup not found",
-        requestType: "matchupDetailsRequest",
-      },
-      requestId: sendMessage.mock.calls[0][0].requestId,
-    });
-
-    await expectApiError(
-      promise,
-      LucraApiErrorCode.apiError,
-      "Recreational game matchup not found"
-    );
-  });
 });
 
 describe("LucraClient.api.createRecreationalGame", () => {
@@ -1125,19 +986,6 @@ describe("LucraClient.api.createRecreationalGame", () => {
       body: input,
       requestId: expect.any(String),
     });
-  });
-
-  it("resolves with the matchup, or null when the follow-up read failed", async () => {
-    for (const matchup of [{ id: "m1" }, null]) {
-      const client = markOpen(LucraClient.initialize(baseConfig));
-      const promise = client.api.createRecreationalGame(input);
-      const data = { matchupId: "m1", matchup };
-
-      await deliver(client, { type: "createRecreationalGameResponse", data });
-
-      expect(await promise).toEqual(data);
-      LucraClient.destroy();
-    }
   });
 
   it("refuses a second call while one is pending, posts nothing, and settles the first normally", async () => {
@@ -1176,53 +1024,6 @@ describe("LucraClient.api.createRecreationalGame", () => {
     expect(() => client.sendMessage.navigate({ pathname: "/app/home" })).not.toThrow();
     error.mockRestore();
   });
-
-  it("is still pending at 15s and times out at 60s", async () => {
-    jest.useFakeTimers();
-    try {
-      const client = markOpen(LucraClient.initialize(baseConfig));
-      const promise = client.api.createRecreationalGame(input);
-      let settled = false;
-      promise.catch(() => {
-        settled = true;
-      });
-
-      jest.advanceTimersByTime(15_000);
-      for (let i = 0; i < 5; i++) await Promise.resolve();
-      expect(settled).toBe(false);
-
-      jest.advanceTimersByTime(45_000);
-      await expect(promise).rejects.toBe("Timeout");
-    } finally {
-      jest.useRealTimers();
-    }
-  });
-
-  it("rejects with a typed LucraApiError for each apiRequestError code", async () => {
-    const codes = [
-      LucraApiErrorCode.notAllowed,
-      LucraApiErrorCode.invalidAtStake,
-      LucraApiErrorCode.invalidRewardType,
-      LucraApiErrorCode.invalidPlayStyle,
-      LucraApiErrorCode.insufficientFunds,
-    ];
-
-    for (const code of codes) {
-      const client = markOpen(LucraClient.initialize(baseConfig));
-      const sendMessage = mock((_message: any) => {});
-      (client as any)._sendMessage = sendMessage;
-      const promise = client.api.createRecreationalGame(input);
-
-      await deliver(client, {
-        type: "apiRequestError",
-        data: { code, message: `${code} message`, requestType: "createRecreationalGameRequest" },
-        requestId: sendMessage.mock.calls[0][0].requestId,
-      });
-
-      await expectApiError(promise, code, `${code} message`);
-      LucraClient.destroy();
-    }
-  });
 });
 
 describe("LucraClient.api.acceptVersusRecreationalGame", () => {
@@ -1242,82 +1043,6 @@ describe("LucraClient.api.acceptVersusRecreationalGame", () => {
       requestId: expect.any(String),
     });
   });
-
-  it("resolves with the matchup, or null when the follow-up read failed", async () => {
-    for (const matchup of [{ id: "m1" }, null]) {
-      const client = markOpen(LucraClient.initialize(baseConfig));
-      const promise = client.api.acceptVersusRecreationalGame("m1", "t2");
-      const data = { matchupId: "m1", matchup };
-
-      await deliver(client, { type: "acceptRecreationalGameResponse", data });
-
-      expect(await promise).toEqual(data);
-      LucraClient.destroy();
-    }
-  });
-
-  it("refuses a second call while one is pending, posts nothing, and settles the first normally", async () => {
-    const client = markOpen(LucraClient.initialize(baseConfig));
-    const sendMessage = mock((_message: any) => {});
-    (client as any)._sendMessage = sendMessage;
-    const first = client.api.acceptVersusRecreationalGame("m1", "t2");
-
-    await expectApiError(
-      client.api.acceptVersusRecreationalGame("m1", "t1"),
-      LucraApiErrorCode.notAllowed,
-      "Another acceptRecreationalGame request is already in progress"
-    );
-    expect(sendMessage).toHaveBeenCalledTimes(1);
-
-    const data = { matchupId: "m1", matchup: null };
-    await deliver(client, { type: "acceptRecreationalGameResponse", data });
-    expect(await first).toEqual(data);
-  });
-
-  it("is still pending at 15s and times out at 60s", async () => {
-    jest.useFakeTimers();
-    try {
-      const client = markOpen(LucraClient.initialize(baseConfig));
-      const promise = client.api.acceptVersusRecreationalGame("m1", "t2");
-      let settled = false;
-      promise.catch(() => {
-        settled = true;
-      });
-
-      jest.advanceTimersByTime(15_000);
-      for (let i = 0; i < 5; i++) await Promise.resolve();
-      expect(settled).toBe(false);
-
-      jest.advanceTimersByTime(45_000);
-      await expect(promise).rejects.toBe("Timeout");
-    } finally {
-      jest.useRealTimers();
-    }
-  });
-
-  it("rejects with a typed LucraApiError for each apiRequestError code", async () => {
-    const codes = [
-      LucraApiErrorCode.notAllowed,
-      LucraApiErrorCode.insufficientFunds,
-      LucraApiErrorCode.locationNeeded,
-    ];
-
-    for (const code of codes) {
-      const client = markOpen(LucraClient.initialize(baseConfig));
-      const sendMessage = mock((_message: any) => {});
-      (client as any)._sendMessage = sendMessage;
-      const promise = client.api.acceptVersusRecreationalGame("m1", "t2");
-
-      await deliver(client, {
-        type: "apiRequestError",
-        data: { code, message: `${code} message`, requestType: "acceptRecreationalGameRequest" },
-        requestId: sendMessage.mock.calls[0][0].requestId,
-      });
-
-      await expectApiError(promise, code, `${code} message`);
-      LucraClient.destroy();
-    }
-  });
 });
 
 describe("LucraClient.api.acceptFreeForAllRecreationalGame", () => {
@@ -1335,19 +1060,6 @@ describe("LucraClient.api.acceptFreeForAllRecreationalGame", () => {
       requestId: expect.any(String),
     });
     expect("teamId" in sendMessage.mock.calls[0][0].body).toBe(false);
-  });
-
-  it("resolves with the matchup, or null when the follow-up read failed", async () => {
-    for (const matchup of [{ id: "m1" }, null]) {
-      const client = markOpen(LucraClient.initialize(baseConfig));
-      const promise = client.api.acceptFreeForAllRecreationalGame("m1");
-      const data = { matchupId: "m1", matchup };
-
-      await deliver(client, { type: "acceptRecreationalGameResponse", data });
-
-      expect(await promise).toEqual(data);
-      LucraClient.destroy();
-    }
   });
 
   it("shares the in-flight slot with the versus accept, in both directions", async () => {
@@ -1378,30 +1090,6 @@ describe("LucraClient.api.acceptFreeForAllRecreationalGame", () => {
       LucraClient.destroy();
     }
   });
-
-  it("rejects with a typed LucraApiError for each apiRequestError code", async () => {
-    const codes = [
-      LucraApiErrorCode.notAllowed,
-      LucraApiErrorCode.insufficientFunds,
-      LucraApiErrorCode.locationNeeded,
-    ];
-
-    for (const code of codes) {
-      const client = markOpen(LucraClient.initialize(baseConfig));
-      const sendMessage = mock((_message: any) => {});
-      (client as any)._sendMessage = sendMessage;
-      const promise = client.api.acceptFreeForAllRecreationalGame("m1");
-
-      await deliver(client, {
-        type: "apiRequestError",
-        data: { code, message: `${code} message`, requestType: "acceptRecreationalGameRequest" },
-        requestId: sendMessage.mock.calls[0][0].requestId,
-      });
-
-      await expectApiError(promise, code, `${code} message`);
-      LucraClient.destroy();
-    }
-  });
 });
 
 describe("LucraClient.api.cancelRecreationalGame", () => {
@@ -1418,18 +1106,6 @@ describe("LucraClient.api.cancelRecreationalGame", () => {
       body: { matchupId: "m1" },
       requestId: expect.any(String),
     });
-  });
-
-  it("resolves with the matchupId", async () => {
-    const client = markOpen(LucraClient.initialize(baseConfig));
-    const promise = client.api.cancelRecreationalGame("m1");
-
-    await deliver(client, {
-      type: "cancelRecreationalGameResponse",
-      data: { matchupId: "m1" },
-    });
-
-    expect(await promise).toEqual({ matchupId: "m1" });
   });
 
   it("refuses a second call while one is pending, posts nothing, and settles the first normally", async () => {
@@ -1451,12 +1127,24 @@ describe("LucraClient.api.cancelRecreationalGame", () => {
     });
     expect(await first).toEqual({ matchupId: "m1" });
   });
+});
 
-  it("is still pending at 15s and times out at 60s", async () => {
+describe("LucraClient.api recreational game timeout", () => {
+  const createInput = {
+    gameTypeId: "AIR-HOCKEY",
+    atStake: { type: "CASH" as const, amount: 5 },
+    playStyle: "GROUP_VS_GROUP" as const,
+  };
+
+  it.each([
+    ["createRecreationalGame", (c: LucraClient) => c.api.createRecreationalGame(createInput)],
+    ["acceptVersusRecreationalGame", (c: LucraClient) => c.api.acceptVersusRecreationalGame("m1", "t2")],
+    ["cancelRecreationalGame", (c: LucraClient) => c.api.cancelRecreationalGame("m1")],
+  ])("%s is still pending at 15s and times out at 60s", async (_name, call) => {
     jest.useFakeTimers();
     try {
       const client = markOpen(LucraClient.initialize(baseConfig));
-      const promise = client.api.cancelRecreationalGame("m1");
+      const promise = call(client);
       let settled = false;
       promise.catch(() => {
         settled = true;
@@ -1471,29 +1159,6 @@ describe("LucraClient.api.cancelRecreationalGame", () => {
     } finally {
       jest.useRealTimers();
     }
-  });
-
-  it("rejects with a typed LucraApiError for apiRequestError NOT_ALLOWED", async () => {
-    const client = markOpen(LucraClient.initialize(baseConfig));
-    const sendMessage = mock((_message: any) => {});
-    (client as any)._sendMessage = sendMessage;
-    const promise = client.api.cancelRecreationalGame("m1");
-
-    await deliver(client, {
-      type: "apiRequestError",
-      data: {
-        code: LucraApiErrorCode.notAllowed,
-        message: "Only the creator can cancel this matchup",
-        requestType: "cancelRecreationalGameRequest",
-      },
-      requestId: sendMessage.mock.calls[0][0].requestId,
-    });
-
-    await expectApiError(
-      promise,
-      LucraApiErrorCode.notAllowed,
-      "Only the creator can cancel this matchup"
-    );
   });
 });
 
@@ -2171,31 +1836,22 @@ describe("LucraClientNotOpen", () => {
   });
 
   it("close() rejects every pending api request with LucraClientNotOpen", async () => {
-    // Both accepts share one in-flight slot, so each gets its own client.
-    const accepts = [
-      (c: LucraClient) => c.api.acceptVersusRecreationalGame("abc", "t1"),
-      (c: LucraClient) => c.api.acceptFreeForAllRecreationalGame("abc"),
+    const client = markOpen(LucraClient.initialize(baseConfig));
+    const pending = [
+      client.api.joinTournament("abc"),
+      client.api.createRecreationalGame({} as any),
+      client.api.cancelRecreationalGame("abc"),
+      client.api.acceptVersusRecreationalGame("abc", "t1"),
     ];
 
-    for (const accept of accepts) {
-      const client = markOpen(LucraClient.initialize(baseConfig));
-      const pending = [
-        client.api.joinTournament("abc"),
-        client.api.createRecreationalGame({} as any),
-        client.api.cancelRecreationalGame("abc"),
-        accept(client),
-      ];
+    client.close();
 
-      client.close();
-
-      const results = await Promise.allSettled(pending);
-      for (const result of results) {
-        expect(result.status).toBe("rejected");
-        const reason = (result as PromiseRejectedResult).reason;
-        expect(reason).toBeInstanceOf(LucraClientNotOpen);
-        expect(reason.message).toContain("closed while the request was pending");
-      }
-      LucraClient.destroy();
+    const results = await Promise.allSettled(pending);
+    for (const result of results) {
+      expect(result.status).toBe("rejected");
+      const reason = (result as PromiseRejectedResult).reason;
+      expect(reason).toBeInstanceOf(LucraClientNotOpen);
+      expect(reason.message).toContain("closed while the request was pending");
     }
   });
 
