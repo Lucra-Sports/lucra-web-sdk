@@ -971,6 +971,15 @@ export class LucraClientBase extends EventTarget {
         teamId,
       });
     },
+    acceptFreeForAllRecreationalGame: async (
+      matchupId: string
+    ): Promise<LucraRecreationalGameResult> => {
+      this._assertOpen("call api.acceptFreeForAllRecreationalGame");
+      return this._acceptRecreationalGameRequest.send({
+        matchupId,
+        playStyle: "FREE_FOR_ALL",
+      });
+    },
     // Resolves with the current details, then delivers each change as a
     // matchupDetailsUpdated event until cancelled, close(), or the next subscribe.
     subscribeToMatchupDetails: async (

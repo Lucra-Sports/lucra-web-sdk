@@ -149,6 +149,7 @@ export declare class LucraClientBase extends EventTarget {
         gamesMatchupFee: () => Promise<number>;
         createRecreationalGame: (input: LucraCreateRecreationalGameInput) => Promise<LucraRecreationalGameResult>;
         acceptVersusRecreationalGame: (matchupId: string, teamId: string) => Promise<LucraRecreationalGameResult>;
+        acceptFreeForAllRecreationalGame: (matchupId: string) => Promise<LucraRecreationalGameResult>;
         subscribeToMatchupDetails: (matchupId: string) => Promise<LucraMatchupDetails>;
         cancelMatchupDetailsSubscription: () => void;
     };
