@@ -1822,6 +1822,24 @@ describe("LucraClientNotOpen", () => {
     }
   });
 
+  it("close() rejects pre-auth reads still waiting for initialization with LucraClientNotOpen", async () => {
+    const client = markOpen(LucraClient.initialize(baseConfig));
+    const matchupId = "11111111-2222-4333-8444-555555555555";
+    const pending = [
+      client.api.tournaments(),
+      client.api.matchup(matchupId),
+      client.api.subscribeToMatchupDetails(matchupId),
+    ];
+
+    client.close();
+
+    const results = await Promise.allSettled(pending);
+    for (const result of results) {
+      expect(result.status).toBe("rejected");
+      expect((result as PromiseRejectedResult).reason).toBeInstanceOf(LucraClientNotOpen);
+    }
+  });
+
   it("guarded methods throw or reject after close()", async () => {
     const client = markOpen(LucraClient.initialize(baseConfig));
     client.close();

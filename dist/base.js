@@ -10,9 +10,10 @@ import { LucraUserNotLoggedIn, LucraClientNotOpen, LucraApiError } from "./error
 // single-flight cancellation, not an auth failure, so `_createReadyPromise`
 // swallows it and defers to the rebuilt promise rather than surfacing it.
 const ISLOGGEDIN_CANCELLED = cancelReason("isLoggedIn");
-// What close() rejects pending requests and `ready` with. A write may already have
-// run in the Lucra app, so the message warns against blind retries.
-const CLOSED_WHILE_PENDING = "LucraClient was closed while the request was pending. A write may still have completed: check before retrying.";
+// What close() rejects pending requests and `ready` with. Hosts check a rejected
+// write's outcome before retrying (see the docs); the message stays neutral so it reads
+// correctly for reads too.
+const CLOSED_WHILE_PENDING = "LucraClient was closed while the request was pending.";
 const MATCHUP_DETAILS_SUBSCRIPTION_CANCELLED = "Cancelled by cancelMatchupDetailsSubscription";
 // Shared by open(), redirect(), and dialog() deposit (dialog routes through
 // redirect), so one key warns once for all three.
@@ -595,9 +596,8 @@ export class LucraClientBase extends EventTarget {
         // Every request needs an open iframe and rejects with LucraClientNotOpen
         // without one. Reads that work before auth await `_initializedPromise` (not
         // `ready`, which also asserts login); the others need auth (called after `ready`).
-        // Note: if `close()` runs while this is still awaiting a not-yet-resolved
-        // init, the captured promise never settles and this call stays pending --
-        // an accepted edge given the narrow window.
+        // Note: if `close()` runs while this is still awaiting init, the call rejects
+        // with LucraClientNotOpen (`close()` rejects the pending init promise).
         tournaments: async () => {
             this._assertOpen("call api.tournaments");
             await this._initializedPromise;
