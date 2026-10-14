@@ -1,7 +1,14 @@
+// postMessage envelopes between the SDK and the web-app iframe:
+// - SDK -> web-app: { type: MessageTypeToLucraClient, body, requestId? }. Every api.*
+//   request carries a string requestId; fire-and-forget messages carry none.
+// - web-app -> SDK: { type: LucraClientMessageType, data, requestId? }. A response or
+//   apiRequestError echoes the requestId of the request it answers; events carry none.
+// requestId lives on the envelope, never inside a body type.
 export var LucraClientMessageType;
 (function (LucraClientMessageType) {
     LucraClientMessageType["achievementsResponse"] = "achievementsResponse";
     LucraClientMessageType["activeMatchupStarted"] = "activeMatchupStarted";
+    LucraClientMessageType["apiRequestError"] = "apiRequestError";
     LucraClientMessageType["autoJoinedTournaments"] = "autoJoinedTournaments";
     LucraClientMessageType["autoJoinTournamentsError"] = "autoJoinTournamentsError";
     LucraClientMessageType["claimReward"] = "claimReward";
@@ -28,6 +35,13 @@ export var LucraClientMessageType;
     LucraClientMessageType["userInfo"] = "userInfo";
     LucraClientMessageType["initialized"] = "initialized";
     LucraClientMessageType["isLoggedInResponse"] = "isLoggedInResponse";
+    LucraClientMessageType["matchupResponse"] = "matchupResponse";
+    LucraClientMessageType["matchupDetailsResponse"] = "matchupDetailsResponse";
+    LucraClientMessageType["subscribeMatchupDetailsResponse"] = "subscribeMatchupDetailsResponse";
+    LucraClientMessageType["matchupDetailsUpdated"] = "matchupDetailsUpdated";
+    LucraClientMessageType["createRecreationalGameResponse"] = "createRecreationalGameResponse";
+    LucraClientMessageType["acceptRecreationalGameResponse"] = "acceptRecreationalGameResponse";
+    LucraClientMessageType["cancelRecreationalGameResponse"] = "cancelRecreationalGameResponse";
 })(LucraClientMessageType || (LucraClientMessageType = {}));
 export var MessageTypeToLucraClient;
 (function (MessageTypeToLucraClient) {
@@ -46,6 +60,13 @@ export var MessageTypeToLucraClient;
     MessageTypeToLucraClient["tournamentLeaderboardRequest"] = "tournamentLeaderboardRequest";
     MessageTypeToLucraClient["joinTournamentRequest"] = "joinTournamentRequest";
     MessageTypeToLucraClient["isLoggedInRequest"] = "isLoggedInRequest";
+    MessageTypeToLucraClient["matchupRequest"] = "matchupRequest";
+    MessageTypeToLucraClient["matchupDetailsRequest"] = "matchupDetailsRequest";
+    MessageTypeToLucraClient["subscribeMatchupDetailsRequest"] = "subscribeMatchupDetailsRequest";
+    MessageTypeToLucraClient["cancelMatchupDetailsSubscription"] = "cancelMatchupDetailsSubscription";
+    MessageTypeToLucraClient["createRecreationalGameRequest"] = "createRecreationalGameRequest";
+    MessageTypeToLucraClient["acceptRecreationalGameRequest"] = "acceptRecreationalGameRequest";
+    MessageTypeToLucraClient["cancelRecreationalGameRequest"] = "cancelRecreationalGameRequest";
 })(MessageTypeToLucraClient || (MessageTypeToLucraClient = {}));
 // Message the Lucra web app posts to the opener when a deposit finishes in a
 // popup (see client.popup()). The envelope is flat (no nested `data`).
@@ -80,8 +101,8 @@ var account_status_types_enum;
 // Error codes the web-app can surface for a failed API call. The web-app posts
 // an error message carrying one of these codes and the SDK rejects the matching
 // API promise with a LucraApiError so clients can react to the specific failure.
-// Currently only api.joinTournament throws these, but the codes are not specific
-// to it and other API calls may surface them in the future.
+// The codes are not specific to one call; docs/2.0_headless.md lists which calls
+// surface them.
 export var LucraApiErrorCode;
 (function (LucraApiErrorCode) {
     LucraApiErrorCode["unverified"] = "UNVERIFIED";
@@ -93,6 +114,15 @@ export var LucraApiErrorCode;
     // location-grant page via `dialog().locationGrant()` so a user gesture inside
     // the iframe can unlock location access, then retry the call.
     LucraApiErrorCode["locationNeeded"] = "LOCATION_NEEDED";
+    // The user or the matchup's state does not permit the action, for example a
+    // blocked account, a matchup that is no longer open, or a cancel by someone
+    // other than the creator. Terminal: show `message`, do not retry.
+    LucraApiErrorCode["notAllowed"] = "NOT_ALLOWED";
+    // Create input failed validation before any network call. Terminal: `message`
+    // names the invalid field; fix the input instead of retrying.
+    LucraApiErrorCode["invalidAtStake"] = "INVALID_AT_STAKE";
+    LucraApiErrorCode["invalidRewardType"] = "INVALID_REWARD_TYPE";
+    LucraApiErrorCode["invalidPlayStyle"] = "INVALID_PLAY_STYLE";
     // Catch-all for a failure with no more specific code: an API or network
     // error, or a rejection the web-app cannot classify. `message` carries the
     // detail returned by the API when there is one.

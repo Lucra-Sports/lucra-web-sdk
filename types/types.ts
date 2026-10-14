@@ -6,9 +6,16 @@ export type LucraEnvironment =
   | "sandbox"
   | "production";
 
+// postMessage envelopes between the SDK and the web-app iframe:
+// - SDK -> web-app: { type: MessageTypeToLucraClient, body, requestId? }. Every api.*
+//   request carries a string requestId; fire-and-forget messages carry none.
+// - web-app -> SDK: { type: LucraClientMessageType, data, requestId? }. A response or
+//   apiRequestError echoes the requestId of the request it answers; events carry none.
+// requestId lives on the envelope, never inside a body type.
 export enum LucraClientMessageType {
   achievementsResponse = "achievementsResponse",
   activeMatchupStarted = "activeMatchupStarted",
+  apiRequestError = "apiRequestError",
   autoJoinedTournaments = "autoJoinedTournaments",
   autoJoinTournamentsError = "autoJoinTournamentsError",
   claimReward = "claimReward",
@@ -34,7 +41,14 @@ export enum LucraClientMessageType {
   joinTournamentError = "joinTournamentError",
   userInfo = "userInfo",
   initialized = "initialized",
-  isLoggedInResponse = "isLoggedInResponse"
+  isLoggedInResponse = "isLoggedInResponse",
+  matchupResponse = "matchupResponse",
+  matchupDetailsResponse = "matchupDetailsResponse",
+  subscribeMatchupDetailsResponse = "subscribeMatchupDetailsResponse",
+  matchupDetailsUpdated = "matchupDetailsUpdated",
+  createRecreationalGameResponse = "createRecreationalGameResponse",
+  acceptRecreationalGameResponse = "acceptRecreationalGameResponse",
+  cancelRecreationalGameResponse = "cancelRecreationalGameResponse",
 }
 
 export enum MessageTypeToLucraClient {
@@ -53,6 +67,13 @@ export enum MessageTypeToLucraClient {
   tournamentLeaderboardRequest = "tournamentLeaderboardRequest",
   joinTournamentRequest = "joinTournamentRequest",
   isLoggedInRequest = "isLoggedInRequest",
+  matchupRequest = "matchupRequest",
+  matchupDetailsRequest = "matchupDetailsRequest",
+  subscribeMatchupDetailsRequest = "subscribeMatchupDetailsRequest",
+  cancelMatchupDetailsSubscription = "cancelMatchupDetailsSubscription",
+  createRecreationalGameRequest = "createRecreationalGameRequest",
+  acceptRecreationalGameRequest = "acceptRecreationalGameRequest",
+  cancelRecreationalGameRequest = "cancelRecreationalGameRequest",
 }
 
 export type LucraConvertToCreditResponse = {
@@ -148,6 +169,7 @@ export type LucraEventMap = {
   locationGranted: void;
   demographicComplete: void;
   initialized: LucraInitializedBody;
+  matchupDetailsUpdated: LucraMatchupDetails;
 };
 
 export type LucraClientSendMessage = {
@@ -162,6 +184,7 @@ export type LucraClientSendMessage = {
 export type LucraClientMessage = (body: {
   type: LucraClientMessageType;
   data: any;
+  requestId?: string;
 }) => void;
 
 export type LucraPage =
@@ -588,11 +611,120 @@ export type LucraJoinTournamentResponse = {
   matchupId: string;
 };
 
+// ---------------------------------------------------------------------------
+// Games You Play (recreational game) matchups.
+//
+// Unlike the tournament shapes above, lucra-web-app maps these into camelCase
+// models. Only RECREATIONAL_GAME matchups are returned.
+// ---------------------------------------------------------------------------
+
+export type LucraPlayStyle = "GROUP_VS_GROUP" | "FREE_FOR_ALL";
+
+export type LucraMatchupStatus =
+  | "OPEN"
+  | "CONFIRMED"
+  | "LOCKED"
+  | "PENDING_OUTCOMES"
+  | "ON_HOLD"
+  | "DISPUTE"
+  | "CLOSED"
+  | "CLOSED_TIE"
+  | "CANCELED_BY_OWNER"
+  | "CANCELED_DISPUTE"
+  | "CANCELED_GAME_CANCELED"
+  | "CANCELED_NOT_ACCEPTED"
+  | "CANCELED_PLAYER_INACTIVE"
+  | "CANCELED_THROUGH_API"
+  | "CANCELED_TIMEOUT";
+
+export type LucraCashStake = { type: "CASH"; amount: number };
+
+// What a matchup is played for. `reward` reuses LucraReward (the availableRewards item).
+// Read side only: headless create accepts LucraCashStake.
+export type LucraAtStake =
+  | LucraCashStake
+  | { type: "TENANT_REWARD"; reward: LucraReward };
+
+export type LucraRecreationalGame = {
+  gameId: string;
+  name: string;
+  iconUrl?: string;
+};
+
+export type LucraMatchupParticipantGroup = { id: string; userIds: string[] };
+
+export type LucraMatchup = {
+  id: string;
+  status: LucraMatchupStatus;
+  playStyle: LucraPlayStyle;
+  isPublic: boolean;
+  createdAt?: string;
+  creatorId: string;
+  winningGroupId?: string;
+  game: LucraRecreationalGame;
+  atStake: LucraAtStake;
+  participantGroups: LucraMatchupParticipantGroup[];
+};
+
+export type LucraMatchupParticipant = {
+  userId: string;
+  username: string;
+  avatarUrl?: string;
+  individualPayout?: number;
+};
+
+export type LucraMatchupGroup = {
+  id: string;
+  outcome?: "WIN" | "LOSS" | "TIE";
+  score?: number;
+  participants: LucraMatchupParticipant[];
+};
+
+export type LucraMatchupParticipantScore = {
+  userId?: string;
+  username?: string;
+  avatarUrl?: string;
+  place?: number;
+  score?: number;
+  finishedAt?: string;
+  groupId?: string;
+};
+
+export type LucraMatchupDetails = {
+  matchup: LucraMatchup;
+  groups: LucraMatchupGroup[];
+  participantScores: LucraMatchupParticipantScore[];
+};
+
+export type LucraCreateRecreationalGameInput = {
+  gameTypeId: string;
+  atStake: LucraCashStake;
+  playStyle: LucraPlayStyle;
+};
+
+// matchup is null only when the read after a successful create or accept failed. The write succeeded.
+export type LucraRecreationalGameResult = {
+  matchupId: string;
+  matchup: LucraMatchup | null;
+};
+
+export type LucraCancelRecreationalGameResult = {
+  matchupId: string;
+};
+
+// Wire-only body of acceptRecreationalGameRequest, not exported from index.ts. teamId is
+// the group to join for GROUP_VS_GROUP.
+export type LucraAcceptRecreationalGameBody = {
+  matchupId: string;
+  playStyle: LucraPlayStyle;
+  teamId?: string;
+};
+
 // Error codes the web-app can surface for a failed API call. The web-app posts
 // an error message carrying one of these codes and the SDK rejects the matching
 // API promise with a LucraApiError so clients can react to the specific failure.
-// Currently only api.joinTournament throws these, but the codes are not specific
-// to it and other API calls may surface them in the future.
+// The codes are not specific to one call; docs/2.0_headless.md lists which calls
+// surface them.
 export enum LucraApiErrorCode {
   unverified = "UNVERIFIED",
   insufficientFunds = "INSUFFICIENT_FUNDS",
@@ -603,6 +735,15 @@ export enum LucraApiErrorCode {
   // location-grant page via `dialog().locationGrant()` so a user gesture inside
   // the iframe can unlock location access, then retry the call.
   locationNeeded = "LOCATION_NEEDED",
+  // The user or the matchup's state does not permit the action, for example a
+  // blocked account, a matchup that is no longer open, or a cancel by someone
+  // other than the creator. Terminal: show `message`, do not retry.
+  notAllowed = "NOT_ALLOWED",
+  // Create input failed validation before any network call. Terminal: `message`
+  // names the invalid field; fix the input instead of retrying.
+  invalidAtStake = "INVALID_AT_STAKE",
+  invalidRewardType = "INVALID_REWARD_TYPE",
+  invalidPlayStyle = "INVALID_PLAY_STYLE",
   // Catch-all for a failure with no more specific code: an API or network
   // error, or a rejection the web-app cannot classify. `message` carries the
   // detail returned by the API when there is one.
@@ -612,6 +753,12 @@ export enum LucraApiErrorCode {
 export type LucraApiErrorBody = {
   code: LucraApiErrorCode;
   message?: string;
+};
+
+// Data of an apiRequestError message: the failure plus the request type it answers, so
+// the SDK can reject the matching api.* call.
+export type LucraApiRequestErrorBody = LucraApiErrorBody & {
+  requestType: MessageTypeToLucraClient;
 };
 
 export type LucraIsLoggedInResponse = {

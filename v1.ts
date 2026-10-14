@@ -50,41 +50,37 @@ export class LucraClient extends LucraClientBase {
       }
       return;
     }
-    if (event.data.type === LucraClientMessageType.achievementsResponse) {
-      this._resolveAchievements(event.data.data);
+    const requestId = event.data.requestId;
+    const body = event.data.data;
+    if (event.data.type === LucraClientMessageType.apiRequestError) {
+      this._rejectApiRequest(body.requestType, body, requestId);
       return;
     }
-    if (event.data.type === LucraClientMessageType.tournamentsResponse) {
-      this._resolveTournaments(event.data.data);
-      return;
-    }
-    if (event.data.type === LucraClientMessageType.tournamentResponse) {
-      this._resolveTournament(event.data.data);
-      return;
-    }
-    if (event.data.type === LucraClientMessageType.tournamentLeaderboardResponse) {
-      this._resolveTournamentLeaderboard(event.data.data);
-      return;
-    }
-    if (event.data.type === LucraClientMessageType.joinTournamentResponse) {
-      this._resolveJoinTournament(event.data.data);
-      return;
-    }
+    // Per-call error messages that predate apiRequestError; the web-app still sends them.
     if (event.data.type === LucraClientMessageType.joinTournamentError) {
-      this._rejectJoinTournament(event.data.data);
+      this._rejectApiRequest(MessageTypeToLucraClient.joinTournamentRequest, body, requestId);
       return;
-    }
-    // No return, unlike the settlers above: this message also falls through to
-    // dispatchEvent so manual and automatic triggers report through the same event.
-    if (event.data.type === LucraClientMessageType.autoJoinedTournaments) {
-      this._resolveAutoJoinTournaments(event.data.data);
     }
     if (event.data.type === LucraClientMessageType.autoJoinTournamentsError) {
-      this._rejectAutoJoinTournaments(event.data.data);
+      this._rejectApiRequest(
+        MessageTypeToLucraClient.autoJoinTournamentsRequest,
+        body,
+        requestId
+      );
       return;
     }
-    if (event.data.type === LucraClientMessageType.isLoggedInResponse) {
-      this._resolveIsLoggedIn(event.data.data);
+    // Only the active subscription's updates reach listeners: drop those for a
+    // superseded or cancelled matchup, and any arriving after close().
+    if (
+      event.data.type === LucraClientMessageType.matchupDetailsUpdated &&
+      !this._isActiveMatchupDetailsUpdate(body)
+    ) {
+      return;
+    }
+    const settled = this._settleApiResponse(event.data.type, body, requestId);
+    // No return for autoJoinedTournaments, unlike other responses: it also falls through
+    // to dispatchEvent so manual and automatic triggers report through the same event.
+    if (settled && event.data.type !== LucraClientMessageType.autoJoinedTournaments) {
       return;
     }
     if (event.data.type === LucraClientMessageType.startMinigamesSessionResponse) {
@@ -100,6 +96,7 @@ export class LucraClient extends LucraClientBase {
     if (event.data.type === LucraClientMessageType.initialized) {
       this._handleInitialized(event.data.data);
       this._replayEnableExitLucra();
+      this._resumeMatchupDetailsSubscription();
     }
     if (event.data.type === LucraClientMessageType.loginSuccess) {
       this._handleLoginSuccess();

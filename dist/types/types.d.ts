@@ -2,6 +2,7 @@ export type LucraEnvironment = "local" | "dev1" | "dev2" | "staging" | "sandbox"
 export declare enum LucraClientMessageType {
     achievementsResponse = "achievementsResponse",
     activeMatchupStarted = "activeMatchupStarted",
+    apiRequestError = "apiRequestError",
     autoJoinedTournaments = "autoJoinedTournaments",
     autoJoinTournamentsError = "autoJoinTournamentsError",
     claimReward = "claimReward",
@@ -27,7 +28,14 @@ export declare enum LucraClientMessageType {
     joinTournamentError = "joinTournamentError",
     userInfo = "userInfo",
     initialized = "initialized",
-    isLoggedInResponse = "isLoggedInResponse"
+    isLoggedInResponse = "isLoggedInResponse",
+    matchupResponse = "matchupResponse",
+    matchupDetailsResponse = "matchupDetailsResponse",
+    subscribeMatchupDetailsResponse = "subscribeMatchupDetailsResponse",
+    matchupDetailsUpdated = "matchupDetailsUpdated",
+    createRecreationalGameResponse = "createRecreationalGameResponse",
+    acceptRecreationalGameResponse = "acceptRecreationalGameResponse",
+    cancelRecreationalGameResponse = "cancelRecreationalGameResponse"
 }
 export declare enum MessageTypeToLucraClient {
     achievementsRequest = "achievementsRequest",
@@ -44,7 +52,14 @@ export declare enum MessageTypeToLucraClient {
     tournamentRequest = "tournamentRequest",
     tournamentLeaderboardRequest = "tournamentLeaderboardRequest",
     joinTournamentRequest = "joinTournamentRequest",
-    isLoggedInRequest = "isLoggedInRequest"
+    isLoggedInRequest = "isLoggedInRequest",
+    matchupRequest = "matchupRequest",
+    matchupDetailsRequest = "matchupDetailsRequest",
+    subscribeMatchupDetailsRequest = "subscribeMatchupDetailsRequest",
+    cancelMatchupDetailsSubscription = "cancelMatchupDetailsSubscription",
+    createRecreationalGameRequest = "createRecreationalGameRequest",
+    acceptRecreationalGameRequest = "acceptRecreationalGameRequest",
+    cancelRecreationalGameRequest = "cancelRecreationalGameRequest"
 }
 export type LucraConvertToCreditResponse = {
     id: string;
@@ -148,6 +163,7 @@ export type LucraEventMap = {
     locationGranted: void;
     demographicComplete: void;
     initialized: LucraInitializedBody;
+    matchupDetailsUpdated: LucraMatchupDetails;
 };
 export type LucraClientSendMessage = {
     userUpdated: (data: SDKClientUser) => void;
@@ -160,6 +176,7 @@ export type LucraClientSendMessage = {
 export type LucraClientMessage = (body: {
     type: LucraClientMessageType;
     data: any;
+    requestId?: string;
 }) => void;
 export type LucraPage = "add-funds" | "create-matchup" | "demographicform" | "home" | "id-scan-complete" | "kyc" | "logout" | "matchup-details" | "profile" | "search" | "tournament-details" | "transactions" | "withdraw-funds";
 export type StateFull = "Alaska" | "Alabama" | "Arkansas" | "Arizona" | "California" | "Colorado" | "Connecticut" | "District of Columbia" | "Delaware" | "Florida" | "Georgia" | "Hawaii" | "Iowa" | "Idaho" | "Illinois" | "Indiana" | "Kansas" | "Kentucky" | "Louisiana" | "Massachusetts" | "Maryland" | "Maine" | "Michigan" | "Minnesota" | "Missouri" | "Mississippi" | "Montana" | "North Carolina" | "North Dakota" | "Nebraska" | "New Hampshire" | "New Jersey" | "New Mexico" | "Nevada" | "New York" | "Ohio" | "Oklahoma" | "Oregon" | "Pennsylvania" | "Rhode Island" | "South Carolina" | "South Dakota" | "Tennessee" | "Texas" | "Utah" | "Virginia" | "Vermont" | "Washington" | "Wisconsin" | "West Virginia" | "Wyoming";
@@ -413,17 +430,98 @@ export type LucraTournamentResponse = {
 export type LucraJoinTournamentResponse = {
     matchupId: string;
 };
+export type LucraPlayStyle = "GROUP_VS_GROUP" | "FREE_FOR_ALL";
+export type LucraMatchupStatus = "OPEN" | "CONFIRMED" | "LOCKED" | "PENDING_OUTCOMES" | "ON_HOLD" | "DISPUTE" | "CLOSED" | "CLOSED_TIE" | "CANCELED_BY_OWNER" | "CANCELED_DISPUTE" | "CANCELED_GAME_CANCELED" | "CANCELED_NOT_ACCEPTED" | "CANCELED_PLAYER_INACTIVE" | "CANCELED_THROUGH_API" | "CANCELED_TIMEOUT";
+export type LucraCashStake = {
+    type: "CASH";
+    amount: number;
+};
+export type LucraAtStake = LucraCashStake | {
+    type: "TENANT_REWARD";
+    reward: LucraReward;
+};
+export type LucraRecreationalGame = {
+    gameId: string;
+    name: string;
+    iconUrl?: string;
+};
+export type LucraMatchupParticipantGroup = {
+    id: string;
+    userIds: string[];
+};
+export type LucraMatchup = {
+    id: string;
+    status: LucraMatchupStatus;
+    playStyle: LucraPlayStyle;
+    isPublic: boolean;
+    createdAt?: string;
+    creatorId: string;
+    winningGroupId?: string;
+    game: LucraRecreationalGame;
+    atStake: LucraAtStake;
+    participantGroups: LucraMatchupParticipantGroup[];
+};
+export type LucraMatchupParticipant = {
+    userId: string;
+    username: string;
+    avatarUrl?: string;
+    individualPayout?: number;
+};
+export type LucraMatchupGroup = {
+    id: string;
+    outcome?: "WIN" | "LOSS" | "TIE";
+    score?: number;
+    participants: LucraMatchupParticipant[];
+};
+export type LucraMatchupParticipantScore = {
+    userId?: string;
+    username?: string;
+    avatarUrl?: string;
+    place?: number;
+    score?: number;
+    finishedAt?: string;
+    groupId?: string;
+};
+export type LucraMatchupDetails = {
+    matchup: LucraMatchup;
+    groups: LucraMatchupGroup[];
+    participantScores: LucraMatchupParticipantScore[];
+};
+export type LucraCreateRecreationalGameInput = {
+    gameTypeId: string;
+    atStake: LucraCashStake;
+    playStyle: LucraPlayStyle;
+};
+export type LucraRecreationalGameResult = {
+    matchupId: string;
+    matchup: LucraMatchup | null;
+};
+export type LucraCancelRecreationalGameResult = {
+    matchupId: string;
+};
+export type LucraAcceptRecreationalGameBody = {
+    matchupId: string;
+    playStyle: LucraPlayStyle;
+    teamId?: string;
+};
 export declare enum LucraApiErrorCode {
     unverified = "UNVERIFIED",
     insufficientFunds = "INSUFFICIENT_FUNDS",
     demographicInformationMissing = "DEMOGRAPHIC_INFORMATION_MISSING",
     locationError = "LOCATION_ERROR",
     locationNeeded = "LOCATION_NEEDED",
+    notAllowed = "NOT_ALLOWED",
+    invalidAtStake = "INVALID_AT_STAKE",
+    invalidRewardType = "INVALID_REWARD_TYPE",
+    invalidPlayStyle = "INVALID_PLAY_STYLE",
     apiError = "API_ERROR"
 }
 export type LucraApiErrorBody = {
     code: LucraApiErrorCode;
     message?: string;
+};
+export type LucraApiRequestErrorBody = LucraApiErrorBody & {
+    requestType: MessageTypeToLucraClient;
 };
 export type LucraIsLoggedInResponse = {
     isLoggedIn: boolean;

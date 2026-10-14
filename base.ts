@@ -1,4 +1,5 @@
 import {
+  LucraClientMessageType,
   MessageTypeToLucraClient,
   type LucraClientSendMessage,
   type LucraConvertToCreditResponse,
@@ -15,6 +16,12 @@ import {
   type LucraTournamentLeaderboardResponse,
   type LucraAutoJoinedTournamentsBody,
   type LucraJoinTournamentResponse,
+  type LucraMatchup,
+  type LucraMatchupDetails,
+  type LucraCreateRecreationalGameInput,
+  type LucraAcceptRecreationalGameBody,
+  type LucraCancelRecreationalGameResult,
+  type LucraRecreationalGameResult,
   type LucraApiErrorBody,
   type LucraIsLoggedInResponse,
   type LucraPage,
@@ -33,7 +40,7 @@ import {
   validatePhoneNumber,
   validateMetadata,
 } from "./utils.js";
-import { createApiRequest } from "./api-request.js";
+import { cancelReason, createApiRequest, type ApiRequest } from "./api-request.js";
 import { createDialog } from "./dialog.js";
 import { createPopup, type LucraPopupHandle } from "./popup.js";
 import { LucraUserNotLoggedIn, LucraClientNotOpen, LucraApiError } from "./errors.js";
@@ -42,7 +49,15 @@ import { LucraUserNotLoggedIn, LucraClientNotOpen, LucraApiError } from "./error
 // supersedes it (e.g. `loginSuccess` rebuilds `ready`). This is an internal
 // single-flight cancellation, not an auth failure, so `_createReadyPromise`
 // swallows it and defers to the rebuilt promise rather than surfacing it.
-const ISLOGGEDIN_CANCELLED = "Cancelled by new isLoggedIn request";
+const ISLOGGEDIN_CANCELLED = cancelReason("isLoggedIn");
+
+// What close() rejects pending requests and `ready` with. Hosts check a rejected
+// write's outcome before retrying (see the docs); the message stays neutral so it reads
+// correctly for reads too.
+const CLOSED_WHILE_PENDING = "LucraClient was closed while the request was pending.";
+
+const MATCHUP_DETAILS_SUBSCRIPTION_CANCELLED =
+  "Cancelled by cancelMatchupDetailsSubscription";
 
 // Shared by open(), redirect(), and dialog() deposit (dialog routes through
 // redirect), so one key warns once for all three.
@@ -117,51 +132,111 @@ export class LucraClientBase extends EventTarget {
   private locationId: string = "";
   private autoJoin: boolean = true;
   private controller: AbortController = new AbortController();
-  private _achievementsRequest = createApiRequest<LucraAchievementsResponse>({
-    type: MessageTypeToLucraClient.achievementsRequest,
-    cancelReason: "Cancelled by new achievements request",
-    sendMessage: (message) => this._sendMessage(message),
-  });
-  private _tournamentsRequest = createApiRequest<LucraTournamentsResponse>({
-    type: MessageTypeToLucraClient.tournamentsRequest,
-    cancelReason: "Cancelled by new tournaments request",
-    sendMessage: (message) => this._sendMessage(message),
-  });
-  private _tournamentRequest = createApiRequest<
+  // Every api.* request, so the router can settle one by its response or request type.
+  // Declared before the request fields below, which register themselves on creation.
+  private _apiRequests: ApiRequest<any, any>[] = [];
+  private _achievementsRequest = this._request<LucraAchievementsResponse>(
+    MessageTypeToLucraClient.achievementsRequest,
+    LucraClientMessageType.achievementsResponse,
+    "achievements"
+  );
+  private _tournamentsRequest = this._request<LucraTournamentsResponse>(
+    MessageTypeToLucraClient.tournamentsRequest,
+    LucraClientMessageType.tournamentsResponse,
+    "tournaments"
+  );
+  private _tournamentRequest = this._request<
     LucraTournamentResponse,
     { matchupId: string }
-  >({
-    type: MessageTypeToLucraClient.tournamentRequest,
-    cancelReason: "Cancelled by new tournament request",
-    sendMessage: (message) => this._sendMessage(message),
-  });
-  private _tournamentLeaderboardRequest = createApiRequest<
+  >(
+    MessageTypeToLucraClient.tournamentRequest,
+    LucraClientMessageType.tournamentResponse,
+    "tournament"
+  );
+  private _tournamentLeaderboardRequest = this._request<
     LucraTournamentLeaderboardResponse,
     LucraTournamentLeaderboardInput
-  >({
-    type: MessageTypeToLucraClient.tournamentLeaderboardRequest,
-    cancelReason: "Cancelled by new tournamentLeaderboard request",
-    sendMessage: (message) => this._sendMessage(message),
-  });
-  private _joinTournamentRequest = createApiRequest<
+  >(
+    MessageTypeToLucraClient.tournamentLeaderboardRequest,
+    LucraClientMessageType.tournamentLeaderboardResponse,
+    "tournamentLeaderboard"
+  );
+  private _matchupRequest = this._request<LucraMatchup, { matchupId: string }>(
+    MessageTypeToLucraClient.matchupRequest,
+    LucraClientMessageType.matchupResponse,
+    "matchup"
+  );
+  private _matchupDetailsRequest = this._request<
+    LucraMatchupDetails,
+    { matchupId: string }
+  >(
+    MessageTypeToLucraClient.matchupDetailsRequest,
+    LucraClientMessageType.matchupDetailsResponse,
+    "matchupDetails"
+  );
+  private _subscribeMatchupDetailsRequest = this._request<
+    LucraMatchupDetails,
+    { matchupId: string }
+  >(
+    MessageTypeToLucraClient.subscribeMatchupDetailsRequest,
+    LucraClientMessageType.subscribeMatchupDetailsResponse,
+    "subscribeToMatchupDetails",
+    { singleFlight: true }
+  );
+  // The matchup whose matchupDetailsUpdated events reach listeners, and a counter that
+  // every subscribe, cancel, and close() bumps so a superseded subscribe never activates.
+  private _matchupDetailsSubscriptionId: string | null = null;
+  private _matchupDetailsGeneration = 0;
+  private _createRecreationalGameRequest = this._request<
+    LucraRecreationalGameResult,
+    LucraCreateRecreationalGameInput
+  >(
+    MessageTypeToLucraClient.createRecreationalGameRequest,
+    LucraClientMessageType.createRecreationalGameResponse,
+    "createRecreationalGame",
+    { rejectWhilePending: true }
+  );
+  // Shared with the free-for-all accept, so both accepts use one in-flight slot.
+  private _acceptRecreationalGameRequest = this._request<
+    LucraRecreationalGameResult,
+    LucraAcceptRecreationalGameBody
+  >(
+    MessageTypeToLucraClient.acceptRecreationalGameRequest,
+    LucraClientMessageType.acceptRecreationalGameResponse,
+    "acceptRecreationalGame",
+    { rejectWhilePending: true }
+  );
+  private _cancelRecreationalGameRequest = this._request<
+    LucraCancelRecreationalGameResult,
+    { matchupId: string }
+  >(
+    MessageTypeToLucraClient.cancelRecreationalGameRequest,
+    LucraClientMessageType.cancelRecreationalGameResponse,
+    "cancelRecreationalGame",
+    { rejectWhilePending: true }
+  );
+  private _joinTournamentRequest = this._request<
     LucraJoinTournamentResponse,
     { matchupId: string }
-  >({
-    type: MessageTypeToLucraClient.joinTournamentRequest,
-    cancelReason: "Cancelled by new joinTournament request",
-    sendMessage: (message) => this._sendMessage(message),
-  });
+  >(
+    MessageTypeToLucraClient.joinTournamentRequest,
+    LucraClientMessageType.joinTournamentResponse,
+    "joinTournament",
+    { singleFlight: true }
+  );
   private _autoJoinTournamentsRequest =
-    createApiRequest<LucraAutoJoinedTournamentsBody>({
-      type: MessageTypeToLucraClient.autoJoinTournamentsRequest,
-      cancelReason: "Cancelled by new autoJoinTournaments request",
-      sendMessage: (message) => this._sendMessage(message),
-    });
-  private _isLoggedInRequest = createApiRequest<LucraIsLoggedInResponse>({
-    type: MessageTypeToLucraClient.isLoggedInRequest,
-    cancelReason: ISLOGGEDIN_CANCELLED,
-    sendMessage: (message) => this._sendMessage(message),
-  });
+    this._request<LucraAutoJoinedTournamentsBody>(
+      MessageTypeToLucraClient.autoJoinTournamentsRequest,
+      LucraClientMessageType.autoJoinedTournaments,
+      "autoJoinTournaments",
+      { singleFlight: true }
+    );
+  private _isLoggedInRequest = this._request<LucraIsLoggedInResponse>(
+    MessageTypeToLucraClient.isLoggedInRequest,
+    LucraClientMessageType.isLoggedInResponse,
+    "isLoggedIn",
+    { singleFlight: true }
+  );
   protected triggerFrames: Map<Window, TriggerHandle> = new Map();
   protected _user: SDKLucraUser | null = null;
   protected _isInitialized: boolean = false;
@@ -678,6 +753,13 @@ export class LucraClientBase extends EventTarget {
     this.iframe = undefined;
     this._user = null;
     this._isInitialized = false;
+    this._resetMatchupDetailsSubscription();
+    // Pending api requests and a `ready` still waiting for init would otherwise time out
+    // or hang. The reject is a no-op once initialization settled.
+    this._readyReject(new LucraClientNotOpen(CLOSED_WHILE_PENDING));
+    for (const request of this._apiRequests) {
+      request.rejectAll(new LucraClientNotOpen(CLOSED_WHILE_PENDING));
+    }
     this._initializedPromise = this._createInitializedPromise();
     this._readyPromise = this._createReadyPromise();
   }
@@ -710,6 +792,9 @@ export class LucraClientBase extends EventTarget {
     try {
       this.iframe?.contentWindow?.postMessage(message, this.urlOrigin);
     } catch (e) {
+      // An api request (it carries a requestId) rejects its promise with the error
+      // instead of timing out; every other message is fire-and-forget.
+      if (message?.requestId !== undefined) throw e;
       console.error("Unable to send message to LucraClient iframe", e);
     }
     return this;
@@ -722,47 +807,48 @@ export class LucraClientBase extends EventTarget {
     });
   }
 
-  protected _resolveAchievements(data: LucraAchievementsResponse) {
-    this._achievementsRequest.resolve(data);
+  private _request<TResponse, TBody = void>(
+    type: MessageTypeToLucraClient,
+    responseType: LucraClientMessageType,
+    name: string,
+    options: {
+      singleFlight?: boolean;
+      rejectWhilePending?: boolean;
+    } = {}
+  ): ApiRequest<TResponse, TBody> {
+    const request = createApiRequest<TResponse, TBody>({
+      type,
+      responseType,
+      name,
+      sendMessage: (message) => this._sendMessage(message),
+      ...options,
+    });
+    this._apiRequests.push(request);
+    return request;
   }
 
-  protected _resolveTournaments(data: LucraTournamentsResponse) {
-    this._tournamentsRequest.resolve(data);
+  // Settles the api.* request answered by `responseType`. Returns false when the message
+  // is not an api.* response, so the router can treat it as an event. A response that
+  // matches no pending request (e.g. the automatic auto-join) is a no-op.
+  protected _settleApiResponse(
+    responseType: string,
+    data: unknown,
+    requestId?: string
+  ): boolean {
+    const request = this._apiRequests.find((r) => r.responseType === responseType);
+    if (!request) return false;
+    request.resolve(data, requestId);
+    return true;
   }
 
-  protected _resolveTournament(data: LucraTournamentResponse) {
-    this._tournamentRequest.resolve(data);
-  }
-
-  protected _resolveTournamentLeaderboard(data: LucraTournamentLeaderboardResponse) {
-    this._tournamentLeaderboardRequest.resolve(data);
-  }
-
-  protected _resolveJoinTournament(data: LucraJoinTournamentResponse) {
-    this._joinTournamentRequest.resolve(data);
-  }
-
-  protected _rejectJoinTournament(body: LucraApiErrorBody) {
-    this._joinTournamentRequest.reject(
-      new LucraApiError(body.code, body.message)
-    );
-  }
-
-  // Settles a pending manual autoJoinTournaments() call. The embedded app emits the
-  // same autoJoinedTournaments message for the automatic trigger, where no request is
-  // pending and this is a no-op.
-  protected _resolveAutoJoinTournaments(data: LucraAutoJoinedTournamentsBody) {
-    this._autoJoinTournamentsRequest.resolve(data);
-  }
-
-  protected _rejectAutoJoinTournaments(body: LucraApiErrorBody) {
-    this._autoJoinTournamentsRequest.reject(
-      new LucraApiError(body.code, body.message)
-    );
-  }
-
-  protected _resolveIsLoggedIn(data: LucraIsLoggedInResponse) {
-    this._isLoggedInRequest.resolve(data);
+  protected _rejectApiRequest(
+    requestType: string,
+    body: LucraApiErrorBody,
+    requestId?: string
+  ): void {
+    this._apiRequests
+      .find((r) => r.type === requestType)
+      ?.reject(new LucraApiError(body.code, body.message), requestId);
   }
 
   protected _resolveTrigger(
@@ -797,18 +883,37 @@ export class LucraClientBase extends EventTarget {
     this._readyPromise = this._createReadyPromise();
   }
 
+  // Stops delivering matchupDetailsUpdated and supersedes any subscribe in progress.
+  private _resetMatchupDetailsSubscription(): number {
+    this._matchupDetailsSubscriptionId = null;
+    return ++this._matchupDetailsGeneration;
+  }
+
+  protected _isActiveMatchupDetailsUpdate(details: any): boolean {
+    const matchupId = this._matchupDetailsSubscriptionId;
+    return matchupId !== null && details?.matchup?.id === matchupId;
+  }
+
+  // An iframe reload (login src reload, moveTo) drops the Lucra app's subscription and
+  // re-sends `initialized`, so subscribe again to the active matchup once it succeeds.
+  protected _resumeMatchupDetailsSubscription(): void {
+    const matchupId = this._matchupDetailsSubscriptionId;
+    if (!this._isInitialized || !matchupId || this._subscribeMatchupDetailsRequest.hasPending()) {
+      return;
+    }
+    this._subscribeMatchupDetailsRequest.send({ matchupId }).catch(() => {});
+  }
+
   api = {
     achievements: async (): Promise<LucraAchievementsResponse> => {
       this._assertOpen("call api.achievements");
       return this._achievementsRequest.send();
     },
     // Every request needs an open iframe and rejects with LucraClientNotOpen
-    // without one. Fetching all tournaments is also allowed before auth, so it
-    // additionally waits for the embedded app to be initialized (not `ready`,
-    // which also asserts login); the others need auth (called after `ready`).
-    // Note: if `close()` runs while this is still awaiting a not-yet-resolved
-    // init, the captured promise never settles and this call stays pending --
-    // an accepted edge given the narrow window.
+    // without one. Reads that work before auth await `_initializedPromise` (not
+    // `ready`, which also asserts login); the others need auth (called after `ready`).
+    // Note: if `close()` runs while this is still awaiting init, the call rejects
+    // with LucraClientNotOpen (`close()` rejects the pending init promise).
     tournaments: async (): Promise<LucraTournamentsResponse> => {
       this._assertOpen("call api.tournaments");
       await this._initializedPromise;
@@ -836,6 +941,78 @@ export class LucraClientBase extends EventTarget {
     autoJoinTournaments: async (): Promise<LucraAutoJoinedTournamentsBody> => {
       this._assertOpen("call api.autoJoinTournaments");
       return this._autoJoinTournamentsRequest.send();
+    },
+    matchup: async (matchupId: string): Promise<LucraMatchup> => {
+      this._assertOpen("call api.matchup");
+      await this._initializedPromise;
+      return this._matchupRequest.send({ matchupId });
+    },
+    matchupDetails: async (matchupId: string): Promise<LucraMatchupDetails> => {
+      this._assertOpen("call api.matchupDetails");
+      await this._initializedPromise;
+      return this._matchupDetailsRequest.send({ matchupId });
+    },
+    createRecreationalGame: async (
+      input: LucraCreateRecreationalGameInput
+    ): Promise<LucraRecreationalGameResult> => {
+      this._assertOpen("call api.createRecreationalGame");
+      return this._createRecreationalGameRequest.send(input);
+    },
+    acceptVersusRecreationalGame: async (
+      matchupId: string,
+      teamId: string
+    ): Promise<LucraRecreationalGameResult> => {
+      this._assertOpen("call api.acceptVersusRecreationalGame");
+      return this._acceptRecreationalGameRequest.send({
+        matchupId,
+        playStyle: "GROUP_VS_GROUP",
+        teamId,
+      });
+    },
+    acceptFreeForAllRecreationalGame: async (
+      matchupId: string
+    ): Promise<LucraRecreationalGameResult> => {
+      this._assertOpen("call api.acceptFreeForAllRecreationalGame");
+      return this._acceptRecreationalGameRequest.send({
+        matchupId,
+        playStyle: "FREE_FOR_ALL",
+      });
+    },
+    cancelRecreationalGame: async (
+      matchupId: string
+    ): Promise<LucraCancelRecreationalGameResult> => {
+      this._assertOpen("call api.cancelRecreationalGame");
+      return this._cancelRecreationalGameRequest.send({ matchupId });
+    },
+    // Resolves with the current details, then delivers each change as a
+    // matchupDetailsUpdated event until cancelled, close(), or the next subscribe.
+    subscribeToMatchupDetails: async (
+      matchupId: string
+    ): Promise<LucraMatchupDetails> => {
+      this._assertOpen("call api.subscribeToMatchupDetails");
+      const generation = this._resetMatchupDetailsSubscription();
+      await this._initializedPromise;
+      // Cancelled or superseded while waiting for init: never post the request.
+      if (generation !== this._matchupDetailsGeneration) {
+        throw MATCHUP_DETAILS_SUBSCRIPTION_CANCELLED;
+      }
+      const details = await this._subscribeMatchupDetailsRequest.send({ matchupId });
+      if (generation === this._matchupDetailsGeneration) {
+        // The id the Lucra app resolved, which is what its updates carry.
+        this._matchupDetailsSubscriptionId = details.matchup.id;
+      }
+      return details;
+    },
+    // Never throws, so it is safe in effect cleanup before open() or after close().
+    cancelMatchupDetailsSubscription: (): void => {
+      this._resetMatchupDetailsSubscription();
+      this._subscribeMatchupDetailsRequest.reject(MATCHUP_DETAILS_SUBSCRIPTION_CANCELLED);
+      if (this.iframe) {
+        this._sendMessage({
+          type: MessageTypeToLucraClient.cancelMatchupDetailsSubscription,
+          body: null,
+        });
+      }
     },
   };
 

@@ -1,4 +1,4 @@
-import { type LucraClientSendMessage, type LucraDeepLinkResponse, type LucraClientConstructor, type LucraAchievementsResponse, type LucraTournamentsResponse, type LucraTournamentResponse, type LucraTournamentLeaderboardResponse, type LucraAutoJoinedTournamentsBody, type LucraJoinTournamentResponse, type LucraApiErrorBody, type LucraIsLoggedInResponse, type SDKLucraUser, type LucraMinigamesTriggerInput, type LucraStartMinigamesSessionResponse, type LucraInitializedBody, type LucraDialog, type LucraPopup, type LucraPopupResult } from "./types/types.js";
+import { type LucraClientSendMessage, type LucraDeepLinkResponse, type LucraClientConstructor, type LucraAchievementsResponse, type LucraTournamentsResponse, type LucraTournamentResponse, type LucraTournamentLeaderboardResponse, type LucraAutoJoinedTournamentsBody, type LucraJoinTournamentResponse, type LucraMatchup, type LucraMatchupDetails, type LucraCreateRecreationalGameInput, type LucraCancelRecreationalGameResult, type LucraRecreationalGameResult, type LucraApiErrorBody, type SDKLucraUser, type LucraMinigamesTriggerInput, type LucraStartMinigamesSessionResponse, type LucraInitializedBody, type LucraDialog, type LucraPopup, type LucraPopupResult } from "./types/types.js";
 type LucraNavigation = {
     profile: () => LucraClientBase;
     wallet: () => LucraClientBase;
@@ -60,10 +60,19 @@ export declare class LucraClientBase extends EventTarget {
     private locationId;
     private autoJoin;
     private controller;
+    private _apiRequests;
     private _achievementsRequest;
     private _tournamentsRequest;
     private _tournamentRequest;
     private _tournamentLeaderboardRequest;
+    private _matchupRequest;
+    private _matchupDetailsRequest;
+    private _subscribeMatchupDetailsRequest;
+    private _matchupDetailsSubscriptionId;
+    private _matchupDetailsGeneration;
+    private _createRecreationalGameRequest;
+    private _acceptRecreationalGameRequest;
+    private _cancelRecreationalGameRequest;
     private _joinTournamentRequest;
     private _autoJoinTournamentsRequest;
     private _isLoggedInRequest;
@@ -115,19 +124,16 @@ export declare class LucraClientBase extends EventTarget {
     show(): LucraClientBase;
     protected _sendMessage(message: any): this;
     protected _matchupInviteUrlResponse(data: LucraDeepLinkResponse): void;
-    protected _resolveAchievements(data: LucraAchievementsResponse): void;
-    protected _resolveTournaments(data: LucraTournamentsResponse): void;
-    protected _resolveTournament(data: LucraTournamentResponse): void;
-    protected _resolveTournamentLeaderboard(data: LucraTournamentLeaderboardResponse): void;
-    protected _resolveJoinTournament(data: LucraJoinTournamentResponse): void;
-    protected _rejectJoinTournament(body: LucraApiErrorBody): void;
-    protected _resolveAutoJoinTournaments(data: LucraAutoJoinedTournamentsBody): void;
-    protected _rejectAutoJoinTournaments(body: LucraApiErrorBody): void;
-    protected _resolveIsLoggedIn(data: LucraIsLoggedInResponse): void;
+    private _request;
+    protected _settleApiResponse(responseType: string, data: unknown, requestId?: string): boolean;
+    protected _rejectApiRequest(requestType: string, body: LucraApiErrorBody, requestId?: string): void;
     protected _resolveTrigger(win: Window, data: LucraStartMinigamesSessionResponse): boolean;
     protected _handleInitialized(body: LucraInitializedBody): void;
     protected _handleUserInfo(body: SDKLucraUser): void;
     protected _handleLoginSuccess(): void;
+    private _resetMatchupDetailsSubscription;
+    protected _isActiveMatchupDetailsUpdate(details: any): boolean;
+    protected _resumeMatchupDetailsSubscription(): void;
     api: {
         achievements: () => Promise<LucraAchievementsResponse>;
         tournaments: () => Promise<LucraTournamentsResponse>;
@@ -138,6 +144,14 @@ export declare class LucraClientBase extends EventTarget {
         }) => Promise<LucraTournamentLeaderboardResponse>;
         joinTournament: (tournamentId: string) => Promise<LucraJoinTournamentResponse>;
         autoJoinTournaments: () => Promise<LucraAutoJoinedTournamentsBody>;
+        matchup: (matchupId: string) => Promise<LucraMatchup>;
+        matchupDetails: (matchupId: string) => Promise<LucraMatchupDetails>;
+        createRecreationalGame: (input: LucraCreateRecreationalGameInput) => Promise<LucraRecreationalGameResult>;
+        acceptVersusRecreationalGame: (matchupId: string, teamId: string) => Promise<LucraRecreationalGameResult>;
+        acceptFreeForAllRecreationalGame: (matchupId: string) => Promise<LucraRecreationalGameResult>;
+        cancelRecreationalGame: (matchupId: string) => Promise<LucraCancelRecreationalGameResult>;
+        subscribeToMatchupDetails: (matchupId: string) => Promise<LucraMatchupDetails>;
+        cancelMatchupDetailsSubscription: () => void;
     };
     sendMessage: LucraClientSendMessage;
 }
