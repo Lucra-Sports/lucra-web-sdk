@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## [v1.15.0]
+
+### Added
+
+- `SDK_VERSION`, the running SDK version, exported from the package entry point so an integration can log which SDK it ships. Every Lucra iframe URL now carries it as an `sdkVersion` query param, which the Lucra app attaches to its error reports, so a support request can be matched to the SDK version that produced it. No API change.
+
 ## [v1.14.0]
 
 ### Added

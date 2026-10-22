@@ -1,5 +1,6 @@
 import { LucraClientMessageType, MessageTypeToLucraClient, } from "./types/types.js";
 import { LucraClientIframeId, States } from "./constants.js";
+import { SDK_VERSION } from "./version.js";
 import { addDefinedSearchParams, validatePhoneNumber, validateMetadata, } from "./utils.js";
 import { cancelReason, createApiRequest } from "./api-request.js";
 import { createDialog } from "./dialog.js";
@@ -144,6 +145,7 @@ export class LucraClientBase extends EventTarget {
         }
         url.searchParams.set("autoJoin", String(this.autoJoin));
         url.searchParams.set("parentUrl", window.location.origin);
+        url.searchParams.set("sdkVersion", SDK_VERSION);
         return url;
     }
     _open({ element, path = "", params = new URLSearchParams(), deepLinkUrl, hidden, }) {

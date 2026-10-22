@@ -41,6 +41,10 @@ jobs:
         id: update_changelog
         run: |
           sed -i 's/Unreleased/${{ steps.update_version.outputs.version }}/g' docs/CHANGELOG.md
+      - name: Update SDK_VERSION and rebuild dist
+        run: |
+          sed -i "s/SDK_VERSION = \".*\"/SDK_VERSION = \"$(npm pkg get version | tr -d '\"')\"/" version.ts
+          bun run build
       - name: Create pull request
         id: create_pr
         uses: peter-evans/create-pull-request@v5
