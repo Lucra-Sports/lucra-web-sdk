@@ -1,4 +1,5 @@
 export { LucraClientIframeId, States } from "./constants.js";
+export { SDK_VERSION } from "./version.js";
 export type {
   LucraEnvironment,
   LucraClientSendMessage,

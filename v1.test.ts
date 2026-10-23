@@ -3,6 +3,8 @@ import { LucraClient } from "./v1.ts";
 import { createPopup } from "./popup.ts";
 import { LucraUserNotLoggedIn, LucraClientNotOpen, LucraApiError } from "./errors.ts";
 import { LucraApiErrorCode } from "./types/types.ts";
+import { SDK_VERSION } from "./version.ts";
+import packageJson from "./package.json";
 import type {
   LucraV1ClientConstructor,
   LucraMatchup,
@@ -1956,5 +1958,35 @@ describe("createPopup", () => {
 
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(onClose).toHaveBeenCalledWith(undefined);
+  });
+});
+
+describe("LucraClient sdkVersion", () => {
+  let restore: (() => void) | undefined;
+  afterEach(() => {
+    restore?.();
+    restore = undefined;
+  });
+
+  it("matches the package.json version", () => {
+    expect(SDK_VERSION).toBe(packageJson.version);
+  });
+
+  it("declares the SDK version on the iframe url", () => {
+    restore = installFakeWindow().restore;
+    const client = LucraClient.initialize(baseConfig);
+    const url = (client as any)._buildIframeUrl({});
+
+    expect(url.searchParams.get("sdkVersion")).toBe(SDK_VERSION);
+  });
+
+  it("declares the SDK version on a deep link url", () => {
+    restore = installFakeWindow().restore;
+    const client = LucraClient.initialize(baseConfig);
+    const url = (client as any)._buildIframeUrl({
+      deepLinkUrl: "https://test-tenant.sandbox.lucrasports.com/app/matchup/1",
+    });
+
+    expect(url.searchParams.get("sdkVersion")).toBe(SDK_VERSION);
   });
 });
