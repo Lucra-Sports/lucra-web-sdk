@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## [Unreleased]
+
+### Changed
+
+- Docs: [Initializing the LucraClient](1.2_initialize_client.md#when-your-user-signs-out) now says to call `client.logout()` when your user signs out of your app. `destroy()`, which the guide used to suggest on logout, does not sign the user out of Lucra, so the next user on that device opened Lucra as the previous one. [Headless on Web](2.0_headless.md#lifecycle-and-gating) lists `client.logout()`. No API change.
+
 ## [v1.15.0]
 
 ### Added
