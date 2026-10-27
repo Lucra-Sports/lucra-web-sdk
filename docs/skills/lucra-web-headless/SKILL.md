@@ -50,8 +50,10 @@ Everything else about Web headless follows from this:
   request. Dialogs present Lucra UI without a reload.
 - **Deposits complete in a real popup window**, because Apple Pay won't run in a cross-origin
   iframe. `client.popup().deposit()` opens that popup directly and is the path to use from a
-  headless remediation. Navigating the user to the Wallet or Profile screen in the iframe also
-  works: the Lucra app detects that it is in an iframe and opens Add Funds in a popup itself.
+  headless remediation. Call it from a click handler: browsers block popups opened after an
+  `await`, so on `INSUFFICIENT_FUNDS` show your own "Add funds" button first. Do not send a
+  headless user to the Wallet or Profile screen to deposit: that leaves them inside Lucra's
+  screens instead of returning them to your flow.
 - **You can't reach inside.** The iframe is cross-origin: synthetic clicks, script injection, and
   (in agent-piloted browsers) even typed keystrokes don't reach it. Verify behavior via SDK events
   and promises, not by driving Lucra's UI.
@@ -116,7 +118,7 @@ Lucra flow, wait for its completion event, and retry:
 | --- | --- | --- | --- |
 | `UNVERIFIED` | nothing: not returned by these headless prechecks (KYC moves to withdrawal flows); the code stays in `LucraApiErrorCode` for compatibility | none | No |
 | `DEMOGRAPHIC_INFORMATION_MISSING` | `dialog().demographic()` (always required by these prechecks) | `demographicComplete` event | Yes |
-| `INSUFFICIENT_FUNDS` | `popup().deposit()` — popup, not iframe | `popup.onClose(result)` | Yes, on success |
+| `INSUFFICIENT_FUNDS` | `popup().deposit()` from your own "Add funds" button's click handler — popup, not iframe | `popup.onClose(result)` | Yes, on success |
 | `LOCATION_NEEDED` | `dialog().locationGrant()` | `locationGranted` event | Yes |
 | `LOCATION_ERROR` | show `error.message` to the user as-is — it is a curated message carrying the geocompliance information they need; it also says whether Lucra rejected the region or the browser's geolocation failed | — | **No** for a rejected region; yes once a browser-side failure is fixed |
 | `NOT_ALLOWED` | nothing: show `message` (blocked account, matchup not `OPEN`, already joined, not the creator, or another GYP write of the same kind pending) | none | **No**, except `"Another <name> request is already in progress"`: retry once the pending call settles (read the matchup first if your app had none pending) |
