@@ -16,7 +16,8 @@
   "type": "module",
   "scripts": {
     "build": "bunx tsc --project tsconfig.json",
-    "test": "bun test"
+    "test": "bun test",
+    "docs:check": "bun scripts/check-docs.ts"
   },
   "devDependencies": {
     "@types/bun": "latest"
