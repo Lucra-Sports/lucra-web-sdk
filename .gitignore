@@ -181,3 +181,6 @@ out
 # Claude Code local state (worktrees and personal settings)
 .claude/worktrees/
 .claude/settings.local.json
+
+# Written by `claude plugin eval`; contains transcripts
+evals/results/
