@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: sign-out-switch-user
+context:
+  scaffold_script: fixture.sh

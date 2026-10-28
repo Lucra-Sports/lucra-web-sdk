@@ -49,8 +49,7 @@ cat > index.html <<'EOF'
 </html>
 EOF
 
-cp "$fixtures/$variant/lucra.ts" src/lucra.ts
-cp "$fixtures/$variant/main.ts" src/main.ts
+cp "$fixtures/$variant/"*.ts src/
 
 # Vite apps ship this; without it import.meta.env doesn't type-check.
 cat > src/vite-env.d.ts <<'TS'
@@ -58,3 +57,6 @@ interface ImportMeta {
   readonly env: Record<string, string>;
 }
 TS
+
+# Variants with a backend ship it outside src/, like most apps.
+if [ -d "$fixtures/$variant/server" ]; then cp -R "$fixtures/$variant/server" .; fi
