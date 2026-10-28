@@ -191,9 +191,12 @@ function checkSkills() {
       failures.push({ file, line: 1, message: "Missing frontmatter" });
       continue;
     }
-    const name = fm[1].match(/^name:\s*(.+)$/m)?.[1].trim();
-    if (name !== folder) failures.push({ file, line: 1, message: `name "${name}" does not match folder "${folder}"` });
-    if (!/^description:\s*\S/m.test(fm[1])) failures.push({ file, line: 1, message: "Missing description" });
+    // `[ \t]` not `\s`: an empty key must not borrow the next line's value.
+    const name = fm[1].match(/^name:[ \t]*(\S.*)$/m)?.[1].trim();
+    if (name !== folder) failures.push({ file, line: 1, message: `name "${name ?? ""}" does not match folder "${folder}"` });
+    // Inline value, or a block scalar (`>` / `|`) followed by an indented non-empty line.
+    const description = /^description:[ \t]*(?![>|][-+]?[ \t]*$)\S|^description:[ \t]*[>|][-+]?[ \t]*\n[ \t]+\S/m;
+    if (!description.test(fm[1])) failures.push({ file, line: 1, message: "Missing description" });
   }
   return skills.length;
 }
