@@ -42,6 +42,12 @@ You are integrating Lucra's Web SDK (`lucra-web-sdk`): an iframe-embedding JavaS
 | Link/prefill your user's identity | [Updating Users](../../1.8_updating_users.md) |
 | Rewards / convert-to-credit | [Rewards](../../1.9_rewards.md), [Convert to Credit](../../1.7_convert_to_credit.md) |
 | What changed between versions | [Changelog](../../CHANGELOG.md) |
+| Keys, environments, tenant switches, or empty-with-no-error content | Load the companion skill `lucra-web-keys-and-tenant` |
+| Login, sign-out, switching users, linking your user to their Lucra user | Load the companion skill `lucra-web-auth-and-identity` |
+| Deposits and blocked buy-ins (insufficient funds, demographics, location) | Load the companion skill `lucra-web-money-flows` |
+| Server side: backend key, webhooks, score submission, rotating credentials | Load the companion skill `lucra-backend-integration` |
+| Something isn't working and you need the cause | Load the companion skill `lucra-web-troubleshooting` |
+| Checking whether the integration is ready to launch | Load the companion skill `lucra-web-go-live` |
 
 ## Checkpoints — confirm each stage before building the next
 
