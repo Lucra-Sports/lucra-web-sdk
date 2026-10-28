@@ -37,11 +37,32 @@ endpoint on their own server that calls Lucra with the backend key and returns o
 
 ## A failed initialization is a configuration error
 
-`initialized` with `{ success: false }`, or `ready` rejecting with that body, means the key, `tenantId`, and
-`env` don't belong together. **Stop and fix the configuration.** Never route around it by opening login or
+`ready` rejects for three different reasons, and only one of them is a configuration error. **Handle each
+separately**; never treat every rejection the same way:
+
+```typescript
+import { LucraClient, LucraUserNotLoggedIn, LucraClientNotOpen } from 'lucra-web-sdk';
+
+try {
+  await LucraClient.getInstance().ready;
+} catch (err) {
+  if (err instanceof LucraUserNotLoggedIn) {
+    // Logged out: normal. Not an error. Keep the app running; Lucra shows login when the user opens a flow.
+  } else if (err instanceof LucraClientNotOpen) {
+    // close() ran before initialization finished. Mount again, then await ready again.
+  } else if ((err as { success?: boolean })?.success === false) {
+    // Failed initialization: the API key, tenantId and env don't belong together. Stop and surface it.
+    console.error("Lucra failed to initialize: check the API key, tenant id and env", err);
+  } else {
+    throw err;
+  }
+}
+```
+
+On a failed initialization, **stop and fix the configuration.** Never route around it by opening login or
 continuing to other flows: login can appear to work, but everything after it runs against the wrong
-configuration, and users wait on long loading states. `LucraUserNotLoggedIn` is the only rejection that
-means "logged out". Full handling and example:
+configuration, and users wait on long loading states. And never throw or log an error for a logged-out
+user: that breaks the app for everyone who simply hasn't signed in to Lucra yet. Full handling:
 [If initialization fails, stop](../../1.2_initialize_client.md#if-initialization-fails-stop).
 
 ## Check the keys before building further
