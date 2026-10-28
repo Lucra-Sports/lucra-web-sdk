@@ -1,0 +1,5 @@
+{
+  "name": "lucra-web-sdk",
+  "description": "Lucra Web SDK skills for integrating Lucra into a web app.",
+  "skills": "./docs/skills"
+}
