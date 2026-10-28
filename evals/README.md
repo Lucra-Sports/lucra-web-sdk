@@ -18,10 +18,14 @@ bun run build   # the fixture app installs this checkout's dist/ and docs/
 claude plugin eval . --trust-plugin --scaffold --allow-tools Write Edit \
   --case headless-deposit --runs 1 --ablation none --model sonnet --no-publish
 
-# Full suite, with the no-skills baseline
-claude plugin eval . --trust-plugin --scaffold --allow-tools Write Edit \
-  --model sonnet -j 4 --no-publish --max-cost-usd 5
+# Full suite, with the no-skills baseline (about 2 minutes and $1.50)
+bun run evals
 ```
+
+CI runs the same suite (`.github/workflows/skill-evals.yml`) on pull requests that touch `docs/`,
+`evals/` or `.claude-plugin/`, nightly, and on demand. It fails when a case scores below 0.8 with the
+skills loaded, and skips when the `ANTHROPIC_API_KEY` secret isn't available, as on pull requests from
+forks.
 
 `--scaffold` runs each case's `fixture.sh` as you, outside the sandbox. It only copies this checkout into a
 temporary workspace. Results and the HTML report go to `evals/results/`, which is gitignored because it
