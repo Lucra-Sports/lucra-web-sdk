@@ -1,6 +1,6 @@
 // Names the doc examples use without defining them: the integrator's own values and app objects.
 // Only add a name here when the docs deliberately leave it to the integrator. SDK exports
-// (LucraClient, LucraApiError, types...) are in scope already: see sdkGlobals() in check-docs.ts.
+// (LucraClient, LucraApiError, types...) are in scope already: see writeGlobals() in check-docs.ts.
 
 declare const client: import("lucra-web-sdk").LucraClient;
 declare const lucraClient: import("lucra-web-sdk").LucraClient;

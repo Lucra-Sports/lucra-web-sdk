@@ -20,7 +20,10 @@
     "docs:check": "bun scripts/check-docs.ts"
   },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "remark-cli": "^12.0.1",
+    "remark-validate-links": "^13.1.0",
+    "typescript-docs-verifier": "^3.0.2"
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
