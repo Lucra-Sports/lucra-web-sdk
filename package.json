@@ -17,7 +17,8 @@
   "scripts": {
     "build": "bunx tsc --project tsconfig.json",
     "test": "bun test",
-    "docs:check": "bun scripts/check-docs.ts"
+    "docs:check": "bun scripts/check-docs.ts",
+    "evals": "claude plugin eval . --trust-plugin --scaffold --allow-tools Write Edit --model sonnet -j 4 --no-publish --max-cost-usd 5"
   },
   "devDependencies": {
     "@types/bun": "latest",
