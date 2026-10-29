@@ -39,7 +39,8 @@ export const cancelReason = (name: string) => `Cancelled by new ${name} request`
  * a new `send` cancels any pending request instead. With `rejectWhilePending` a new `send`
  * is refused with `NOT_ALLOWED` and posts nothing, so a write already running is never
  * duplicated. A `sendMessage` that throws (e.g. a payload that cannot be cloned) rejects
- * that request at once instead of leaving it to time out.
+ * that request at once instead of leaving it to time out. `onTimeout` runs once per request
+ * that times out, before its promise rejects.
  */
 export function createApiRequest<TResponse, TBody = void>({
   type,
@@ -49,6 +50,7 @@ export function createApiRequest<TResponse, TBody = void>({
   singleFlight = false,
   rejectWhilePending = false,
   timeoutMs = API_REQUEST_TIMEOUT_MS,
+  onTimeout,
 }: {
   type: MessageTypeToLucraClient;
   responseType: LucraClientMessageType;
@@ -57,6 +59,7 @@ export function createApiRequest<TResponse, TBody = void>({
   singleFlight?: boolean;
   rejectWhilePending?: boolean;
   timeoutMs?: number;
+  onTimeout?: (timeoutMs: number) => void;
 }): ApiRequest<TResponse, TBody> {
   // Insertion order is send order, which the id-less fallback relies on.
   const pending = new Map<string, Pending<TResponse>>();
@@ -88,7 +91,12 @@ export function createApiRequest<TResponse, TBody = void>({
       }
       const requestId = String(++lastRequestId);
       return new Promise<TResponse>((resolve, reject) => {
-        const timer = setTimeout(() => take(requestId)?.reject("Timeout"), timeoutMs);
+        const timer = setTimeout(() => {
+          const entry = take(requestId);
+          if (!entry) return;
+          onTimeout?.(timeoutMs);
+          entry.reject("Timeout");
+        }, timeoutMs);
         pending.set(requestId, { resolve, reject, timer });
         try {
           sendMessage({ type, body: body ?? null, requestId });

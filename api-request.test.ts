@@ -8,7 +8,12 @@ import {
 } from "./types/types.ts";
 
 function setup(
-  options: { singleFlight?: boolean; rejectWhilePending?: boolean; timeoutMs?: number } = {}
+  options: {
+    singleFlight?: boolean;
+    rejectWhilePending?: boolean;
+    timeoutMs?: number;
+    onTimeout?: (timeoutMs: number) => void;
+  } = {}
 ) {
   const sendMessage = mock((_message: unknown) => {});
   const request = createApiRequest<string, { matchupId: string }>({
@@ -175,4 +180,44 @@ describe("createApiRequest", () => {
     await promise;
     expect(request.hasPending()).toBe(false);
   });
+
+  it("calls onTimeout once, before rejecting, for a request that times out", async () => {
+    const order: string[] = [];
+    const onTimeout = mock((timeoutMs: number) => {
+      order.push(`onTimeout ${timeoutMs}`);
+    });
+    const { request } = setup({ timeoutMs: 20, onTimeout });
+
+    const result = request.send({ matchupId: "abc" }).catch((reason) => {
+      order.push(`rejected ${reason}`);
+    });
+    await result;
+
+    expect(onTimeout).toHaveBeenCalledTimes(1);
+    expect(order).toEqual(["onTimeout 20", "rejected Timeout"]);
+  });
+
+  it("does not call onTimeout for a request that settled in time", async () => {
+    const onTimeout = mock((_timeoutMs: number) => {});
+    const { request, sentId } = setup({ timeoutMs: 20, onTimeout });
+
+    const pending = request.send({ matchupId: "abc" });
+    request.resolve("done", sentId(0));
+    await expect(pending).resolves.toBe("done");
+    await new Promise((resolve) => setTimeout(resolve, 40));
+
+    expect(onTimeout).not.toHaveBeenCalled();
+  });
+
+  it("calls onTimeout only for the request still pending, not one a newer single-flight request cancelled", async () => {
+    const onTimeout = mock((_timeoutMs: number) => {});
+    const { request } = setup({ timeoutMs: 20, singleFlight: true, onTimeout });
+
+    request.send({ matchupId: "a" }).catch(() => {});
+    request.send({ matchupId: "b" }).catch(() => {});
+    await new Promise((resolve) => setTimeout(resolve, 40));
+
+    expect(onTimeout).toHaveBeenCalledTimes(1);
+  });
 });
+

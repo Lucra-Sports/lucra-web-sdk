@@ -74,6 +74,7 @@ export enum MessageTypeToLucraClient {
   createRecreationalGameRequest = "createRecreationalGameRequest",
   acceptRecreationalGameRequest = "acceptRecreationalGameRequest",
   cancelRecreationalGameRequest = "cancelRecreationalGameRequest",
+  sdkDiagnostic = "sdkDiagnostic",
 }
 
 export type LucraConvertToCreditResponse = {
@@ -117,6 +118,15 @@ export type LucraNavigationEventBody = { url: string; page?: LucraPage };
 export type LucraClaimRewardBody = { reward: LucraReward };
 export type LucraLoginSuccessBody = SDKLucraUser;
 export type LucraInitializedBody = { success: boolean };
+
+// Sent to the web app when something fails on the SDK's side of the bridge, so it reaches
+// Lucra's error tracking instead of only the host page's console. Carries no host data.
+export type LucraSdkDiagnosticBody = {
+  kind: "requestTimeout";
+  requestType: MessageTypeToLucraClient;
+  timeoutMs: number;
+  sdkVersion: string;
+};
 
 // Handle returned when a Lucra route is opened as a dialog (see client.dialog()).
 export type LucraDialog = {

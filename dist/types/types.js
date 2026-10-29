@@ -67,6 +67,7 @@ export var MessageTypeToLucraClient;
     MessageTypeToLucraClient["createRecreationalGameRequest"] = "createRecreationalGameRequest";
     MessageTypeToLucraClient["acceptRecreationalGameRequest"] = "acceptRecreationalGameRequest";
     MessageTypeToLucraClient["cancelRecreationalGameRequest"] = "cancelRecreationalGameRequest";
+    MessageTypeToLucraClient["sdkDiagnostic"] = "sdkDiagnostic";
 })(MessageTypeToLucraClient || (MessageTypeToLucraClient = {}));
 // Message the Lucra web app posts to the opener when a deposit finishes in a
 // popup (see client.popup()). The envelope is flat (no nested `data`).

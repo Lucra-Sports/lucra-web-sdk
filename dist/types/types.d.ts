@@ -59,7 +59,8 @@ export declare enum MessageTypeToLucraClient {
     cancelMatchupDetailsSubscription = "cancelMatchupDetailsSubscription",
     createRecreationalGameRequest = "createRecreationalGameRequest",
     acceptRecreationalGameRequest = "acceptRecreationalGameRequest",
-    cancelRecreationalGameRequest = "cancelRecreationalGameRequest"
+    cancelRecreationalGameRequest = "cancelRecreationalGameRequest",
+    sdkDiagnostic = "sdkDiagnostic"
 }
 export type LucraConvertToCreditResponse = {
     id: string;
@@ -123,6 +124,12 @@ export type LucraClaimRewardBody = {
 export type LucraLoginSuccessBody = SDKLucraUser;
 export type LucraInitializedBody = {
     success: boolean;
+};
+export type LucraSdkDiagnosticBody = {
+    kind: "requestTimeout";
+    requestType: MessageTypeToLucraClient;
+    timeoutMs: number;
+    sdkVersion: string;
 };
 export type LucraDialog = {
     close: () => void;
