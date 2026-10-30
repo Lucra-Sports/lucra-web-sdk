@@ -1,0 +1,64 @@
+name: Skill evals
+
+# Agent evals for the skills in docs/skills (see evals/README.md). They call the Claude API, so they
+# run only when the docs, evals, or plugin manifest change, nightly, and on demand.
+on:
+  pull_request:
+    paths:
+      - "docs/**"
+      - "evals/**"
+      - ".claude-plugin/**"
+      - ".github/workflows/skill-evals.yml"
+  schedule:
+    - cron: "0 9 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: skill-evals-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  evals:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    steps:
+      # Pull requests from forks get no secrets, so the suite can't run there.
+      - name: Check for API key
+        id: key
+        run: |
+          if [ -n "$ANTHROPIC_API_KEY" ]; then echo "present=true" >> "$GITHUB_OUTPUT"; else
+            echo "::notice::ANTHROPIC_API_KEY is not available (fork PR or unset); skipping skill evals."
+          fi
+      - uses: actions/checkout@v4
+        if: steps.key.outputs.present
+      - uses: oven-sh/setup-bun@v2
+        if: steps.key.outputs.present
+        with:
+          bun-version: latest
+      - name: Build
+        if: steps.key.outputs.present
+        run: bun install && bun run build
+      - name: Install Claude Code
+        if: steps.key.outputs.present
+        run: npm install -g @anthropic-ai/claude-code@2.1.312
+      - name: Run skill evals
+        if: steps.key.outputs.present
+        # Pinned models keep scores comparable over time. Exit 1: a case scored below 0.8.
+        # Exit 2: the cost ceiling was hit.
+        run: >
+          claude plugin eval . --trust-plugin --scaffold --allow-tools Write Edit
+          --runs 3 --threshold 0.8 -j 4
+          --model claude-sonnet-5-5 --judge-model claude-sonnet-5-5
+          --max-cost-usd 5 --no-publish --json results.json
+      - name: Upload results
+        if: always() && steps.key.outputs.present
+        uses: actions/upload-artifact@v4
+        with:
+          name: skill-eval-results
+          path: results.json
+          retention-days: 14
