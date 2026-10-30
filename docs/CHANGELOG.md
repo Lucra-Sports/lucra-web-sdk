@@ -11,6 +11,7 @@
 ### Added
 
 - `SDK_VERSION`, the running SDK version, exported from the package entry point so an integration can log which SDK it ships. Every Lucra iframe URL now carries it as an `sdkVersion` query param, which the Lucra app attaches to its error reports, so a support request can be matched to the SDK version that produced it. Additive: no breaking API change.
+- Docs: [If initialization fails, stop](1.2_initialize_client.md#if-initialization-fails-stop), which covers treating an `initialized` event that fires with `{ success: false }`, or never fires, as a likely configuration error and checking that the web key, `tenantId`, and backend key come from one tenant and environment. Headless deposit examples now open `popup().deposit()` from a click handler. The starting-point skill adds a "Before you call it done" self-test and says to use only `LucraClient` for events. No API change.
 
 ## [v1.14.0]
 
