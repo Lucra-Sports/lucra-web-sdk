@@ -56,6 +56,7 @@ export type {
   LucraRecreationalGameResult,
   LucraCancelRecreationalGameResult,
   LucraApiErrorBody,
+  LucraSdkDiagnosticBody,
   LucraIsLoggedInResponse,
   LucraNavigateRequest,
   LucraPage,

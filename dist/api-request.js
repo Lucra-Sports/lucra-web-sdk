@@ -12,9 +12,10 @@ export const cancelReason = (name) => `Cancelled by new ${name} request`;
  * a new `send` cancels any pending request instead. With `rejectWhilePending` a new `send`
  * is refused with `NOT_ALLOWED` and posts nothing, so a write already running is never
  * duplicated. A `sendMessage` that throws (e.g. a payload that cannot be cloned) rejects
- * that request at once instead of leaving it to time out.
+ * that request at once instead of leaving it to time out. `onTimeout` runs once per request
+ * that times out, before its promise rejects.
  */
-export function createApiRequest({ type, responseType, name, sendMessage, singleFlight = false, rejectWhilePending = false, timeoutMs = API_REQUEST_TIMEOUT_MS, }) {
+export function createApiRequest({ type, responseType, name, sendMessage, singleFlight = false, rejectWhilePending = false, timeoutMs = API_REQUEST_TIMEOUT_MS, onTimeout, }) {
     // Insertion order is send order, which the id-less fallback relies on.
     const pending = new Map();
     const take = (requestId) => {
@@ -40,7 +41,18 @@ export function createApiRequest({ type, responseType, name, sendMessage, single
             }
             const requestId = String(++lastRequestId);
             return new Promise((resolve, reject) => {
-                const timer = setTimeout(() => take(requestId)?.reject("Timeout"), timeoutMs);
+                const timer = setTimeout(() => {
+                    const entry = take(requestId);
+                    if (!entry)
+                        return;
+                    try {
+                        onTimeout?.(timeoutMs);
+                    }
+                    catch {
+                        // Reporting is best-effort; the request must still reject.
+                    }
+                    entry.reject("Timeout");
+                }, timeoutMs);
                 pending.set(requestId, { resolve, reject, timer });
                 try {
                     sendMessage({ type, body: body ?? null, requestId });

@@ -30,6 +30,7 @@ import {
   type LucraMinigamesTriggerInput,
   type LucraStartMinigamesSessionResponse,
   type LucraInitializedBody,
+  type LucraSdkDiagnosticBody,
   type LucraDialog,
   type LucraPopup,
   type LucraPopupResult,
@@ -802,6 +803,16 @@ export class LucraClientBase extends EventTarget {
     return this;
   }
 
+  // A timed-out api.* request otherwise only rejects in the host page, where Lucra never
+  // sees it. Posted like any fire-and-forget message: it reaches nothing if the iframe is
+  // gone, and a web app older than this message type ignores it.
+  private _reportDiagnostic(body: Omit<LucraSdkDiagnosticBody, "sdkVersion">) {
+    this._sendMessage({
+      type: MessageTypeToLucraClient.sdkDiagnostic,
+      body: { ...body, sdkVersion: SDK_VERSION },
+    });
+  }
+
   protected _matchupInviteUrlResponse(data: LucraDeepLinkResponse) {
     this._sendMessage({
       type: MessageTypeToLucraClient.matchupInviteUrlResponse,
@@ -823,6 +834,8 @@ export class LucraClientBase extends EventTarget {
       responseType,
       name,
       sendMessage: (message) => this._sendMessage(message),
+      onTimeout: (timeoutMs) =>
+        this._reportDiagnostic({ kind: "requestTimeout", requestType: type, timeoutMs }),
       ...options,
     });
     this._apiRequests.push(request);

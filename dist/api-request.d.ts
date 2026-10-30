@@ -16,9 +16,10 @@ export declare const cancelReason: (name: string) => string;
  * a new `send` cancels any pending request instead. With `rejectWhilePending` a new `send`
  * is refused with `NOT_ALLOWED` and posts nothing, so a write already running is never
  * duplicated. A `sendMessage` that throws (e.g. a payload that cannot be cloned) rejects
- * that request at once instead of leaving it to time out.
+ * that request at once instead of leaving it to time out. `onTimeout` runs once per request
+ * that times out, before its promise rejects.
  */
-export declare function createApiRequest<TResponse, TBody = void>({ type, responseType, name, sendMessage, singleFlight, rejectWhilePending, timeoutMs, }: {
+export declare function createApiRequest<TResponse, TBody = void>({ type, responseType, name, sendMessage, singleFlight, rejectWhilePending, timeoutMs, onTimeout, }: {
     type: MessageTypeToLucraClient;
     responseType: LucraClientMessageType;
     name: string;
@@ -26,4 +27,5 @@ export declare function createApiRequest<TResponse, TBody = void>({ type, respon
     singleFlight?: boolean;
     rejectWhilePending?: boolean;
     timeoutMs?: number;
+    onTimeout?: (timeoutMs: number) => void;
 }): ApiRequest<TResponse, TBody>;

@@ -123,6 +123,7 @@ export declare class LucraClientBase extends EventTarget {
     hide(): LucraClientBase;
     show(): LucraClientBase;
     protected _sendMessage(message: any): this;
+    private _reportDiagnostic;
     protected _matchupInviteUrlResponse(data: LucraDeepLinkResponse): void;
     private _request;
     protected _settleApiResponse(responseType: string, data: unknown, requestId?: string): boolean;

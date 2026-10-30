@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, mock, spyOn } from "bun:test";
+import { describe, it, expect, beforeEach, afterEach, mock, spyOn, jest } from "bun:test";
 import { LucraClient } from "./v1.ts";
 import { createPopup } from "./popup.ts";
 import { LucraUserNotLoggedIn, LucraClientNotOpen, LucraApiError } from "./errors.ts";
@@ -313,6 +313,38 @@ describe("LucraClient.on / off", () => {
     await loginSuccess(client);
 
     expect(enableExitCalls(sendMessage)).toHaveLength(0);
+  });
+});
+
+describe("LucraClient request timeout diagnostics", () => {
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it("posts an sdkDiagnostic to the iframe when an api request times out", async () => {
+    const client = markOpen(LucraClient.initialize(baseConfig));
+    const sendMessage = mock((_message: any) => {});
+    (client as any)._sendMessage = sendMessage;
+    markInitialized(client);
+
+    // Fake timers from before the send, so the request's own 15s timer is a fake one.
+    // The send waits only on the resolved init promise, so microtasks are enough.
+    jest.useFakeTimers();
+    const pending = client.api.tournaments().catch((reason) => reason);
+    for (let i = 0; i < 5; i++) await Promise.resolve();
+    jest.advanceTimersByTime(15_000);
+    jest.useRealTimers();
+
+    expect(await pending).toBe("Timeout");
+    expect(sendMessage).toHaveBeenLastCalledWith({
+      type: "sdkDiagnostic",
+      body: {
+        kind: "requestTimeout",
+        requestType: "tournamentsRequest",
+        timeoutMs: 15_000,
+        sdkVersion: SDK_VERSION,
+      },
+    });
   });
 });
 
