@@ -64,23 +64,28 @@ function checkSkills() {
   console.log("\n== Skill frontmatter");
   let ok = true;
   for (const file of new Glob("docs/skills/*/SKILL.md").scanSync(root)) {
-    const fm = readFileSync(join(root, file), "utf8").match(/^---\n([\s\S]*?)\n---\n/)?.[1];
+    // Normalize CRLF so a Windows checkout parses the same as LF.
+    const text = readFileSync(join(root, file), "utf8").replace(/\r\n/g, "\n");
+    const fm = text.match(/^---\n([\s\S]*?)\n---(?:\n|$)/)?.[1];
     const folder = file.split("/").at(-2);
     const fail = (message: string) => {
       console.error(`${file}:1: ${message}`);
       ok = false;
     };
-    if (!fm) {
+    if (fm === undefined) {
       fail("Missing frontmatter");
       continue;
     }
-    // `[ \t]` not `\s`: an empty key must not borrow the next line's value.
-    const name = fm.match(/^name:[ \t]*(\S.*)$/m)?.[1].trim();
-    if (name !== folder) fail(`name "${name ?? ""}" does not match folder "${folder}"`);
-    // Inline value, or a block scalar (`>` / `|`) followed by an indented non-empty line.
-    if (!/^description:[ \t]*(?![>|][-+]?[ \t]*$)\S|^description:[ \t]*[>|][-+]?[ \t]*\n[ \t]+\S/m.test(fm)) {
-      fail("Missing description");
+    let data: unknown;
+    try {
+      data = Bun.YAML.parse(fm);
+    } catch (e) {
+      fail(`Invalid frontmatter YAML: ${e instanceof Error ? e.message : e}`);
+      continue;
     }
+    const { name, description } = (data && typeof data === "object" ? data : {}) as Record<string, unknown>;
+    if (name !== folder) fail(`name "${typeof name === "string" ? name : ""}" does not match folder "${folder}"`);
+    if (typeof description !== "string" || !description.trim()) fail("Missing description");
   }
   if (ok) console.log("OK");
   return ok;
