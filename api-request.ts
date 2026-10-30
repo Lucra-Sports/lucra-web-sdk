@@ -94,7 +94,11 @@ export function createApiRequest<TResponse, TBody = void>({
         const timer = setTimeout(() => {
           const entry = take(requestId);
           if (!entry) return;
-          onTimeout?.(timeoutMs);
+          try {
+            onTimeout?.(timeoutMs);
+          } catch {
+            // Reporting is best-effort; the request must still reject.
+          }
           entry.reject("Timeout");
         }, timeoutMs);
         pending.set(requestId, { resolve, reject, timer });

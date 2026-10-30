@@ -197,6 +197,17 @@ describe("createApiRequest", () => {
     expect(order).toEqual(["onTimeout 20", "rejected Timeout"]);
   });
 
+  it("still rejects a timed-out request when onTimeout throws", async () => {
+    const onTimeout = mock((_timeoutMs: number) => {
+      throw new Error("report failed");
+    });
+    const { request } = setup({ timeoutMs: 20, onTimeout });
+
+    await expect(request.send({ matchupId: "abc" })).rejects.toBe("Timeout");
+    expect(onTimeout).toHaveBeenCalledTimes(1);
+    expect(request.hasPending()).toBe(false);
+  });
+
   it("does not call onTimeout for a request that settled in time", async () => {
     const onTimeout = mock((_timeoutMs: number) => {});
     const { request, sentId } = setup({ timeoutMs: 20, onTimeout });
