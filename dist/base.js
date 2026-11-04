@@ -15,6 +15,12 @@ const ISLOGGEDIN_CANCELLED = cancelReason("isLoggedIn");
 // write's outcome before retrying (see the docs); the message stays neutral so it reads
 // correctly for reads too.
 const CLOSED_WHILE_PENDING = "LucraClient was closed while the request was pending.";
+// How long `logout()` lets `ready` wait for `logoutComplete` before asking the Lucra app
+// about the auth state anyway. The event is the signal; this bound is only there so an
+// app build that predates it leaves `ready` settling late instead of never. It is not an
+// estimate of how long a sign-out takes: a Lucra app that sends the event releases the
+// wait the moment the sign-out is really done, however long that took.
+const LOGOUT_COMPLETE_TIMEOUT_MS = 15_000;
 const MATCHUP_DETAILS_SUBSCRIPTION_CANCELLED = "Cancelled by cancelMatchupDetailsSubscription";
 // Shared by open(), redirect(), and dialog() deposit (dialog routes through
 // redirect), so one key warns once for all three.
@@ -69,6 +75,9 @@ export class LucraClientBase extends EventTarget {
     _warnedDeprecations = new Set();
     _readyResolve;
     _readyReject;
+    // Open while a sign-out requested through `logout()` has not been reported finished.
+    // `_createReadyPromise` holds the login check behind it; see `logout()`.
+    _logoutGate = null;
     _initializedPromise = this._createInitializedPromise();
     _readyPromise = this._createReadyPromise();
     _createInitializedPromise() {
@@ -81,7 +90,13 @@ export class LucraClientBase extends EventTarget {
     // It rejects with the initialization failure body if initialization fails, or
     // with LucraUserNotLoggedIn if the user is not logged in.
     _createReadyPromise() {
-        const promise = this._initializedPromise
+        // A sign-out in flight holds the login check back until the Lucra app reports it
+        // finished: asking before then is answered from the session being torn down.
+        const gate = this._logoutGate;
+        const start = gate
+            ? this._initializedPromise.then(() => gate.promise)
+            : this._initializedPromise;
+        const promise = start
             .then(() => this._assertLoggedIn())
             .catch((reason) => {
             // A newer isLoggedIn request superseded ours (e.g. `loginSuccess`
@@ -111,8 +126,60 @@ export class LucraClientBase extends EventTarget {
             throw new LucraUserNotLoggedIn();
         }
     }
+    // Opens the wait `ready` sits behind until the Lucra app reports the sign-out finished.
+    _openLogoutGate() {
+        let settle;
+        const promise = new Promise((resolve, reject) => {
+            // No `logoutComplete` came back. Fall through to the login check rather than wait
+            // forever on an app build that does not send the event: by then the sign-out has
+            // long since finished or failed, and the app's own answer -- including an interim
+            // `pending` while it is still settling -- is better evidence than any assumption
+            // the SDK could make here.
+            const timer = setTimeout(() => this._closeLogoutGate(), LOGOUT_COMPLETE_TIMEOUT_MS);
+            settle = (reason) => {
+                clearTimeout(timer);
+                if (reason === undefined)
+                    resolve();
+                else
+                    reject(reason);
+            };
+        });
+        // The `ready` chain built right after this adopts the gate, except when initialization
+        // rejects first and the chain never reaches it. Mark it handled so a `close()` that
+        // fails the gate in that window is not an unhandled rejection.
+        promise.catch(() => { });
+        this._logoutGate = { promise, settle };
+    }
+    // Releases the wait, or fails it with `reason`. A no-op when no sign-out is in flight.
+    _closeLogoutGate(reason) {
+        const gate = this._logoutGate;
+        this._logoutGate = null;
+        gate?.settle(reason);
+    }
     get ready() {
         return this._readyPromise;
+    }
+    /**
+     * Resolves `true` when a Lucra user is signed in and `false` when none is, so auth can
+     * be checked without awaiting `ready` and catching `LucraUserNotLoggedIn`. Rejects with
+     * `LucraClientNotOpen` before `open()` or after `close()` (there is no Lucra session to
+     * ask about), and with the initialization failure body if initialization failed.
+     *
+     * Like `ready`, it waits out an auth state that has not settled yet and a sign-out in
+     * flight, so it answers about the session the user will actually have, not the one
+     * being restored or torn down.
+     */
+    async isLoggedIn() {
+        this._assertOpen("call isLoggedIn()");
+        // Answers from `ready` rather than sending a second isLoggedIn request. That request is
+        // single-flight, so a concurrent one would cancel the one `ready` is waiting on; going
+        // through `ready` also means this and `ready` can never disagree, and it inherits the
+        // interim `pending` protocol and the sign-out gate for free.
+        return this._readyPromise.then(() => true, (reason) => {
+            if (reason instanceof LucraUserNotLoggedIn)
+                return false;
+            throw reason;
+        });
     }
     get isInitialized() {
         return this._isInitialized;
@@ -291,8 +358,34 @@ export class LucraClientBase extends EventTarget {
             return this;
         }
     }
+    /**
+     * Sends the Lucra iframe through Lucra's sign-out and invalidates the SDK's cached auth
+     * state. Returns the client for chaining; the sign-out itself finishes asynchronously
+     * and reports back as the `logoutComplete` event, which is what to await before
+     * `destroy()` or `close()`.
+     */
     logout() {
-        return this._redirect("logout");
+        // Navigate first. `_redirect` throws LucraClientNotOpen before an iframe exists, and a
+        // sign-out that was never requested must not leave `ready` waiting on one.
+        const client = this._redirect("logout");
+        // The cached user is stale the moment a sign-out is asked for.
+        this._user = null;
+        // Rebuild `ready` so a later `await ready` reflects the sign-out instead of handing
+        // back the resolution cached from before it. The rebuilt promise deliberately does
+        // NOT ask the app whether anyone is logged in yet: the app answers from its own auth
+        // state, which has not flipped at the instant this navigation is posted, so asking
+        // now can be answered `isLoggedIn: true` from the very session being torn down and
+        // re-resolve `ready` from exactly the state the rebuild exists to discard. Instead it
+        // waits behind `_logoutGate`, which `logoutComplete` releases once the app really has
+        // signed the user out, and only then runs the login check.
+        //
+        // A second logout() while one is in flight is the same sign-out: keep the open gate
+        // rather than strand whoever is awaiting the promise built behind it.
+        if (!this._logoutGate) {
+            this._openLogoutGate();
+            this._readyPromise = this._createReadyPromise();
+        }
+        return client;
     }
     redirect() {
         return {
@@ -496,6 +589,9 @@ export class LucraClientBase extends EventTarget {
         // Pending api requests and a `ready` still waiting for init would otherwise time out
         // or hang. The reject is a no-op once initialization settled.
         this._readyReject(new LucraClientNotOpen(CLOSED_WHILE_PENDING));
+        // A `ready` already past init and waiting on a sign-out that can no longer be
+        // reported finished fails the same way, instead of hanging until the gate's bound.
+        this._closeLogoutGate(new LucraClientNotOpen(CLOSED_WHILE_PENDING));
         for (const request of this._apiRequests) {
             request.rejectAll(new LucraClientNotOpen(CLOSED_WHILE_PENDING));
         }
@@ -600,7 +696,32 @@ export class LucraClientBase extends EventTarget {
     // rejection is cached on `_readyPromise`. Once the user logs in, rebuild the
     // promise so it re-runs `_assertLoggedIn` against the now-authenticated session.
     _handleLoginSuccess() {
+        // Someone is signed in, so a sign-out still waiting to be reported finished is moot.
+        // Fail its gate rather than release it: releasing would let the promise waiting behind
+        // it run a login check of its own, which single-flight would make cancel the one the
+        // promise being built right below is about to send. The cancellation sentinel is the
+        // same one that case already uses, so the gated promise defers to the rebuilt one
+        // instead of sending anything. Without this the gate outlives the login and holds
+        // `ready` back until its bound expires.
+        this._closeLogoutGate(ISLOGGEDIN_CANCELLED);
         this._readyPromise = this._createReadyPromise();
+    }
+    // The Lucra app finished signing the user out. Drop the cached user and put `ready`
+    // back into an unsettled state so a re-await reflects the signed-out session instead of
+    // a cached resolution, mirroring what `_handleLoginSuccess` does on the way in.
+    //
+    // When `logout()` opened a gate, releasing it is the rebuild: the promise waiting behind
+    // it runs its login check now, against an auth state that has actually flipped. A
+    // sign-out the user started inside Lucra's own UI never went through `logout()` and has
+    // no gate, so rebuild here instead.
+    _handleLogoutComplete() {
+        this._user = null;
+        if (this._logoutGate) {
+            this._closeLogoutGate();
+        }
+        else {
+            this._readyPromise = this._createReadyPromise();
+        }
     }
     // Stops delivering matchupDetailsUpdated and supersedes any subscribe in progress.
     _resetMatchupDetailsSubscription() {

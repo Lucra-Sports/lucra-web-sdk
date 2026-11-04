@@ -13,6 +13,7 @@ export declare enum LucraClientMessageType {
     kycComplete = "kycComplete",
     locationGranted = "locationGranted",
     loginSuccess = "loginSuccess",
+    logoutComplete = "logoutComplete",
     matchupAccepted = "matchupAccepted",
     matchupCanceled = "matchupCanceled",
     matchupCreated = "matchupCreated",
@@ -165,6 +166,7 @@ export type LucraEventMap = {
     navigationEvent: LucraNavigationEventBody;
     claimReward: LucraClaimRewardBody;
     loginSuccess: LucraLoginSuccessBody;
+    logoutComplete: void;
     exitLucra: void;
     kycComplete: void;
     locationGranted: void;

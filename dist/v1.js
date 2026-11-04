@@ -87,6 +87,9 @@ export class LucraClient extends LucraClientBase {
             this._handleLoginSuccess();
             this._replayEnableExitLucra();
         }
+        if (event.data.type === LucraClientMessageType.logoutComplete) {
+            this._handleLogoutComplete();
+        }
         if (event.data.type === LucraClientMessageType.exitLucra &&
             this._closeActiveDialog()) {
             return;

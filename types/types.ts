@@ -26,6 +26,7 @@ export enum LucraClientMessageType {
   kycComplete = "kycComplete",
   locationGranted = "locationGranted",
   loginSuccess = "loginSuccess",
+  logoutComplete = "logoutComplete",
   matchupAccepted = "matchupAccepted",
   matchupCanceled = "matchupCanceled",
   matchupCreated = "matchupCreated",
@@ -174,6 +175,9 @@ export type LucraEventMap = {
   navigationEvent: LucraNavigationEventBody;
   claimReward: LucraClaimRewardBody;
   loginSuccess: LucraLoginSuccessBody;
+  // Carries no payload: there is no user left to describe, and the sign-out reason is
+  // the host's own. `client.user` is already null by the time listeners run.
+  logoutComplete: void;
   exitLucra: void;
   kycComplete: void;
   locationGranted: void;

@@ -167,6 +167,12 @@ drive the SDK, not from the SDK itself.
   The iframe is removed and mounted again, so expect one extra iframe load in development and
   gate on `initialized` / `ready` again after the remount. Calls that need the iframe and run
   between `close()` and the remount throw or reject with `LucraClientNotOpen`.
+- **Signing the user out**: `client.logout()` returns immediately; the sign-out finishes inside the
+  iframe and reports back as `logoutComplete`. Tear Lucra down in that listener, never after a
+  timer, and subscribe before calling `logout()`. `client.user` is `null` from the call, and `ready`
+  stays pending until the event and then rejects with `LucraUserNotLoggedIn`, so drive signed-out UI
+  off the event rather than off `ready` settling. `client.isLoggedIn()` answers the same question as
+  a boolean. See [When your user signs out](../../1.2_initialize_client.md#when-your-user-signs-out).
 - **Module re-execution (hot reload, dev servers)**: `LucraClient.initialize()` throws if the
   client already exists. Call it once at your app's entry point, not inside a component or a
   module that hot-reloads, and use `LucraClient.getInstance()` everywhere else.
