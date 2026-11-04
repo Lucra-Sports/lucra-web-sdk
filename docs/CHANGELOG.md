@@ -8,6 +8,7 @@
 
 ### Changed
 
+- **Behavior change:** `open()` now applies its `{ hidden }` option on every call, not only on the first one. Previously, once the iframe existed, a later `open()` navigated it and left its visibility exactly as it was, so `open(element, phoneNumber, { hidden: true })` could not re-hide an iframe that a [dialog](1.3_lucraflows.md#dialogs), an explicit `show()`, or `open(...).login()` had made visible, and the Lucra surface stayed on screen for the rest of the page session. A repeat `open(..., { hidden: true })` now hides the iframe, and a repeat `open()` with `{ hidden: false }` or with the option omitted shows it, which is what omitting it already did on the call that creates the iframe. If your integration opened Lucra visibly once and then relied on a later bare `open()` leaving it hidden, pass `{ hidden: true }` on that call, or call `hide()` after it. `show()`, `hide()`, `dialog()`, `redirect()`, and `open(...).login()` are unchanged. See [Lucra Flows: Visibility and Placement](1.3_lucraflows.md#visibility-and-placement).
 - Docs: [Initializing the LucraClient](1.2_initialize_client.md#when-your-user-signs-out) now says to call `client.logout()` when your user signs out of your app. `destroy()`, which the guide used to suggest on logout, does not sign the user out of Lucra, so the next user on that device opened Lucra as the previous one. [Headless on Web](2.0_headless.md#lifecycle-and-gating) lists `client.logout()`. No API change.
 
 ### Fixed
