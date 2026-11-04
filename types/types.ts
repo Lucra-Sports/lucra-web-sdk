@@ -771,8 +771,21 @@ export type LucraApiRequestErrorBody = LucraApiErrorBody & {
   requestType: MessageTypeToLucraClient;
 };
 
+// Body of an isLoggedInRequest. `awaitsPending` declares that this SDK understands an
+// interim `pending` answer, so the web-app may defer instead of answering a transient
+// `isLoggedIn: false`. It is a per-request capability negotiation: the web-app deploys
+// independently of the SDK version a client pins, and an already-shipped SDK sends no
+// body at all, so it must never be handed an answer it would read as a final logged-out.
+export type LucraIsLoggedInRequestBody = {
+  awaitsPending?: boolean;
+};
+
+// `pending: true` means auth has not settled yet (a session still being restored, say),
+// and the web-app will answer again on the same requestId once it has. The web-app only
+// sets it on a request that carried `awaitsPending`, so an older SDK never sees it.
 export type LucraIsLoggedInResponse = {
   isLoggedIn: boolean;
+  pending?: boolean;
 };
 
 export type LucraMinigamesTriggerInput = {

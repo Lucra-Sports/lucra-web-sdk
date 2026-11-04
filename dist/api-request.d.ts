@@ -17,9 +17,13 @@ export declare const cancelReason: (name: string) => string;
  * is refused with `NOT_ALLOWED` and posts nothing, so a write already running is never
  * duplicated. A `sendMessage` that throws (e.g. a payload that cannot be cloned) rejects
  * that request at once instead of leaving it to time out. `onTimeout` runs once per request
- * that times out, before its promise rejects.
+ * that times out, before its promise rejects. With `interim` a response the predicate
+ * accepts is treated as "not the answer yet": it leaves the request pending for the real
+ * response the web-app will send on the same `requestId`. `maxTimeoutMs` bounds that from
+ * the original `send`: past it an interim no longer extends the request, so a responder
+ * stuck answering "not yet" still times out instead of hanging the caller's promise.
  */
-export declare function createApiRequest<TResponse, TBody = void>({ type, responseType, name, sendMessage, singleFlight, rejectWhilePending, timeoutMs, onTimeout, }: {
+export declare function createApiRequest<TResponse, TBody = void>({ type, responseType, name, sendMessage, singleFlight, rejectWhilePending, timeoutMs, onTimeout, interim, maxTimeoutMs, }: {
     type: MessageTypeToLucraClient;
     responseType: LucraClientMessageType;
     name: string;
@@ -28,4 +32,6 @@ export declare function createApiRequest<TResponse, TBody = void>({ type, respon
     rejectWhilePending?: boolean;
     timeoutMs?: number;
     onTimeout?: (timeoutMs: number) => void;
+    interim?: (data: TResponse) => boolean;
+    maxTimeoutMs?: number;
 }): ApiRequest<TResponse, TBody>;

@@ -50,7 +50,15 @@ export class LucraClientBase extends EventTarget {
     _cancelRecreationalGameRequest = this._request(MessageTypeToLucraClient.cancelRecreationalGameRequest, LucraClientMessageType.cancelRecreationalGameResponse, "cancelRecreationalGame", { rejectWhilePending: true });
     _joinTournamentRequest = this._request(MessageTypeToLucraClient.joinTournamentRequest, LucraClientMessageType.joinTournamentResponse, "joinTournament", { singleFlight: true });
     _autoJoinTournamentsRequest = this._request(MessageTypeToLucraClient.autoJoinTournamentsRequest, LucraClientMessageType.autoJoinedTournaments, "autoJoinTournaments", { singleFlight: true });
-    _isLoggedInRequest = this._request(MessageTypeToLucraClient.isLoggedInRequest, LucraClientMessageType.isLoggedInResponse, "isLoggedIn", { singleFlight: true });
+    _isLoggedInRequest = this._request(MessageTypeToLucraClient.isLoggedInRequest, LucraClientMessageType.isLoggedInResponse, "isLoggedIn", 
+    // A real auth round trip is sub-second, and 60s is far past any genuine session
+    // restore, so the absolute deadline only ever fires on a responder stuck reporting
+    // `pending`. It is there to guarantee `ready` settles, not to be fast.
+    {
+        singleFlight: true,
+        interim: (data) => data.pending === true,
+        maxTimeoutMs: 60_000,
+    });
     triggerFrames = new Map();
     _user = null;
     _isInitialized = false;
@@ -94,7 +102,11 @@ export class LucraClientBase extends EventTarget {
         return promise;
     }
     async _assertLoggedIn() {
-        const { isLoggedIn } = await this._isLoggedInRequest.send();
+        // `awaitsPending` tells the web-app this SDK can wait, so it answers `pending` while
+        // auth is still settling instead of a transient `isLoggedIn: false`. Only the final
+        // answer settles the request, so a restorable session no longer rejects `ready` and
+        // sends an already-signed-in user to the login screen our docs tell hosts to present.
+        const { isLoggedIn } = await this._isLoggedInRequest.send({ awaitsPending: true });
         if (!isLoggedIn) {
             throw new LucraUserNotLoggedIn();
         }

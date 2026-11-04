@@ -1388,6 +1388,30 @@ describe("LucraClient.api.subscribeToMatchupDetails", () => {
   });
 });
 
+// Drives `ready` up to the point where the isLoggedIn request is in flight, and hands
+// back the id it was sent with so an interim and a final answer can be delivered on the
+// same request, the way the Lucra app answers one. `settled` tracks the promise without
+// awaiting it, so a test can assert `ready` is still unsettled.
+async function startLoginCheck(client: LucraClient) {
+  const sendMessage = mock((_message: any) => {});
+  (client as any)._sendMessage = sendMessage;
+  const ready = client.ready;
+  const settled = { state: "pending" };
+  ready.then(
+    () => (settled.state = "resolved"),
+    () => (settled.state = "rejected")
+  );
+
+  await deliver(client, { type: "initialized", data: { success: true } });
+  await flush();
+
+  const requestId = sendMessage.mock.calls
+    .map(([message]) => message)
+    .find((message) => message.type === "isLoggedInRequest")?.requestId as string;
+  expect(requestId).toEqual(expect.any(String));
+  return { ready, requestId, settled };
+}
+
 describe("LucraClient.ready", () => {
   it("rejects with LucraClientNotOpen when close() runs while pending", async () => {
     for (const initialized of [false, true]) {
@@ -1406,7 +1430,7 @@ describe("LucraClient.ready", () => {
     }
   });
 
-  it("sends an isLoggedInRequest once initialization succeeds", async () => {
+  it("sends an isLoggedInRequest declaring it awaits a pending answer once initialization succeeds", async () => {
     const client = LucraClient.initialize(baseConfig);
     const sendMessage = mock(() => {});
     (client as any)._sendMessage = sendMessage;
@@ -1419,7 +1443,7 @@ describe("LucraClient.ready", () => {
 
     expect(sendMessage).toHaveBeenCalledWith({
       type: "isLoggedInRequest",
-      body: null,
+      body: { awaitsPending: true },
       requestId: expect.any(String),
     });
   });
@@ -1454,6 +1478,99 @@ describe("LucraClient.ready", () => {
     });
 
     await expect(ready).rejects.toBeInstanceOf(LucraUserNotLoggedIn);
+  });
+
+  it("stays unsettled while the app answers that auth has not settled yet", async () => {
+    const client = markOpen(LucraClient.initialize(baseConfig));
+    const { ready, requestId, settled } = await startLoginCheck(client);
+
+    await deliver(client, {
+      type: "isLoggedInResponse",
+      data: { isLoggedIn: false, pending: true },
+      requestId,
+    });
+    await flush();
+
+    expect(settled.state).toBe("pending");
+
+    // Settle it so the request is not left pending past the test.
+    client.close();
+    await ready.catch(() => {});
+  });
+
+  it("resolves when the final answer on the same request says the user is logged in", async () => {
+    const client = LucraClient.initialize(baseConfig);
+    const { ready, requestId, settled } = await startLoginCheck(client);
+
+    await deliver(client, {
+      type: "isLoggedInResponse",
+      data: { isLoggedIn: false, pending: true },
+      requestId,
+    });
+    await flush();
+    expect(settled.state).toBe("pending");
+
+    await deliver(client, {
+      type: "isLoggedInResponse",
+      data: { isLoggedIn: true },
+      requestId,
+    });
+
+    await expect(ready).resolves.toBeUndefined();
+  });
+
+  it("rejects with LucraUserNotLoggedIn when the final answer on the same request says logged out", async () => {
+    const client = LucraClient.initialize(baseConfig);
+    const { ready, requestId, settled } = await startLoginCheck(client);
+
+    await deliver(client, {
+      type: "isLoggedInResponse",
+      data: { isLoggedIn: false, pending: true },
+      requestId,
+    });
+    await flush();
+    expect(settled.state).toBe("pending");
+
+    await deliver(client, {
+      type: "isLoggedInResponse",
+      data: { isLoggedIn: false },
+      requestId,
+    });
+
+    await expect(ready).rejects.toBeInstanceOf(LucraUserNotLoggedIn);
+  });
+
+  it("rejects on a final isLoggedIn: false without waiting for a second answer", async () => {
+    const client = LucraClient.initialize(baseConfig);
+    const { ready, requestId, settled } = await startLoginCheck(client);
+
+    await deliver(client, {
+      type: "isLoggedInResponse",
+      data: { isLoggedIn: false },
+      requestId,
+    });
+    await flush();
+
+    expect(settled.state).toBe("rejected");
+    await expect(ready).rejects.toBeInstanceOf(LucraUserNotLoggedIn);
+  });
+
+  it("rejects with LucraClientNotOpen when close() runs while auth is still pending", async () => {
+    const client = markOpen(LucraClient.initialize(baseConfig));
+    const { ready, requestId } = await startLoginCheck(client);
+
+    await deliver(client, {
+      type: "isLoggedInResponse",
+      data: { isLoggedIn: false, pending: true },
+      requestId,
+    });
+    await flush();
+
+    client.close();
+
+    const caught = await ready.catch((e) => e);
+    expect(caught).toBeInstanceOf(LucraClientNotOpen);
+    expect(caught.message).toContain("closed while the request was pending");
   });
 
   it("rejects when initialization fails", async () => {

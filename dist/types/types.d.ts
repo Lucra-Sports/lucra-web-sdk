@@ -530,8 +530,12 @@ export type LucraApiErrorBody = {
 export type LucraApiRequestErrorBody = LucraApiErrorBody & {
     requestType: MessageTypeToLucraClient;
 };
+export type LucraIsLoggedInRequestBody = {
+    awaitsPending?: boolean;
+};
 export type LucraIsLoggedInResponse = {
     isLoggedIn: boolean;
+    pending?: boolean;
 };
 export type LucraMinigamesTriggerInput = {
     game_id: string;

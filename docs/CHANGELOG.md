@@ -2,9 +2,17 @@
 
 ## [Unreleased]
 
+### Added
+
+- `client.ready` now waits out an auth state that has not settled yet instead of rejecting on it. The SDK's login check carries the new exported body type `LucraIsLoggedInRequestBody` (`{ awaitsPending?: boolean }`), which tells the Lucra app this SDK understands an interim answer, and `LucraIsLoggedInResponse` gained an optional `pending` flag meaning "auth has not settled yet, I will answer again on this request". An interim answer leaves `ready` pending and restarts its 15 second budget, and only a final answer settles it. Extensions stop 60 seconds after the login check was sent: past that absolute deadline an interim no longer extends anything and `ready` rejects with the string `"Timeout"` exactly as it would have before, so a Lucra app stuck reporting `pending` can never hang the promise. The longest `ready` can wait is therefore those 60 seconds plus the 15 second budget already running. A genuinely signed-out user still rejects promptly with `LucraUserNotLoggedIn`, so the login-and-retry recovery is unchanged. The capability is negotiated per request: the Lucra app sends `pending` only to an SDK that asked for it, so an SDK that predates this release still receives the final answer only. See [Headless on Web](2.0_headless.md#lucrausernotloggedin).
+
 ### Changed
 
 - Docs: [Initializing the LucraClient](1.2_initialize_client.md#when-your-user-signs-out) now says to call `client.logout()` when your user signs out of your app. `destroy()`, which the guide used to suggest on logout, does not sign the user out of Lucra, so the next user on that device opened Lucra as the previous one. [Headless on Web](2.0_headless.md#lifecycle-and-gating) lists `client.logout()`. No API change.
+
+### Fixed
+
+- `client.ready` no longer rejects with `LucraUserNotLoggedIn` for a user whose session is still being restored. A single transient "not logged in" answer used to be cached as a final one, so a host following our guidance presented a login screen to a user who was already signed in. It takes a Lucra app build that answers `pending` to take effect; against an older one the behavior is what it was.
 
 ## [v1.15.0]
 
