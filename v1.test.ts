@@ -1409,7 +1409,7 @@ async function startLoginCheck(client: LucraClient) {
     .map(([message]) => message)
     .find((message) => message.type === "isLoggedInRequest")?.requestId as string;
   expect(requestId).toEqual(expect.any(String));
-  return { ready, requestId, settled };
+  return { ready, requestId, settled, sendMessage };
 }
 
 describe("LucraClient.ready", () => {
@@ -1641,6 +1641,88 @@ describe("LucraClient.ready", () => {
     // The originally-awaited promise reflects the real result, not the
     // transient cancellation.
     await expect(initial).resolves.toBeUndefined();
+  });
+});
+
+// These exist to stop the escalation bug being reintroduced silently: `ready` rejected
+// with LucraUserNotLoggedIn for a user whose session was still being restored, and every
+// host that follows our docs answered that by showing a login screen to someone who was
+// already signed in. Nothing asserted the opposite, so any change to the init or auth
+// handshake could bring it back with every test still green.
+//
+// Read each of these as the promise the SDK makes to an integrator, not as a description
+// of the handshake that currently keeps it. The handshake may be replaced; these may not.
+//
+// The contract is five guarantees. Two are below. The other three are already proved, by
+// name, elsewhere in this file, and are listed here so this block reads as the whole
+// contract rather than a fragment of it:
+//
+//   - A genuinely signed-out user is told so promptly, so the login prompt our docs tell
+//     hosts to present still appears: "rejects with LucraUserNotLoggedIn when the user is
+//     not logged in" and "rejects on a final isLoggedIn: false without waiting for a
+//     second answer", both in `LucraClient.ready`.
+//   - After a sign-out, a re-awaited `ready` reflects the signed-out session instead of
+//     the resolution cached from before it: "rejects a re-awaited ready with
+//     LucraUserNotLoggedIn once logoutComplete arrives" and "rebuilds ready on a sign-out
+//     started inside Lucra's own UI", both in `LucraClient.logout`.
+//   - close() while `ready` is waiting rejects it with LucraClientNotOpen, in every state
+//     it can be waiting in: "rejects with LucraClientNotOpen when close() runs while
+//     pending" and "... while auth is still pending" in `LucraClient.ready`, and "rejects
+//     a ready waiting on the sign-out with LucraClientNotOpen when close() runs" in
+//     `LucraClient.logout`.
+describe("LucraClient.ready contract", () => {
+  it("resolves for a user whose session is still being restored, and rejects at no point while it is", async () => {
+    const client = LucraClient.initialize(baseConfig);
+    const { ready, requestId, settled } = await startLoginCheck(client);
+
+    // Restoring a session takes as long as it takes, and the app may report it more than
+    // once. None of those reports is an answer about whether anyone is signed in, so none
+    // of them may settle `ready` -- rejecting on one is the escalation bug itself.
+    for (let report = 0; report < 2; report++) {
+      await deliver(client, {
+        type: "isLoggedInResponse",
+        data: { isLoggedIn: false, pending: true },
+        requestId,
+      });
+      await flush();
+      expect(settled.state).toBe("pending");
+    }
+
+    await deliver(client, {
+      type: "isLoggedInResponse",
+      data: { isLoggedIn: true },
+      requestId,
+    });
+
+    await expect(ready).resolves.toBeUndefined();
+    expect(settled.state).toBe("resolved");
+  });
+
+  it("resolves a wait the user signs in during, rather than stranding it", async () => {
+    const client = LucraClient.initialize(baseConfig);
+    const { ready, requestId, settled, sendMessage } = await startLoginCheck(client);
+
+    // The host is awaiting `ready` while the app is still settling, so the wait is open.
+    await deliver(client, {
+      type: "isLoggedInResponse",
+      data: { isLoggedIn: false, pending: true },
+      requestId,
+    });
+    await flush();
+    expect(settled.state).toBe("pending");
+
+    // The user signs in during that wait.
+    await deliver(client, { type: "loginSuccess", data: {} });
+    await flush();
+    await deliver(client, {
+      type: "isLoggedInResponse",
+      data: { isLoggedIn: true },
+      requestId: lastIsLoggedInRequestId(sendMessage),
+    });
+
+    // The promise the host took before the sign-in is the one that has to resolve. A host
+    // holding it has no way to know it should go and await `ready` again.
+    await expect(ready).resolves.toBeUndefined();
   });
 });
 
