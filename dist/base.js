@@ -187,7 +187,7 @@ export class LucraClientBase extends EventTarget {
                 if (input.matchup_id) {
                     params.set("matchup_id", input.matchup_id);
                 }
-                const path = `app/headless/minigames/${encodeURIComponent(input.game_id)}`;
+                const path = `minigames/headless/${encodeURIComponent(input.game_id)}`;
                 const url = this._buildIframeUrl({ path, params });
                 const iframe = document.createElement("iframe");
                 iframe.src = url.toString();
