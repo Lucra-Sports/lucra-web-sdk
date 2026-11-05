@@ -1,6 +1,6 @@
 import { LucraApiError } from "./errors.js";
 import { LucraApiErrorCode, } from "./types/types.js";
-const API_REQUEST_TIMEOUT_MS = 15000;
+const API_REQUEST_TIMEOUT_MS = 15_000;
 // Unique per page load. crypto.randomUUID needs a secure context, so a counter it is.
 let lastRequestId = 0;
 // Reason a single-flight request is rejected with when a newer one supersedes it.
@@ -23,7 +23,7 @@ export function createApiRequest({ type, responseType, name, sendMessage, single
     // Insertion order is send order, which the id-less fallback relies on.
     const pending = new Map();
     const take = (requestId) => {
-        const id = requestId !== null && requestId !== void 0 ? requestId : pending.keys().next().value;
+        const id = requestId ?? pending.keys().next().value;
         if (id === undefined)
             return undefined;
         const entry = pending.get(id);
@@ -38,7 +38,7 @@ export function createApiRequest({ type, responseType, name, sendMessage, single
         if (!entry)
             return;
         try {
-            onTimeout === null || onTimeout === void 0 ? void 0 : onTimeout(timeoutMs);
+            onTimeout?.(timeoutMs);
         }
         catch {
             // Reporting is best-effort; the request must still reject.
@@ -49,16 +49,14 @@ export function createApiRequest({ type, responseType, name, sendMessage, single
         type,
         responseType,
         send: (body) => {
-            var _a;
             // Single-flight keeps at most one request pending, so cancelling the oldest is enough.
             if (singleFlight)
-                (_a = take()) === null || _a === void 0 ? void 0 : _a.reject(cancelReason(name));
+                take()?.reject(cancelReason(name));
             if (rejectWhilePending && pending.size > 0) {
                 return Promise.reject(new LucraApiError(LucraApiErrorCode.notAllowed, `Another ${name} request is already in progress`));
             }
             const requestId = String(++lastRequestId);
             return new Promise((resolve, reject) => {
-                var _a;
                 pending.set(requestId, {
                     resolve,
                     reject,
@@ -66,22 +64,21 @@ export function createApiRequest({ type, responseType, name, sendMessage, single
                     sentAt: Date.now(),
                 });
                 try {
-                    sendMessage({ type, body: body !== null && body !== void 0 ? body : null, requestId });
+                    sendMessage({ type, body: body ?? null, requestId });
                 }
                 catch (e) {
-                    (_a = take(requestId)) === null || _a === void 0 ? void 0 : _a.reject(e);
+                    take(requestId)?.reject(e);
                 }
             });
         },
         resolve: (data, requestId) => {
-            var _a;
-            const id = requestId !== null && requestId !== void 0 ? requestId : pending.keys().next().value;
+            const id = requestId ?? pending.keys().next().value;
             if (id === undefined)
                 return;
             const entry = pending.get(id);
             if (!entry)
                 return;
-            if (interim === null || interim === void 0 ? void 0 : interim(data)) {
+            if (interim?.(data)) {
                 // An interim answer says the responder is still working and will answer again on
                 // this id, so the request stays pending. The clock restarts from the interim
                 // answer rather than running from the send: a slow but progressing responder
@@ -96,13 +93,12 @@ export function createApiRequest({ type, responseType, name, sendMessage, single
                 }
                 return;
             }
-            (_a = take(id)) === null || _a === void 0 ? void 0 : _a.resolve(data);
+            take(id)?.resolve(data);
         },
-        reject: (reason, requestId) => { var _a; return (_a = take(requestId)) === null || _a === void 0 ? void 0 : _a.reject(reason); },
+        reject: (reason, requestId) => take(requestId)?.reject(reason),
         rejectAll: (reason) => {
-            var _a;
             while (pending.size > 0)
-                (_a = take()) === null || _a === void 0 ? void 0 : _a.reject(reason);
+                take()?.reject(reason);
         },
         hasPending: () => pending.size > 0,
     };

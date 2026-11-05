@@ -31,9 +31,9 @@ const API_ERROR_MESSAGES = {
 // known failure. Inspect `code` to react to the specific reason;
 // docs/2.0_headless.md lists which calls reject with it.
 export class LucraApiError extends Error {
+    code;
     constructor(code, message) {
-        var _a;
-        super((_a = message !== null && message !== void 0 ? message : API_ERROR_MESSAGES[code]) !== null && _a !== void 0 ? _a : code);
+        super(message ?? API_ERROR_MESSAGES[code] ?? code);
         this.name = "LucraApiError";
         this.code = code;
         Object.setPrototypeOf(this, LucraApiError.prototype);

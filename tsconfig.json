@@ -1,12 +1,8 @@
 {
   "compilerOptions": {
-    // Latest type definitions, but emit syntax old bundlers can still parse.
-    // `lib` stays ESNext so type availability is unchanged. `target` is ES2019
-    // because webpack 4 parses with acorn 6 (ES2019 ceiling) and chokes on the
-    // ES2020+ syntax a higher target emits: `?.`, `??`, numeric separators, and
-    // native class fields. Downleveling those needs no runtime polyfill.
+    // Enable latest features
     "lib": ["ESNext", "DOM"],
-    "target": "ES2019",
+    "target": "ESNext",
     "module": "ESNext",
     "moduleDetection": "force",
     "jsx": "react-jsx",
