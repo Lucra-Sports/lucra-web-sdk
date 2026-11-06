@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## [Unreleased]
+## [v1.16.0]
 
 ### Added
 
