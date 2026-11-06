@@ -540,9 +540,16 @@ export class LucraClientBase extends EventTarget {
                     hidden: options?.hidden,
                 });
             },
-            login: () => {
+            login: (options) => {
                 const params = addDefinedSearchParams({ phoneNumber });
                 params.set("login", "true");
+                // Tells the Lucra app to report the login and then stay where it is, rather than
+                // carrying the user on into the app. Without it a headless host has no moment to hide
+                // the iframe in: the app has already navigated and rendered by the time loginSuccess
+                // reaches the host. A Lucra app that predates this ignores the param and behaves as it
+                // always has, so sending it is safe against any deployed build.
+                if (options?.autoClose)
+                    params.set("autoClose", "true");
                 // When the user is not logged in the in-app navigate listener isn't subscribed yet,
                 // so a navigate message would be dropped; reload src to reliably reach the login screen.
                 if (this.iframe) {
