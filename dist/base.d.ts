@@ -20,7 +20,9 @@ type LucraNavigation = {
 };
 type LucraOpenNavigation = LucraNavigation & {
     minigamesTrigger: (input: LucraMinigamesTriggerInput) => Promise<LucraStartMinigamesSessionResponse>;
-    login: () => LucraClientBase;
+    login: (options?: {
+        loginOnly?: boolean;
+    }) => LucraClientBase;
 };
 type LucraDialogNavigation = {
     profile: () => LucraDialog;
@@ -85,12 +87,31 @@ export declare class LucraClientBase extends EventTarget {
     private _warnedDeprecations;
     private _readyResolve;
     private _readyReject;
+    private _logoutGate;
     private _initializedPromise;
     private _readyPromise;
     private _createInitializedPromise;
     private _createReadyPromise;
     private _assertLoggedIn;
+    private _openLogoutGate;
+    private _closeLogoutGate;
     get ready(): Promise<void>;
+    /**
+     * Resolves `true` when a Lucra user is signed in and `false` when none is, so auth can
+     * be checked without awaiting `ready` and catching `LucraUserNotLoggedIn`. Rejects with
+     * `LucraClientNotOpen` before `open()` or after `close()` (there is no Lucra session to
+     * ask about), and with the initialization failure body if initialization failed.
+     *
+     * Like `ready`, it waits out an auth state that has not settled yet and a sign-out in
+     * flight, so it answers about the session the user will actually have, not the one
+     * being restored or torn down.
+     *
+     * It answers from `ready`, so every rejection `ready` can produce reaches the caller
+     * except `LucraUserNotLoggedIn`, which is what `false` means here. That includes the
+     * plain string `"Timeout"` when the login check expires, which is not an Error, so a
+     * caller branching on `instanceof` needs a fallback.
+     */
+    isLoggedIn(): Promise<boolean>;
     get isInitialized(): boolean;
     get user(): SDKLucraUser | null;
     private iframeUrlOrigin;
@@ -103,6 +124,12 @@ export declare class LucraClientBase extends EventTarget {
     private _assertOpen;
     private _warnDeprecated;
     private _redirect;
+    /**
+     * Sends the Lucra iframe through Lucra's sign-out and invalidates the SDK's cached auth
+     * state. Returns the client for chaining; the sign-out itself finishes asynchronously
+     * and reports back as the `logoutComplete` event, which is what to await before
+     * `destroy()` or `close()`.
+     */
     logout(): LucraClientBase;
     redirect(): LucraNavigation;
     dialog(): LucraDialogNavigation;
@@ -132,6 +159,7 @@ export declare class LucraClientBase extends EventTarget {
     protected _handleInitialized(body: LucraInitializedBody): void;
     protected _handleUserInfo(body: SDKLucraUser): void;
     protected _handleLoginSuccess(): void;
+    protected _handleLogoutComplete(): void;
     private _resetMatchupDetailsSubscription;
     protected _isActiveMatchupDetailsUpdate(details: any): boolean;
     protected _resumeMatchupDetailsSubscription(): void;

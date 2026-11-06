@@ -14,6 +14,9 @@ type Pending<TResponse> = {
   resolve: (data: TResponse) => void;
   reject: (reason?: unknown) => void;
   timer: ReturnType<typeof setTimeout>;
+  // When the request was posted, so `maxTimeoutMs` can bound how long interim
+  // responses are allowed to keep extending it.
+  sentAt: number;
 };
 
 export type ApiRequest<TResponse, TBody = void> = {
@@ -40,7 +43,11 @@ export const cancelReason = (name: string) => `Cancelled by new ${name} request`
  * is refused with `NOT_ALLOWED` and posts nothing, so a write already running is never
  * duplicated. A `sendMessage` that throws (e.g. a payload that cannot be cloned) rejects
  * that request at once instead of leaving it to time out. `onTimeout` runs once per request
- * that times out, before its promise rejects.
+ * that times out, before its promise rejects. With `interim` a response the predicate
+ * accepts is treated as "not the answer yet": it leaves the request pending for the real
+ * response the web-app will send on the same `requestId`. `maxTimeoutMs` bounds that from
+ * the original `send`: past it an interim no longer extends the request, so a responder
+ * stuck answering "not yet" still times out instead of hanging the caller's promise.
  */
 export function createApiRequest<TResponse, TBody = void>({
   type,
@@ -51,6 +58,8 @@ export function createApiRequest<TResponse, TBody = void>({
   rejectWhilePending = false,
   timeoutMs = API_REQUEST_TIMEOUT_MS,
   onTimeout,
+  interim,
+  maxTimeoutMs,
 }: {
   type: MessageTypeToLucraClient;
   responseType: LucraClientMessageType;
@@ -60,6 +69,8 @@ export function createApiRequest<TResponse, TBody = void>({
   rejectWhilePending?: boolean;
   timeoutMs?: number;
   onTimeout?: (timeoutMs: number) => void;
+  interim?: (data: TResponse) => boolean;
+  maxTimeoutMs?: number;
 }): ApiRequest<TResponse, TBody> {
   // Insertion order is send order, which the id-less fallback relies on.
   const pending = new Map<string, Pending<TResponse>>();
@@ -74,6 +85,18 @@ export function createApiRequest<TResponse, TBody = void>({
     }
     return entry;
   };
+
+  const startTimer = (requestId: string) =>
+    setTimeout(() => {
+      const entry = take(requestId);
+      if (!entry) return;
+      try {
+        onTimeout?.(timeoutMs);
+      } catch {
+        // Reporting is best-effort; the request must still reject.
+      }
+      entry.reject("Timeout");
+    }, timeoutMs);
 
   return {
     type,
@@ -91,17 +114,12 @@ export function createApiRequest<TResponse, TBody = void>({
       }
       const requestId = String(++lastRequestId);
       return new Promise<TResponse>((resolve, reject) => {
-        const timer = setTimeout(() => {
-          const entry = take(requestId);
-          if (!entry) return;
-          try {
-            onTimeout?.(timeoutMs);
-          } catch {
-            // Reporting is best-effort; the request must still reject.
-          }
-          entry.reject("Timeout");
-        }, timeoutMs);
-        pending.set(requestId, { resolve, reject, timer });
+        pending.set(requestId, {
+          resolve,
+          reject,
+          timer: startTimer(requestId),
+          sentAt: Date.now(),
+        });
         try {
           sendMessage({ type, body: body ?? null, requestId });
         } catch (e) {
@@ -109,7 +127,28 @@ export function createApiRequest<TResponse, TBody = void>({
         }
       });
     },
-    resolve: (data, requestId) => take(requestId)?.resolve(data),
+    resolve: (data, requestId) => {
+      const id = requestId ?? pending.keys().next().value;
+      if (id === undefined) return;
+      const entry = pending.get(id);
+      if (!entry) return;
+      if (interim?.(data)) {
+        // An interim answer says the responder is still working and will answer again on
+        // this id, so the request stays pending. The clock restarts from the interim
+        // answer rather than running from the send: a slow but progressing responder
+        // should not reject with "Timeout", which tells a host nothing it can act on.
+        // Only until the absolute deadline, though. A responder that latches "not yet"
+        // would otherwise extend the wait forever and leave the caller's promise hanging
+        // with nothing to show the user, which is worse than the timeout it replaced.
+        // Past the deadline the interim is ignored and the running timer rejects as usual.
+        if (maxTimeoutMs === undefined || Date.now() - entry.sentAt < maxTimeoutMs) {
+          clearTimeout(entry.timer);
+          entry.timer = startTimer(id);
+        }
+        return;
+      }
+      take(id)?.resolve(data);
+    },
     reject: (reason, requestId) => take(requestId)?.reject(reason),
     rejectAll: (reason) => {
       while (pending.size > 0) take()?.reject(reason);

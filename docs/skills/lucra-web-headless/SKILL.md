@@ -103,6 +103,11 @@ Two points to note:
 - A `ready` rejection (`LucraUserNotLoggedIn`) does **not** mean "immediately force the login
   flow." Pre-auth reads are legitimate, and forcing login reloads the shared iframe. Open the
   destination you actually want; Lucra gates it and shows login itself when needed.
+- When you do present login from a hidden iframe, use `open(el).login({ loginOnly: true })`, then
+  `show()`, then `hide()` on `loginSuccess`. Without the flag Lucra navigates onward after a
+  successful login, so it has already rendered a screen by the time `loginSuccess` reaches you and
+  the user sees it. With it Lucra reports the login and stays put. The SDK never changes visibility
+  on its own, so the `hide()` is still yours.
 
 ## 4. The loop that defines headless on Web: call → typed error → remediation flow → retry
 
@@ -163,6 +168,12 @@ drive the SDK, not from the SDK itself.
   The iframe is removed and mounted again, so expect one extra iframe load in development and
   gate on `initialized` / `ready` again after the remount. Calls that need the iframe and run
   between `close()` and the remount throw or reject with `LucraClientNotOpen`.
+- **Signing the user out**: `client.logout()` returns immediately; the sign-out finishes inside the
+  iframe and reports back as `logoutComplete`. Tear Lucra down in that listener, never after a
+  timer, and subscribe before calling `logout()`. `client.user` is `null` from the call, and `ready`
+  stays pending until the event and then rejects with `LucraUserNotLoggedIn`, so drive signed-out UI
+  off the event rather than off `ready` settling. `client.isLoggedIn()` answers the same question as
+  a boolean. See [When your user signs out](../../1.2_initialize_client.md#when-your-user-signs-out).
 - **Module re-execution (hot reload, dev servers)**: `LucraClient.initialize()` throws if the
   client already exists. Call it once at your app's entry point, not inside a component or a
   module that hot-reloads, and use `LucraClient.getInstance()` everywhere else.

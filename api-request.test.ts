@@ -13,6 +13,8 @@ function setup(
     rejectWhilePending?: boolean;
     timeoutMs?: number;
     onTimeout?: (timeoutMs: number) => void;
+    interim?: (data: string) => boolean;
+    maxTimeoutMs?: number;
   } = {}
 ) {
   const sendMessage = mock((_message: unknown) => {});
@@ -218,6 +220,78 @@ describe("createApiRequest", () => {
     await new Promise((resolve) => setTimeout(resolve, 40));
 
     expect(onTimeout).not.toHaveBeenCalled();
+  });
+
+  it("interim: an interim response leaves the request pending and restarts its timer, the final one settles it", async () => {
+    const onTimeout = mock((_timeoutMs: number) => {});
+    const { request, sentId } = setup({
+      timeoutMs: 400,
+      onTimeout,
+      interim: (data) => data === "not-yet",
+    });
+    const promise = request.send({ matchupId: "a" });
+
+    // The first wait has to land inside the budget and the two together have to exceed it.
+    // The margins are wide so a scheduling stall cannot fire the timer early and fail a
+    // correct implementation.
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    request.resolve("not-yet", sentId(0));
+    // Now past the original 400ms budget: the request survives only because the interim
+    // answer restarted the clock.
+    await new Promise((resolve) => setTimeout(resolve, 250));
+
+    expect(await settledValue(promise)).toBe("pending");
+    expect(request.hasPending()).toBe(true);
+    expect(onTimeout).not.toHaveBeenCalled();
+
+    request.resolve("final", sentId(0));
+    expect(await promise).toBe("final");
+    expect(request.hasPending()).toBe(false);
+  });
+
+  it("maxTimeoutMs: an interim past the absolute deadline does not extend the request, which times out on schedule", async () => {
+    const onTimeout = mock((_timeoutMs: number) => {});
+    const { request, sentId } = setup({
+      timeoutMs: 120,
+      maxTimeoutMs: 50,
+      onTimeout,
+      interim: (data) => data === "not-yet",
+    });
+    const promise = request.send({ matchupId: "a" });
+    // Attached before the timeout fires so the rejection is never briefly unhandled.
+    promise.catch(() => {});
+
+    // Past the 50ms deadline but inside the 120ms budget: the interim is ignored, so the
+    // timer started by `send` still rejects at 120ms rather than being pushed to 200ms.
+    await new Promise((resolve) => setTimeout(resolve, 80));
+    request.resolve("not-yet", sentId(0));
+    await new Promise((resolve) => setTimeout(resolve, 70));
+
+    expect(await settledValue(promise)).toEqual({ reason: "Timeout" });
+    expect(onTimeout).toHaveBeenCalledTimes(1);
+    expect(request.hasPending()).toBe(false);
+  });
+
+  it("maxTimeoutMs: bounds only interim extensions, not a request that never gets one", async () => {
+    const onTimeout = mock((_timeoutMs: number) => {});
+    const { request, sentId } = setup({
+      timeoutMs: 300,
+      maxTimeoutMs: 60,
+      onTimeout,
+      interim: (data) => data === "not-yet",
+    });
+    const promise = request.send({ matchupId: "a" });
+
+    // Well past the deadline: it bounds extensions, so it must not shorten the request's
+    // own budget, and a final response after it still settles the call normally. The wait
+    // sits far from both numbers because this asserts the request is still pending, so a
+    // stall long enough to let the timer fire would fail it.
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    expect(await settledValue(promise)).toBe("pending");
+    expect(onTimeout).not.toHaveBeenCalled();
+
+    request.resolve("final", sentId(0));
+    expect(await promise).toBe("final");
   });
 
   it("calls onTimeout only for the request still pending, not one a newer single-flight request cancelled", async () => {

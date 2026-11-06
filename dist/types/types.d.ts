@@ -13,6 +13,7 @@ export declare enum LucraClientMessageType {
     kycComplete = "kycComplete",
     locationGranted = "locationGranted",
     loginSuccess = "loginSuccess",
+    logoutComplete = "logoutComplete",
     matchupAccepted = "matchupAccepted",
     matchupCanceled = "matchupCanceled",
     matchupCreated = "matchupCreated",
@@ -165,6 +166,7 @@ export type LucraEventMap = {
     navigationEvent: LucraNavigationEventBody;
     claimReward: LucraClaimRewardBody;
     loginSuccess: LucraLoginSuccessBody;
+    logoutComplete: void;
     exitLucra: void;
     kycComplete: void;
     locationGranted: void;
@@ -530,8 +532,12 @@ export type LucraApiErrorBody = {
 export type LucraApiRequestErrorBody = LucraApiErrorBody & {
     requestType: MessageTypeToLucraClient;
 };
+export type LucraIsLoggedInRequestBody = {
+    awaitsPending?: boolean;
+};
 export type LucraIsLoggedInResponse = {
     isLoggedIn: boolean;
+    pending?: boolean;
 };
 export type LucraMinigamesTriggerInput = {
     game_id: string;

@@ -19,6 +19,7 @@ export var LucraClientMessageType;
     LucraClientMessageType["kycComplete"] = "kycComplete";
     LucraClientMessageType["locationGranted"] = "locationGranted";
     LucraClientMessageType["loginSuccess"] = "loginSuccess";
+    LucraClientMessageType["logoutComplete"] = "logoutComplete";
     LucraClientMessageType["matchupAccepted"] = "matchupAccepted";
     LucraClientMessageType["matchupCanceled"] = "matchupCanceled";
     LucraClientMessageType["matchupCreated"] = "matchupCreated";
