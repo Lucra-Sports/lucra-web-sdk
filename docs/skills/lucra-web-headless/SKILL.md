@@ -48,10 +48,6 @@ Everything else about Web headless follows from this:
   same frame `show()`, `redirect()`, and `dialog()` present. Navigating or reloading it (forcing
   `open(...).login()`, or re-parenting it with the deprecated `moveTo()`) kills any in-flight
   request. Dialogs present Lucra UI without a reload.
-- **Carry `{ hidden: true }` on every `open()`, not just the first.** `open()` applies the option
-  each time: a repeat `open(..., { hidden: true })` re-hides a frame that a dialog, a `show()`, or
-  `open(...).login()` made visible, and a repeat `open()` without the option shows it. Omit it on a
-  later open and the invisible frame becomes visible.
 - **Deposits complete in a real popup window**, because Apple Pay won't run in a cross-origin
   iframe. `client.popup().deposit()` opens that popup directly and is the path to use from a
   headless remediation. Navigating the user to the Wallet or Profile screen in the iframe also

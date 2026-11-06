@@ -229,14 +229,6 @@ export class LucraClientBase extends EventTarget {
     }
     _open({ element, path = "", params = new URLSearchParams(), deepLinkUrl, hidden, }) {
         if (this.iframe) {
-            // Apply `hidden` on every open, not just the one that creates the iframe.
-            // Anything that showed the iframe in between (a dialog, an explicit show(),
-            // the login reveal) would otherwise make visibility stick for the rest of
-            // the page session. Omitting the option shows it, matching the creating path.
-            if (hidden)
-                this.hide();
-            else
-                this.show();
             return this._redirect(path, params, deepLinkUrl);
         }
         const url = this._buildIframeUrl({ path, params, deepLinkUrl });
