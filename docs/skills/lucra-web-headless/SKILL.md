@@ -103,7 +103,7 @@ Two points to note:
 - A `ready` rejection (`LucraUserNotLoggedIn`) does **not** mean "immediately force the login
   flow." Pre-auth reads are legitimate, and forcing login reloads the shared iframe. Open the
   destination you actually want; Lucra gates it and shows login itself when needed.
-- When you do present login from a hidden iframe, use `open(el).login({ autoClose: true })`, then
+- When you do present login from a hidden iframe, use `open(el).login({ loginOnly: true })`, then
   `show()`, then `hide()` on `loginSuccess`. Without the flag Lucra navigates onward after a
   successful login, so it has already rendered a screen by the time `loginSuccess` reaches you and
   the user sees it. With it Lucra reports the login and stays put. The SDK never changes visibility

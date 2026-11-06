@@ -548,8 +548,8 @@ export class LucraClientBase extends EventTarget {
                 // the iframe in: the app has already navigated and rendered by the time loginSuccess
                 // reaches the host. A Lucra app that predates this ignores the param and behaves as it
                 // always has, so sending it is safe against any deployed build.
-                if (options?.autoClose)
-                    params.set("autoClose", "true");
+                if (options?.loginOnly)
+                    params.set("loginOnly", "true");
                 // When the user is not logged in the in-app navigate listener isn't subscribed yet,
                 // so a navigate message would be dropped; reload src to reliably reach the login screen.
                 if (this.iframe) {

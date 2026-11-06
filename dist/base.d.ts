@@ -21,7 +21,7 @@ type LucraNavigation = {
 type LucraOpenNavigation = LucraNavigation & {
     minigamesTrigger: (input: LucraMinigamesTriggerInput) => Promise<LucraStartMinigamesSessionResponse>;
     login: (options?: {
-        autoClose?: boolean;
+        loginOnly?: boolean;
     }) => LucraClientBase;
 };
 type LucraDialogNavigation = {

@@ -2143,22 +2143,22 @@ describe("LucraClient deprecations", () => {
   // A headless host reveals its hidden iframe only to present login and hides it again on
   // loginSuccess. Without the flag the Lucra app navigates onward after a successful login, so
   // it has already rendered a screen by the time the host hears about it and can hide.
-  it("login({ autoClose: true }) asks the Lucra app to report the login and stay put", () => {
+  it("login({ loginOnly: true }) asks the Lucra app to report the login and stay put", () => {
     const { client } = openedClient();
 
-    client.open({} as HTMLElement).login({ autoClose: true });
+    client.open({} as HTMLElement).login({ loginOnly: true });
 
     expect((client as any).url).toContain("login=true");
-    expect((client as any).url).toContain("autoClose=true");
+    expect((client as any).url).toContain("loginOnly=true");
   });
 
-  it("login() sends no autoClose, so an integration that never asks for it is unchanged", () => {
+  it("login() sends no loginOnly, so an integration that never asks for it is unchanged", () => {
     const { client } = openedClient();
 
     client.open({} as HTMLElement).login();
 
     expect((client as any).url).toContain("login=true");
-    expect((client as any).url).not.toContain("autoClose");
+    expect((client as any).url).not.toContain("loginOnly");
   });
 
   it("dialog().deposit() warns and shares the deposit key with redirect()", () => {
