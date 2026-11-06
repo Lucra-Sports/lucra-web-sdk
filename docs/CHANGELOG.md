@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## [v1.16.0]
+## [v1.15.0]
 
 ### Added
 
@@ -10,6 +10,7 @@
 - `client.isLoggedIn()`, which resolves `true` or `false` instead of making you await `ready` and catch `LucraUserNotLoggedIn` to read the same thing. It waits out an unsettled auth state and a sign-out in flight exactly as `ready` does, and rejects with `LucraClientNotOpen` before `open()` or after `close()`. It shares `ready`'s single login check rather than issuing one of its own, so the two can never disagree. See [Headless on Web](2.0_headless.md#lifecycle-and-gating).
 
 - `login({ loginOnly: true })` on `open()`, which presents the login screen and then leaves the Lucra app where it is instead of carrying the user on to a destination afterwards. A headless integration reveals its hidden iframe only to show login and hides it again on `loginSuccess`, and without this the app had already navigated and rendered by the time that event arrived, so the user saw a Lucra screen in between. The SDK does not touch the iframe's visibility for this: call `hide()` on `loginSuccess` exactly as before. `login()` with no argument is unchanged, and a Lucra app that predates the flag ignores it and behaves as it does today, so adopting it ahead of that deploy is safe. See [Headless on Web](2.0_headless.md#lifecycle-and-gating).
+- `SDK_VERSION`, the running SDK version, exported from the package entry point so an integration can log which SDK it ships. Every Lucra iframe URL now carries it as an `sdkVersion` query param, which the Lucra app attaches to its error reports, so a support request can be matched to the SDK version that produced it. Additive: no breaking API change.
 
 ### Changed
 
@@ -20,12 +21,6 @@
 
 - `client.ready` is no longer stale after a sign-out. It was assigned only on construction, on `close()`, and on `loginSuccess`, so nothing rebuilt it on the way out: once it had resolved for a signed-in user it kept resolving for the rest of the page session, with no signal that the user had left. Both `logout()` and `logoutComplete` now rebuild it, so a re-await reports the session the user actually has.
 - `client.ready` no longer rejects with `LucraUserNotLoggedIn` for a user whose session is still being restored. A single transient "not logged in" answer used to be cached as a final one, so a host following our guidance presented a login screen to a user who was already signed in. It takes a Lucra app build that answers `pending` to take effect; against an older one the behavior is what it was.
-
-## [v1.15.0]
-
-### Added
-
-- `SDK_VERSION`, the running SDK version, exported from the package entry point so an integration can log which SDK it ships. Every Lucra iframe URL now carries it as an `sdkVersion` query param, which the Lucra app attaches to its error reports, so a support request can be matched to the SDK version that produced it. Additive: no breaking API change.
 
 ## [v1.14.0]
 
