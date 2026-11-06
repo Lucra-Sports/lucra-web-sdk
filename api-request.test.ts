@@ -225,17 +225,20 @@ describe("createApiRequest", () => {
   it("interim: an interim response leaves the request pending and restarts its timer, the final one settles it", async () => {
     const onTimeout = mock((_timeoutMs: number) => {});
     const { request, sentId } = setup({
-      timeoutMs: 150,
+      timeoutMs: 400,
       onTimeout,
       interim: (data) => data === "not-yet",
     });
     const promise = request.send({ matchupId: "a" });
 
-    await new Promise((resolve) => setTimeout(resolve, 80));
+    // The first wait has to land inside the budget and the two together have to exceed it.
+    // The margins are wide so a scheduling stall cannot fire the timer early and fail a
+    // correct implementation.
+    await new Promise((resolve) => setTimeout(resolve, 250));
     request.resolve("not-yet", sentId(0));
-    // Now past the original 150ms budget: the request survives only because the interim
+    // Now past the original 400ms budget: the request survives only because the interim
     // answer restarted the clock.
-    await new Promise((resolve) => setTimeout(resolve, 80));
+    await new Promise((resolve) => setTimeout(resolve, 250));
 
     expect(await settledValue(promise)).toBe("pending");
     expect(request.hasPending()).toBe(true);
@@ -272,16 +275,18 @@ describe("createApiRequest", () => {
   it("maxTimeoutMs: bounds only interim extensions, not a request that never gets one", async () => {
     const onTimeout = mock((_timeoutMs: number) => {});
     const { request, sentId } = setup({
-      timeoutMs: 80,
-      maxTimeoutMs: 20,
+      timeoutMs: 300,
+      maxTimeoutMs: 60,
       onTimeout,
       interim: (data) => data === "not-yet",
     });
     const promise = request.send({ matchupId: "a" });
 
     // Well past the deadline: it bounds extensions, so it must not shorten the request's
-    // own budget, and a final response after it still settles the call normally.
-    await new Promise((resolve) => setTimeout(resolve, 40));
+    // own budget, and a final response after it still settles the call normally. The wait
+    // sits far from both numbers because this asserts the request is still pending, so a
+    // stall long enough to let the timer fire would fail it.
+    await new Promise((resolve) => setTimeout(resolve, 150));
     expect(await settledValue(promise)).toBe("pending");
     expect(onTimeout).not.toHaveBeenCalled();
 

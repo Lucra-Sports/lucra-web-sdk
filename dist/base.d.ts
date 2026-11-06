@@ -105,6 +105,11 @@ export declare class LucraClientBase extends EventTarget {
      * Like `ready`, it waits out an auth state that has not settled yet and a sign-out in
      * flight, so it answers about the session the user will actually have, not the one
      * being restored or torn down.
+     *
+     * It answers from `ready`, so every rejection `ready` can produce reaches the caller
+     * except `LucraUserNotLoggedIn`, which is what `false` means here. That includes the
+     * plain string `"Timeout"` when the login check expires, which is not an Error, so a
+     * caller branching on `instanceof` needs a fallback.
      */
     isLoggedIn(): Promise<boolean>;
     get isInitialized(): boolean;
