@@ -1,11 +1,11 @@
-import { LucraClientMessageType, MessageTypeToLucraClient, } from "./types/types.js";
+import { LucraApiErrorCode, LucraClientMessageType, MessageTypeToLucraClient, } from "./types/types.js";
 import { LucraClientIframeId, States } from "./constants.js";
 import { SDK_VERSION } from "./version.js";
 import { addDefinedSearchParams, validatePhoneNumber, validateMetadata, } from "./utils.js";
 import { cancelReason, createApiRequest } from "./api-request.js";
 import { createDialog } from "./dialog.js";
 import { createPopup } from "./popup.js";
-import { LucraUserNotLoggedIn, LucraClientNotOpen, LucraApiError } from "./errors.js";
+import { LucraUserNotLoggedIn, LucraClientNotOpen, LucraApiError, LucraMinigamesTriggerTimeout, LucraMinigamesTriggerCanceled, } from "./errors.js";
 // Reason the in-flight isLoggedIn request is rejected with when a newer one
 // supersedes it (e.g. `loginSuccess` rebuilds `ready`). This is an internal
 // single-flight cancellation, not an auth failure, so `_createReadyPromise`
@@ -22,6 +22,20 @@ const CLOSED_WHILE_PENDING = "LucraClient was closed while the request was pendi
 // wait the moment the sign-out is really done, however long that took.
 const LOGOUT_COMPLETE_TIMEOUT_MS = 15_000;
 const MATCHUP_DETAILS_SUBSCRIPTION_CANCELLED = "Cancelled by cancelMatchupDetailsSubscription";
+// minigamesTrigger gives up after this long unless the host passes timeoutMs.
+const MINIGAMES_TRIGGER_TIMEOUT_MS = 120_000;
+// Final statuses: matchupSettled fires once when the subscribed matchup reaches one.
+const SETTLED_STATUSES = new Set([
+    "CLOSED",
+    "CLOSED_TIE",
+    "CANCELED_BY_OWNER",
+    "CANCELED_DISPUTE",
+    "CANCELED_GAME_CANCELED",
+    "CANCELED_NOT_ACCEPTED",
+    "CANCELED_PLAYER_INACTIVE",
+    "CANCELED_THROUGH_API",
+    "CANCELED_TIMEOUT",
+]);
 // Shared by open(), redirect(), and dialog() deposit (dialog routes through
 // redirect), so one key warns once for all three.
 const DEPOSIT_DEPRECATION = "deposit() on open(), redirect(), and dialog() is deprecated and will be removed in a future major version. Add Funds must run in a popup: open wallet() or profile() instead, where the Lucra app opens Add Funds in a popup on its own.";
@@ -56,6 +70,13 @@ export class LucraClientBase extends EventTarget {
     _cancelRecreationalGameRequest = this._request(MessageTypeToLucraClient.cancelRecreationalGameRequest, LucraClientMessageType.cancelRecreationalGameResponse, "cancelRecreationalGame", { rejectWhilePending: true });
     _joinTournamentRequest = this._request(MessageTypeToLucraClient.joinTournamentRequest, LucraClientMessageType.joinTournamentResponse, "joinTournament", { singleFlight: true });
     _autoJoinTournamentsRequest = this._request(MessageTypeToLucraClient.autoJoinTournamentsRequest, LucraClientMessageType.autoJoinedTournaments, "autoJoinTournaments", { singleFlight: true });
+    _gameTypesRequest = this._request(MessageTypeToLucraClient.gameTypesRequest, LucraClientMessageType.gameTypesResponse, "gameTypes");
+    _minigamesRequest = this._request(MessageTypeToLucraClient.minigamesRequest, LucraClientMessageType.minigamesResponse, "minigames");
+    _userMatchupsRequest = this._request(MessageTypeToLucraClient.userMatchupsRequest, LucraClientMessageType.userMatchupsResponse, "userMatchups");
+    _submitTournamentScoreRequest = this._request(MessageTypeToLucraClient.submitTournamentScoreRequest, LucraClientMessageType.submitTournamentScoreResponse, "submitTournamentScore", { rejectWhilePending: true });
+    _enterRecreationalGameOutcomeRequest = this._request(MessageTypeToLucraClient.enterRecreationalGameOutcomeRequest, LucraClientMessageType.enterRecreationalGameOutcomeResponse, "enterRecreationalGameOutcome", { rejectWhilePending: true });
+    // Last details seen for the subscribed matchup, to derive matchupJoined/matchupSettled.
+    _lastMatchupDetails = null;
     _isLoggedInRequest = this._request(MessageTypeToLucraClient.isLoggedInRequest, LucraClientMessageType.isLoggedInResponse, "isLoggedIn", 
     // A real auth round trip is sub-second, and 60s is far past any genuine session
     // restore, so the absolute deadline only ever fires on a responder stuck reporting
@@ -259,8 +280,38 @@ export class LucraClientBase extends EventTarget {
         }
         return this;
     }
-    _minigamesTrigger(element, input) {
-        return new Promise((resolve, reject) => {
+    _minigamesTrigger(element, input, options = {}) {
+        const timeoutMs = options.timeoutMs ?? MINIGAMES_TRIGGER_TIMEOUT_MS;
+        return new Promise((outerResolve, outerReject) => {
+            // Before 1.16 a trigger whose session never started (the Start overlay unmounted,
+            // the user walked away) left this promise pending forever. Both exits remove the
+            // overlay, so the host can show its own UI again.
+            let timer;
+            let finished = false;
+            let fail = outerReject;
+            const onAbort = () => fail(new LucraMinigamesTriggerCanceled());
+            const cleanup = () => {
+                finished = true;
+                if (timer)
+                    clearTimeout(timer);
+                options.signal?.removeEventListener("abort", onAbort);
+            };
+            const resolve = (data) => {
+                if (finished)
+                    return;
+                cleanup();
+                outerResolve(data);
+            };
+            const reject = (reason) => {
+                if (finished)
+                    return;
+                cleanup();
+                outerReject(reason);
+            };
+            if (options.signal?.aborted) {
+                reject(new LucraMinigamesTriggerCanceled());
+                return;
+            }
             try {
                 this.setUpEventListener();
                 const params = new URLSearchParams();
@@ -310,6 +361,23 @@ export class LucraClientBase extends EventTarget {
                     });
                 };
                 element.appendChild(iframe);
+                // Tears the overlay down and forgets it, then rejects.
+                fail = (reason) => {
+                    const win = iframe.contentWindow;
+                    if (win)
+                        this.triggerFrames.delete(win);
+                    try {
+                        iframe.remove();
+                    }
+                    catch (e) {
+                        console.error("Error removing trigger iframe", e);
+                    }
+                    reject(reason);
+                };
+                options.signal?.addEventListener("abort", onAbort, { once: true });
+                if (timeoutMs > 0) {
+                    timer = setTimeout(() => fail(new LucraMinigamesTriggerTimeout()), timeoutMs);
+                }
                 if (iframe.contentWindow) {
                     register();
                 }
@@ -417,7 +485,8 @@ export class LucraClientBase extends EventTarget {
             },
             kyc: () => this._redirect("app/kyc"),
             demographic: () => this._redirect("app/demographicform"),
-            locationGrant: () => this._redirect("app/location-grant")
+            locationGrant: () => this._redirect("app/location-grant"),
+            terms: () => this._redirect("app/terms")
         };
     }
     // Opens any route as a dialog. Reuses redirect()'s in-place navigation (no
@@ -437,7 +506,8 @@ export class LucraClientBase extends EventTarget {
             deepLink: (url) => present(() => nav.deepLink(url)),
             kyc: () => present(() => nav.kyc()),
             demographic: () => present(() => nav.demographic()),
-            locationGrant: () => present(() => nav.locationGrant())
+            locationGrant: () => present(() => nav.locationGrant()),
+            terms: () => present(() => nav.terms())
         };
     }
     // Presents the iframe's host as a dialog: shows the iframe, enables the in-app
@@ -478,20 +548,33 @@ export class LucraClientBase extends EventTarget {
     // blocks the popup. Does not require open() first -- the popup is standalone.
     popup() {
         return {
-            deposit: () => this._presentPopup("app/add-funds"),
+            deposit: (options) => {
+                const amount = options?.amount;
+                if (amount !== undefined && !(Number.isFinite(amount) && amount > 0)) {
+                    throw new Error("popup().deposit: amount must be a positive number of dollars");
+                }
+                const params = addDefinedSearchParams({
+                    amount: amount === undefined ? undefined : amount.toFixed(2),
+                });
+                return this._presentPopup("app/add-funds", params);
+            },
         };
     }
     // Tracks the popup so a deposit result and close() can be routed to it, and
     // re-attaches the message listener so the result is received even when no
     // iframe was ever opened.
-    _presentPopup(path) {
+    _presentPopup(path, params) {
         this.setUpEventListener();
-        const url = this._buildIframeUrl({ path });
+        const url = this._buildIframeUrl({ path, params });
         this._activePopup?.close();
         const popup = createPopup(url.toString());
         popup.onClose(() => {
             if (this._activePopup === popup)
                 this._activePopup = null;
+            // The iframe's user (balance) is otherwise stale until something else refetches it.
+            if (this.iframe) {
+                this._sendMessage({ type: MessageTypeToLucraClient.refreshUser, body: null });
+            }
         });
         this._activePopup = popup;
         return popup;
@@ -564,7 +647,7 @@ export class LucraClientBase extends EventTarget {
                 }
                 return this._open({ element, path: "", params });
             },
-            minigamesTrigger: (input) => this._minigamesTrigger(element, input),
+            minigamesTrigger: (input, triggerOptions) => this._minigamesTrigger(element, input, triggerOptions),
             kyc: () => {
                 const params = addDefinedSearchParams({ phoneNumber });
                 return this._open({ element, path: "app/kyc", params, hidden: options?.hidden });
@@ -576,6 +659,10 @@ export class LucraClientBase extends EventTarget {
             locationGrant: () => {
                 const params = addDefinedSearchParams({ phoneNumber });
                 return this._open({ element, path: "app/location-grant", params, hidden: options?.hidden });
+            },
+            terms: () => {
+                const params = addDefinedSearchParams({ phoneNumber });
+                return this._open({ element, path: "app/terms", params, hidden: options?.hidden });
             }
         };
     }
@@ -730,11 +817,41 @@ export class LucraClientBase extends EventTarget {
     // Stops delivering matchupDetailsUpdated and supersedes any subscribe in progress.
     _resetMatchupDetailsSubscription() {
         this._matchupDetailsSubscriptionId = null;
+        this._lastMatchupDetails = null;
         return ++this._matchupDetailsGeneration;
     }
     _isActiveMatchupDetailsUpdate(details) {
         const matchupId = this._matchupDetailsSubscriptionId;
         return matchupId !== null && details?.matchup?.id === matchupId;
+    }
+    // The events one matchupDetailsUpdated implies, compared with the previous details for
+    // the same subscription: a matchupJoined per new user, and one matchupSettled when the
+    // status first becomes final. Records `next` as the new baseline.
+    _deriveMatchupEvents(next) {
+        const prev = this._lastMatchupDetails;
+        this._lastMatchupDetails = next;
+        const events = [];
+        const matchupId = next.matchup.id;
+        const seen = new Set((prev?.matchup.participantGroups ?? []).flatMap((g) => g.userIds));
+        for (const group of next.matchup.participantGroups ?? []) {
+            for (const userId of group.userIds) {
+                if (prev && !seen.has(userId)) {
+                    events.push({ type: "matchupJoined", detail: { matchupId, userId, groupId: group.id } });
+                }
+            }
+        }
+        const status = next.matchup.status;
+        const wasFinal = prev ? SETTLED_STATUSES.has(prev.matchup.status) : false;
+        if (SETTLED_STATUSES.has(status) && !wasFinal) {
+            const winningGroupIds = status.startsWith("CANCELED")
+                ? []
+                : next.groups.filter((g) => g.outcome === "WIN" || g.outcome === "TIE").map((g) => g.id);
+            if (!winningGroupIds.length && next.matchup.winningGroupId && !status.startsWith("CANCELED")) {
+                winningGroupIds.push(next.matchup.winningGroupId);
+            }
+            events.push({ type: "matchupSettled", detail: { matchupId, status, winningGroupIds } });
+        }
+        return events;
     }
     // An iframe reload (login src reload, moveTo) drops the Lucra app's subscription and
     // re-sends `initialized`, so subscribe again to the active matchup once it succeeds.
@@ -813,6 +930,55 @@ export class LucraClientBase extends EventTarget {
             this._assertOpen("call api.cancelRecreationalGame");
             return this._cancelRecreationalGameRequest.send({ matchupId });
         },
+        // Joins a 1v1 (GROUP_VS_GROUP) as the opponent: reads the matchup and accepts into
+        // the first group with nobody in it. For free for all, use
+        // acceptFreeForAllRecreationalGame. Rejects NOT_ALLOWED when no group is open.
+        acceptVersusRecreationalGameAsOpponent: async (matchupId) => {
+            this._assertOpen("call api.acceptVersusRecreationalGameAsOpponent");
+            await this._initializedPromise;
+            const { matchup } = await this._matchupDetailsRequest.send({ matchupId });
+            if (matchup.playStyle !== "GROUP_VS_GROUP") {
+                throw new LucraApiError(LucraApiErrorCode.invalidPlayStyle, "This matchup is free for all: use acceptFreeForAllRecreationalGame");
+            }
+            const open = matchup.participantGroups.find((g) => g.userIds.length === 0);
+            if (!open) {
+                throw new LucraApiError(LucraApiErrorCode.notAllowed, "This matchup has no open team");
+            }
+            return this._acceptRecreationalGameRequest.send({
+                matchupId: matchup.id,
+                playStyle: "GROUP_VS_GROUP",
+                teamId: open.id,
+            });
+        },
+        // The tenant's GYP game types: the gameTypeId createRecreationalGame takes, how a
+        // game is won, and whether it settles itself from posted scores. Works before login.
+        gameTypes: async () => {
+            this._assertOpen("call api.gameTypes");
+            await this._initializedPromise;
+            return this._gameTypesRequest.send();
+        },
+        // The tenant's Lucra minigames with their modes and entry amounts, for minigamesTrigger.
+        minigames: async () => {
+            this._assertOpen("call api.minigames");
+            await this._initializedPromise;
+            return this._minigamesRequest.send();
+        },
+        // The signed-in user's recreational matchups, newest first.
+        userMatchups: async (input = {}) => {
+            this._assertOpen("call api.userMatchups");
+            return this._userMatchupsRequest.send(input);
+        },
+        // Submits the user's score to a tournament they joined. Needs location (as joins do).
+        submitTournamentScore: async (input) => {
+            this._assertOpen("call api.submitTournamentScore");
+            return this._submitTournamentScoreRequest.send(input);
+        },
+        // Reports the result of a MANUAL game type (see api.gameTypes). AUTOMATED game types
+        // settle from scores your server posts to Lucra's tenant API instead.
+        enterRecreationalGameOutcome: async (input) => {
+            this._assertOpen("call api.enterRecreationalGameOutcome");
+            return this._enterRecreationalGameOutcomeRequest.send(input);
+        },
         // Resolves with the current details, then delivers each change as a
         // matchupDetailsUpdated event until cancelled, close(), or the next subscribe.
         subscribeToMatchupDetails: async (matchupId) => {
@@ -827,6 +993,7 @@ export class LucraClientBase extends EventTarget {
             if (generation === this._matchupDetailsGeneration) {
                 // The id the Lucra app resolved, which is what its updates carry.
                 this._matchupDetailsSubscriptionId = details.matchup.id;
+                this._lastMatchupDetails = details;
             }
             return details;
         },

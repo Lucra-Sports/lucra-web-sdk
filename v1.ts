@@ -112,6 +112,11 @@ export class LucraClient extends LucraClientBase {
       return;
     }
     this.dispatchEvent(new CustomEvent(event.data.type, { detail: event.data.data }));
+    if (event.data.type === LucraClientMessageType.matchupDetailsUpdated) {
+      for (const derived of this._deriveMatchupEvents(body)) {
+        this.dispatchEvent(new CustomEvent(derived.type, { detail: derived.detail }));
+      }
+    }
   };
 
   // The Lucra app drops messages sent before it initializes, and a reload or the

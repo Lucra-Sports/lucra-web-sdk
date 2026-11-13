@@ -50,6 +50,12 @@ export enum LucraClientMessageType {
   createRecreationalGameResponse = "createRecreationalGameResponse",
   acceptRecreationalGameResponse = "acceptRecreationalGameResponse",
   cancelRecreationalGameResponse = "cancelRecreationalGameResponse",
+  gameTypesResponse = "gameTypesResponse",
+  minigamesResponse = "minigamesResponse",
+  userMatchupsResponse = "userMatchupsResponse",
+  submitTournamentScoreResponse = "submitTournamentScoreResponse",
+  enterRecreationalGameOutcomeResponse = "enterRecreationalGameOutcomeResponse",
+  termsAccepted = "termsAccepted",
 }
 
 export enum MessageTypeToLucraClient {
@@ -76,6 +82,14 @@ export enum MessageTypeToLucraClient {
   acceptRecreationalGameRequest = "acceptRecreationalGameRequest",
   cancelRecreationalGameRequest = "cancelRecreationalGameRequest",
   sdkDiagnostic = "sdkDiagnostic",
+  gameTypesRequest = "gameTypesRequest",
+  minigamesRequest = "minigamesRequest",
+  userMatchupsRequest = "userMatchupsRequest",
+  submitTournamentScoreRequest = "submitTournamentScoreRequest",
+  enterRecreationalGameOutcomeRequest = "enterRecreationalGameOutcomeRequest",
+  // Fire-and-forget: re-read the user (balance) and send userInfo. Sent when a deposit popup
+  // closes, because the popup cannot reach the hidden iframe itself.
+  refreshUser = "refreshUser",
 }
 
 export type LucraConvertToCreditResponse = {
@@ -109,6 +123,15 @@ export type LucraMatchupCanceledBody = { matchupId: string };
 export type LucraMatchupAcceptedBody = { matchupId: string };
 export type LucraTournamentJoinedBody = { matchupId: string };
 export type LucraAutoJoinedTournamentsBody = { matchupIds: string[] };
+// A user joined the subscribed matchup (one event per new user id).
+export type LucraMatchupJoinedBody = { matchupId: string; userId: string; groupId: string };
+// The subscribed matchup reached a final status: CLOSED, CLOSED_TIE or any CANCELED_*.
+export type LucraMatchupSettledBody = {
+  matchupId: string;
+  status: LucraMatchupStatus;
+  // Empty for a cancel. One id for a 1v1 win; one or more for free for all.
+  winningGroupIds: string[];
+};
 export type LucraConvertToCreditBody = { amount: number };
 export type LucraDeepLinkBody = { url: string };
 export type LucraMatchupInviteUrlBody = { matchupId: string };
@@ -184,6 +207,12 @@ export type LucraEventMap = {
   demographicComplete: void;
   initialized: LucraInitializedBody;
   matchupDetailsUpdated: LucraMatchupDetails;
+  // Derived by the SDK from matchupDetailsUpdated, so they fire only for the matchup
+  // passed to api.subscribeToMatchupDetails.
+  matchupJoined: LucraMatchupJoinedBody;
+  matchupSettled: LucraMatchupSettledBody;
+  // The user accepted Lucra's terms (after a TERMS_NOT_ACCEPTED error and dialog().terms()).
+  termsAccepted: void;
 };
 
 export type LucraClientSendMessage = {
@@ -678,6 +707,11 @@ export type LucraMatchup = {
   game: LucraRecreationalGame;
   atStake: LucraAtStake;
   participantGroups: LucraMatchupParticipantGroup[];
+  // When an unsettled matchup stops taking joins and settles (by the scores posted so
+  // far for a game with automated results; refunded otherwise). Absent on older web apps.
+  expiresAt?: string;
+  // Most users that can join, counting the creator. Absent on older web apps.
+  maxParticipants?: number;
 };
 
 export type LucraMatchupParticipant = {
@@ -714,6 +748,102 @@ export type LucraCreateRecreationalGameInput = {
   gameTypeId: string;
   atStake: LucraCashStake;
   playStyle: LucraPlayStyle;
+  // ISO 8601 end time. Default: the game type's expiration (72 hours if it has none).
+  expiresAt?: string;
+  // Most users that can join, counting the creator. Default: the tenant's limit (20).
+  maxParticipants?: number;
+};
+
+// ---------------------------------------------------------------------------
+// Catalog reads: the GYP game types and the minigames this tenant offers.
+// ---------------------------------------------------------------------------
+
+export type LucraHowToWin = "HIGHEST_SCORE" | "LOWEST_SCORE" | "FASTEST_TIME" | string;
+// AUTOMATED: the matchup settles itself once every group has a final score (posted by
+// the partner's server through Lucra's tenant API, or by a Lucra minigame).
+// MANUAL: players report the outcome (api.enterRecreationalGameOutcome).
+export type LucraTrackResults = "AUTOMATED" | "MANUAL" | string;
+
+export type LucraGameType = {
+  gameTypeId: string;
+  name: string;
+  description?: string;
+  iconUrl?: string;
+  imageUrl?: string;
+  // Absent when the game type does not set it.
+  howToWin?: LucraHowToWin;
+  trackResults?: LucraTrackResults;
+  scoringUnit?: string;
+  // The game is a Lucra minigame: play it with minigamesTrigger, not your own game.
+  minigameEnabled: boolean;
+};
+
+export type LucraGameTypesResponse = { gameTypes: LucraGameType[] };
+
+export type LucraMinigameMode = {
+  // The value minigamesTrigger takes as game_mode.
+  mode: LucraMinigamesTriggerInput["game_mode"];
+  // Entry amounts this mode accepts (dollars). Empty when the mode is free.
+  stakes: number[];
+  minPlayers?: number;
+  maxPlayers?: number;
+};
+
+export type LucraMinigame = {
+  gameId: string;
+  name: string;
+  description?: string;
+  imageUrl?: string;
+  modes: LucraMinigameMode[];
+};
+
+export type LucraMinigamesResponse = { minigames: LucraMinigame[] };
+
+// ---------------------------------------------------------------------------
+// The signed-in user's recreational matchups (an inbox, or a create that timed out).
+// ---------------------------------------------------------------------------
+
+export type LucraUserMatchupsFilter = "ACTIVE" | "COMPLETED" | "ALL";
+
+export type LucraUserMatchupsInput = {
+  filter?: LucraUserMatchupsFilter; // default ACTIVE
+  limit?: number; // default 20, max 100
+  offset?: number;
+};
+
+export type LucraUserMatchupsResponse = {
+  matchups: LucraMatchup[];
+  hasMore: boolean;
+};
+
+// ---------------------------------------------------------------------------
+// Results.
+// ---------------------------------------------------------------------------
+
+export type LucraSubmitTournamentScoreInput = {
+  matchupId: string;
+  score: number;
+  // true ends the attempt (the score counts as final). Default true.
+  attemptFinished?: boolean;
+  // Up to 1 KB of partner data stored with the score.
+  metadata?: string;
+};
+
+export type LucraSubmitTournamentScoreResult = { matchupId: string };
+
+// For MANUAL game types only. AUTOMATED ones settle from posted scores.
+export type LucraEnterRecreationalGameOutcomeInput = {
+  matchupId: string;
+  winningGroupId?: string;
+  isTie?: boolean;
+};
+
+export type LucraEnterRecreationalGameOutcomeResult = { matchupId: string };
+
+// Options for client.popup().deposit().
+export type LucraDepositOptions = {
+  // Amount (dollars) to prefill, e.g. the shortfall for an entry. The user can change it.
+  amount?: number;
 };
 
 // matchup is null only when the read after a successful create or accept failed. The write succeeded.
@@ -761,6 +891,9 @@ export enum LucraApiErrorCode {
   // Catch-all for a failure with no more specific code: an API or network
   // error, or a rejection the web-app cannot classify. `message` carries the
   // detail returned by the API when there is one.
+  // The user has not accepted Lucra's current terms. Present dialog().terms() from a user
+  // gesture, wait for the termsAccepted event, then retry the call.
+  termsNotAccepted = "TERMS_NOT_ACCEPTED",
   apiError = "API_ERROR",
 }
 
@@ -797,6 +930,14 @@ export type LucraMinigamesTriggerInput = {
   game_mode: "practice" | "1v1" | "free_for_all" | "tournament";
   amount?: number;
   matchup_id?: string;
+};
+
+export type LucraMinigamesTriggerOptions = {
+  // Rejects with LucraMinigamesTriggerTimeout when no session starts within this time.
+  // Default 120000 (2 minutes). 0 waits forever (the 1.x behavior).
+  timeoutMs?: number;
+  // Aborting rejects with LucraMinigamesTriggerCanceled and removes the Start overlay.
+  signal?: AbortSignal;
 };
 
 export type LucraStartMinigamesSessionResponse = {

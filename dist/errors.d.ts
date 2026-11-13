@@ -9,3 +9,9 @@ export declare class LucraApiError extends Error {
     readonly code: LucraApiErrorCode;
     constructor(code: LucraApiErrorCode, message?: string);
 }
+export declare class LucraMinigamesTriggerTimeout extends Error {
+    constructor(message?: string);
+}
+export declare class LucraMinigamesTriggerCanceled extends Error {
+    constructor(message?: string);
+}

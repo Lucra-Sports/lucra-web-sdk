@@ -36,7 +36,13 @@ export declare enum LucraClientMessageType {
     matchupDetailsUpdated = "matchupDetailsUpdated",
     createRecreationalGameResponse = "createRecreationalGameResponse",
     acceptRecreationalGameResponse = "acceptRecreationalGameResponse",
-    cancelRecreationalGameResponse = "cancelRecreationalGameResponse"
+    cancelRecreationalGameResponse = "cancelRecreationalGameResponse",
+    gameTypesResponse = "gameTypesResponse",
+    minigamesResponse = "minigamesResponse",
+    userMatchupsResponse = "userMatchupsResponse",
+    submitTournamentScoreResponse = "submitTournamentScoreResponse",
+    enterRecreationalGameOutcomeResponse = "enterRecreationalGameOutcomeResponse",
+    termsAccepted = "termsAccepted"
 }
 export declare enum MessageTypeToLucraClient {
     achievementsRequest = "achievementsRequest",
@@ -61,7 +67,13 @@ export declare enum MessageTypeToLucraClient {
     createRecreationalGameRequest = "createRecreationalGameRequest",
     acceptRecreationalGameRequest = "acceptRecreationalGameRequest",
     cancelRecreationalGameRequest = "cancelRecreationalGameRequest",
-    sdkDiagnostic = "sdkDiagnostic"
+    sdkDiagnostic = "sdkDiagnostic",
+    gameTypesRequest = "gameTypesRequest",
+    minigamesRequest = "minigamesRequest",
+    userMatchupsRequest = "userMatchupsRequest",
+    submitTournamentScoreRequest = "submitTournamentScoreRequest",
+    enterRecreationalGameOutcomeRequest = "enterRecreationalGameOutcomeRequest",
+    refreshUser = "refreshUser"
 }
 export type LucraConvertToCreditResponse = {
     id: string;
@@ -104,6 +116,16 @@ export type LucraTournamentJoinedBody = {
 };
 export type LucraAutoJoinedTournamentsBody = {
     matchupIds: string[];
+};
+export type LucraMatchupJoinedBody = {
+    matchupId: string;
+    userId: string;
+    groupId: string;
+};
+export type LucraMatchupSettledBody = {
+    matchupId: string;
+    status: LucraMatchupStatus;
+    winningGroupIds: string[];
 };
 export type LucraConvertToCreditBody = {
     amount: number;
@@ -173,6 +195,9 @@ export type LucraEventMap = {
     demographicComplete: void;
     initialized: LucraInitializedBody;
     matchupDetailsUpdated: LucraMatchupDetails;
+    matchupJoined: LucraMatchupJoinedBody;
+    matchupSettled: LucraMatchupSettledBody;
+    termsAccepted: void;
 };
 export type LucraClientSendMessage = {
     userUpdated: (data: SDKClientUser) => void;
@@ -469,6 +494,8 @@ export type LucraMatchup = {
     game: LucraRecreationalGame;
     atStake: LucraAtStake;
     participantGroups: LucraMatchupParticipantGroup[];
+    expiresAt?: string;
+    maxParticipants?: number;
 };
 export type LucraMatchupParticipant = {
     userId: string;
@@ -500,6 +527,70 @@ export type LucraCreateRecreationalGameInput = {
     gameTypeId: string;
     atStake: LucraCashStake;
     playStyle: LucraPlayStyle;
+    expiresAt?: string;
+    maxParticipants?: number;
+};
+export type LucraHowToWin = "HIGHEST_SCORE" | "LOWEST_SCORE" | "FASTEST_TIME" | string;
+export type LucraTrackResults = "AUTOMATED" | "MANUAL" | string;
+export type LucraGameType = {
+    gameTypeId: string;
+    name: string;
+    description?: string;
+    iconUrl?: string;
+    imageUrl?: string;
+    howToWin?: LucraHowToWin;
+    trackResults?: LucraTrackResults;
+    scoringUnit?: string;
+    minigameEnabled: boolean;
+};
+export type LucraGameTypesResponse = {
+    gameTypes: LucraGameType[];
+};
+export type LucraMinigameMode = {
+    mode: LucraMinigamesTriggerInput["game_mode"];
+    stakes: number[];
+    minPlayers?: number;
+    maxPlayers?: number;
+};
+export type LucraMinigame = {
+    gameId: string;
+    name: string;
+    description?: string;
+    imageUrl?: string;
+    modes: LucraMinigameMode[];
+};
+export type LucraMinigamesResponse = {
+    minigames: LucraMinigame[];
+};
+export type LucraUserMatchupsFilter = "ACTIVE" | "COMPLETED" | "ALL";
+export type LucraUserMatchupsInput = {
+    filter?: LucraUserMatchupsFilter;
+    limit?: number;
+    offset?: number;
+};
+export type LucraUserMatchupsResponse = {
+    matchups: LucraMatchup[];
+    hasMore: boolean;
+};
+export type LucraSubmitTournamentScoreInput = {
+    matchupId: string;
+    score: number;
+    attemptFinished?: boolean;
+    metadata?: string;
+};
+export type LucraSubmitTournamentScoreResult = {
+    matchupId: string;
+};
+export type LucraEnterRecreationalGameOutcomeInput = {
+    matchupId: string;
+    winningGroupId?: string;
+    isTie?: boolean;
+};
+export type LucraEnterRecreationalGameOutcomeResult = {
+    matchupId: string;
+};
+export type LucraDepositOptions = {
+    amount?: number;
 };
 export type LucraRecreationalGameResult = {
     matchupId: string;
@@ -523,6 +614,7 @@ export declare enum LucraApiErrorCode {
     invalidAtStake = "INVALID_AT_STAKE",
     invalidRewardType = "INVALID_REWARD_TYPE",
     invalidPlayStyle = "INVALID_PLAY_STYLE",
+    termsNotAccepted = "TERMS_NOT_ACCEPTED",
     apiError = "API_ERROR"
 }
 export type LucraApiErrorBody = {
@@ -544,6 +636,10 @@ export type LucraMinigamesTriggerInput = {
     game_mode: "practice" | "1v1" | "free_for_all" | "tournament";
     amount?: number;
     matchup_id?: string;
+};
+export type LucraMinigamesTriggerOptions = {
+    timeoutMs?: number;
+    signal?: AbortSignal;
 };
 export type LucraStartMinigamesSessionResponse = {
     iframe_url: string;
