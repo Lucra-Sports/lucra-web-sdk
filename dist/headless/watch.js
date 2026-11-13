@@ -65,6 +65,10 @@ export function createWatch(options) {
             if (isLucraError(error) && error.code === LucraErrorCode.CONNECTION_RESET) {
                 return;
             }
+            // A subscribe that failed or timed out can still take hold inside Lucra.
+            // Nothing newer has subscribed, and this goes out before onError can
+            // start another watch, so it cancels only this one.
+            session.post(MessageTypeToLucraClient.cancelMatchupDetailsSubscription, null);
             fail(target, isLucraError(error)
                 ? error
                 : new LucraError(LucraErrorCode.API_ERROR, undefined, { cause: error }));

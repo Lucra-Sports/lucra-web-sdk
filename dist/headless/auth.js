@@ -1,5 +1,6 @@
 import { LucraClientMessageType, MessageTypeToLucraClient, } from "../types/types.js";
 import { LucraError, LucraErrorCode, isLucraError } from "./errors.js";
+import { createEmitter } from "./events.js";
 import { navigateTarget } from "./url.js";
 const NOT_READY_MESSAGE = "Lucra did not finish signing the user in";
 export function createAuth(options) {
@@ -9,11 +10,11 @@ export function createAuth(options) {
         responseType: LucraClientMessageType.isLoggedInResponse,
         kind: "read",
         // `pending` means Lucra is still restoring a session and will answer again.
-        interim: (data) => data.pending === true,
+        interim: (data) => data?.pending === true,
         maxTimeoutMs: timeouts.authCheckMaxMs,
     };
     let state = { status: "loading", user: null };
-    const listeners = new Set();
+    const changes = createEmitter();
     // Calls waiting for "loading" to end.
     const waiters = new Set();
     // True once Lucra has posted loginSuccess since it last started. Only then do
@@ -44,14 +45,7 @@ export function createAuth(options) {
         if (state.status === status && state.user === user)
             return;
         state = { status, user };
-        for (const listener of [...listeners]) {
-            try {
-                listener(state);
-            }
-            catch (e) {
-                console.error("Lucra auth listener threw an error", e);
-            }
-        }
+        changes.emit("change", state);
         if (status !== "loading")
             settleWaiters();
     };
@@ -86,7 +80,8 @@ export function createAuth(options) {
         session.request(loginCheck, { awaitsPending: true }).then((answer) => {
             if (destroyed || generation !== checkGeneration)
                 return;
-            if (!answer.isLoggedIn) {
+            // An answer with no body has no user in it.
+            if (!answer?.isLoggedIn) {
                 setLoggedOut();
                 settleLogout();
                 return;
@@ -131,7 +126,9 @@ export function createAuth(options) {
             knownUser = null;
             if (state.status === "loggedIn")
                 setState("loading", state.user);
-            runLoginCheck(false);
+            // A logout whose wait already ran out was being decided by a check this
+            // restart cut short, so this check decides it instead.
+            runLoginCheck(pendingLogout !== null && pendingLogout.timer === null);
         }),
         session.on(LucraClientMessageType.loginSuccess, (data) => {
             ready = true;
@@ -175,16 +172,14 @@ export function createAuth(options) {
     return {
         getState: () => state,
         subscribe(listener) {
-            listeners.add(listener);
+            const unsubscribe = changes.on("change", listener);
             try {
                 listener(state);
             }
             catch (e) {
                 console.error("Lucra auth listener threw an error", e);
             }
-            return () => {
-                listeners.delete(listener);
-            };
+            return unsubscribe;
         },
         async isLoggedIn() {
             await session.whenConnected();
@@ -248,7 +243,7 @@ export function createAuth(options) {
             clearReadyTimer();
             for (const unsubscribe of unsubscribes)
                 unsubscribe();
-            listeners.clear();
+            changes.clear();
             const error = new LucraError(LucraErrorCode.DESTROYED);
             settleWaiters(error);
             settleLogout(error);

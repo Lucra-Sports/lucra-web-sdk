@@ -214,6 +214,8 @@ export function createPresent(options: {
       // during the click that asked for it.
       if (destroyed) return Promise.reject(new LucraError(LucraErrorCode.DESTROYED));
       if (session.status() === "failed" || session.status() === "destroyed") {
+        // Always rejects here, with CONNECTION_FAILED, UNSUPPORTED_ENVIRONMENT,
+        // or DESTROYED, so the .then never runs.
         return session.whenConnected().then(() => ({ status: "dismissed" as const }));
       }
       if (auth.getState().status === "loggedOut") {

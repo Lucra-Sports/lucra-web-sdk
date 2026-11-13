@@ -130,7 +130,7 @@ export function createApi(options: {
   // The one write slot. Set while a write is pending, whatever its kind.
   let writeSettled: Promise<void> | null = null;
 
-  const sendRead = async <TResponse>(
+  const send = async <TResponse>(
     spec: RequestSpec<TResponse>,
     body: unknown,
     needsLogin: boolean
@@ -155,11 +155,7 @@ export function createApi(options: {
     if (activity.screenOpen) {
       return Promise.reject(new LucraError(LucraErrorCode.SCREEN_OPEN));
     }
-    const run = (async () => {
-      await session.whenConnected();
-      await auth.whenLoggedIn();
-      return session.request(spec, body);
-    })();
+    const run = send(spec, body, true);
     // Registered before the caller can attach to `run`, so the slot is free by
     // the time the caller's own code continues.
     const free = () => {
@@ -172,13 +168,13 @@ export function createApi(options: {
   return {
     tournaments: {
       list: () =>
-        sendRead(SPECS.tournamentsList, null, false).then((r) => r.tournaments),
+        send(SPECS.tournamentsList, null, false).then((r) => r.tournaments),
       get: (tournamentId) =>
-        sendRead(SPECS.tournamentsGet, { matchupId: tournamentId }, true).then(
+        send(SPECS.tournamentsGet, { matchupId: tournamentId }, true).then(
           (r) => r.tournament
         ),
       leaderboard: (tournamentId, page) =>
-        sendRead(
+        send(
           SPECS.tournamentsLeaderboard,
           { matchupId: tournamentId, limit: page?.limit, offset: page?.offset },
           true
@@ -188,9 +184,9 @@ export function createApi(options: {
       autoJoin: () => sendWrite(SPECS.tournamentsAutoJoin, null),
     },
     matchups: {
-      get: (matchupId) => sendRead(SPECS.matchupsGet, { matchupId }, false),
+      get: (matchupId) => send(SPECS.matchupsGet, { matchupId }, false),
       getDetails: (matchupId) =>
-        sendRead(SPECS.matchupsGetDetails, { matchupId }, false),
+        send(SPECS.matchupsGetDetails, { matchupId }, false),
       create: (input) => sendWrite(SPECS.matchupsCreate, input),
       accept: (matchupId, acceptOptions) =>
         sendWrite(
@@ -203,7 +199,7 @@ export function createApi(options: {
     },
     achievements: {
       list: () =>
-        sendRead(SPECS.achievementsList, null, true).then((r) => r.achievements),
+        send(SPECS.achievementsList, null, true).then((r) => r.achievements),
     },
     whenWriteSettled: () => writeSettled ?? Promise.resolve(),
   };

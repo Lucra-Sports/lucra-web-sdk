@@ -129,6 +129,18 @@ describe("createSession", () => {
     expect((await write).outcomeUnknown).toBe(true);
   });
 
+  it("rejects pending requests when Lucra starts again and fails", async () => {
+    const { frame, session } = setup({ requestMs: 40 });
+    frame.deliver("initialized", { success: true });
+    const read = caught(session.request(READ, {}));
+    const write = caught(session.request(WRITE, {}));
+    frame.deliver("initialized", { success: false });
+    expect((await read).code).toBe("CONNECTION_RESET");
+    expect((await write).code).toBe("CONNECTION_RESET");
+    expect((await write).outcomeUnknown).toBe(true);
+    expect(session.status()).toBe("failed");
+  });
+
   it("does not reject anything on the first initialized", async () => {
     const { frame, session } = setup();
     const pending = session.request(READ, {});

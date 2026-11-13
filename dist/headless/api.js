@@ -21,7 +21,7 @@ export function createApi(options) {
     const { session, auth, activity } = options;
     // The one write slot. Set while a write is pending, whatever its kind.
     let writeSettled = null;
-    const sendRead = async (spec, body, needsLogin) => {
+    const send = async (spec, body, needsLogin) => {
         await session.whenConnected();
         if (needsLogin)
             await auth.whenLoggedIn();
@@ -39,11 +39,7 @@ export function createApi(options) {
         if (activity.screenOpen) {
             return Promise.reject(new LucraError(LucraErrorCode.SCREEN_OPEN));
         }
-        const run = (async () => {
-            await session.whenConnected();
-            await auth.whenLoggedIn();
-            return session.request(spec, body);
-        })();
+        const run = send(spec, body, true);
         // Registered before the caller can attach to `run`, so the slot is free by
         // the time the caller's own code continues.
         const free = () => {
@@ -54,15 +50,15 @@ export function createApi(options) {
     };
     return {
         tournaments: {
-            list: () => sendRead(SPECS.tournamentsList, null, false).then((r) => r.tournaments),
-            get: (tournamentId) => sendRead(SPECS.tournamentsGet, { matchupId: tournamentId }, true).then((r) => r.tournament),
-            leaderboard: (tournamentId, page) => sendRead(SPECS.tournamentsLeaderboard, { matchupId: tournamentId, limit: page?.limit, offset: page?.offset }, true).then((r) => r.ui_tournament_details),
+            list: () => send(SPECS.tournamentsList, null, false).then((r) => r.tournaments),
+            get: (tournamentId) => send(SPECS.tournamentsGet, { matchupId: tournamentId }, true).then((r) => r.tournament),
+            leaderboard: (tournamentId, page) => send(SPECS.tournamentsLeaderboard, { matchupId: tournamentId, limit: page?.limit, offset: page?.offset }, true).then((r) => r.ui_tournament_details),
             join: (tournamentId) => sendWrite(SPECS.tournamentsJoin, { matchupId: tournamentId }),
             autoJoin: () => sendWrite(SPECS.tournamentsAutoJoin, null),
         },
         matchups: {
-            get: (matchupId) => sendRead(SPECS.matchupsGet, { matchupId }, false),
-            getDetails: (matchupId) => sendRead(SPECS.matchupsGetDetails, { matchupId }, false),
+            get: (matchupId) => send(SPECS.matchupsGet, { matchupId }, false),
+            getDetails: (matchupId) => send(SPECS.matchupsGetDetails, { matchupId }, false),
             create: (input) => sendWrite(SPECS.matchupsCreate, input),
             accept: (matchupId, acceptOptions) => sendWrite(SPECS.matchupsAccept, acceptOptions?.groupId !== undefined
                 ? { matchupId, playStyle: "GROUP_VS_GROUP", teamId: acceptOptions.groupId }
@@ -70,7 +66,7 @@ export function createApi(options) {
             cancel: (matchupId) => sendWrite(SPECS.matchupsCancel, { matchupId }),
         },
         achievements: {
-            list: () => sendRead(SPECS.achievementsList, null, true).then((r) => r.achievements),
+            list: () => send(SPECS.achievementsList, null, true).then((r) => r.achievements),
         },
         whenWriteSettled: () => writeSettled ?? Promise.resolve(),
     };

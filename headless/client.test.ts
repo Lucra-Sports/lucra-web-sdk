@@ -209,6 +209,20 @@ describe("createLucraClient", () => {
     }
   });
 
+  it("throws INVALID_CONFIG for a tenantId or env that is not a Lucra address", () => {
+    for (const bad of [
+      { ...config, tenantId: "evil.example/" },
+      { ...config, tenantId: "evil.example#" },
+      { ...config, tenantId: "evil.example?" },
+      { ...config, tenantId: "x@evil.example/" },
+      { ...config, env: "x.evil.example/" },
+    ]) {
+      const error = thrown(() => createLucraClient(bad as never));
+      expect(error).toBeInstanceOf(LucraError);
+      expect(error.code).toBe("INVALID_CONFIG");
+    }
+  });
+
   it("returns an inert client where there is no browser, and does not remember it", async () => {
     // bun test has no window or document, so this is the no browser path.
     const first = createLucraClient(config);
@@ -275,6 +289,24 @@ describe("createLucraClient", () => {
         expect(thrown(() => createLucraClient(other)).code).toBe("INVALID_CONFIG");
       }
       first.destroy();
+    });
+
+    it("adds nothing to the page for a config that is not a Lucra address", () => {
+      const created: unknown[] = [];
+      const doc = (globalThis as { document: { createElement: () => unknown } }).document;
+      const original = doc.createElement;
+      doc.createElement = () => {
+        const made = original();
+        created.push(made);
+        return made;
+      };
+      const error = thrown(() => createLucraClient({ ...config, tenantId: "evil.example/" }));
+      expect(error.code).toBe("INVALID_CONFIG");
+      expect(created).toHaveLength(0);
+      // Nothing was remembered, so a good config still makes a client.
+      const client = createLucraClient({ ...config, tenantId: "Test-Tenant" });
+      expect(created.length).toBeGreaterThan(0);
+      client.destroy();
     });
 
     it("makes a new client after destroy", () => {

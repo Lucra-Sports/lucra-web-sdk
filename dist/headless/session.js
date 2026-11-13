@@ -18,7 +18,7 @@ export function createSession(options) {
         : null;
     let connectedOnce = false;
     const waiters = new Set();
-    const connectedListeners = new Set();
+    const connected = createEmitter();
     const inbound = createEmitter();
     const post = (type, body) => {
         try {
@@ -51,6 +51,10 @@ export function createSession(options) {
         waiters.clear();
     };
     const onInitialized = (data) => {
+        // Lucra posts this once per page load. A second one means its page loaded
+        // again, started or not, so nothing sent to the old page will ever be answered.
+        if (connectedOnce)
+            requests.rejectAll("CONNECTION_RESET");
         const success = data?.success === true;
         if (!success) {
             status = "failed";
@@ -58,22 +62,11 @@ export function createSession(options) {
             settleWaiters(failure);
             return;
         }
-        // Lucra posts this once per page load. A second one means its page loaded
-        // again, so nothing sent to the old page will ever be answered.
-        if (connectedOnce)
-            requests.rejectAll("CONNECTION_RESET");
         connectedOnce = true;
         status = "connected";
         failure = null;
         settleWaiters();
-        for (const listener of [...connectedListeners]) {
-            try {
-                listener();
-            }
-            catch (e) {
-                console.error("Lucra connection listener threw an error", e);
-            }
-        }
+        connected.emit("connected", undefined);
     };
     const route = (message) => {
         if (status === "destroyed")
@@ -115,10 +108,7 @@ export function createSession(options) {
             });
         },
         onConnected(listener) {
-            connectedListeners.add(listener);
-            return () => {
-                connectedListeners.delete(listener);
-            };
+            return connected.on("connected", listener);
         },
         request(spec, body) {
             if (status === "destroyed") {
@@ -148,7 +138,7 @@ export function createSession(options) {
             status = "destroyed";
             requests.rejectAll("DESTROYED");
             settleWaiters(new LucraError(LucraErrorCode.DESTROYED));
-            connectedListeners.clear();
+            connected.clear();
             inbound.clear();
             frame.destroy();
         },

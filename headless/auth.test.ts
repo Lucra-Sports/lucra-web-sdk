@@ -109,6 +109,14 @@ describe("createAuth: state", () => {
     expect(warn).toHaveBeenCalledTimes(1);
   });
 
+  it("treats a null answer as logged out", async () => {
+    const { frame, auth } = setup();
+    frame.deliver("initialized", { success: true });
+    frame.answer("isLoggedInRequest", "isLoggedInResponse", null);
+    await tick();
+    expect(auth.getState()).toEqual({ status: "loggedOut", user: null });
+  });
+
   it("updates the user from userInfo with a new state object", async () => {
     const { frame, auth } = setup();
     await connectLoggedIn(frame);
@@ -312,6 +320,23 @@ describe("createAuth: logout", () => {
     frame.deliver("logoutComplete", null);
     await logout;
     expect(auth.getState().status).toBe("loggedOut");
+  });
+
+  it("still settles when a restart cuts short the check that decides it", async () => {
+    const { frame, auth } = setup({ logoutMs: 20 });
+    await connectLoggedIn(frame);
+    const logout = caught(auth.logout());
+    await wait(40);
+    expect(count(frame, "isLoggedInRequest")).toBe(2);
+    // Lucra restarts before it answers, still has the user, and never posts
+    // loginSuccess or logoutComplete.
+    frame.deliver("initialized", { success: true });
+    answerLoginCheck(frame, { isLoggedIn: true });
+    const outcome = await Promise.race([
+      logout.then((error) => error.code),
+      wait(40).then(() => "still pending"),
+    ]);
+    expect(outcome).toBe("LOGOUT_FAILED");
   });
 
   it("ignores userInfo while a logout is pending", async () => {
