@@ -44,6 +44,8 @@ import {
   type LucraSubmitTournamentScoreResult,
   type LucraEnterRecreationalGameOutcomeInput,
   type LucraEnterRecreationalGameOutcomeResult,
+  type LucraStartRecreationalGameInput,
+  type LucraStartRecreationalGameResult,
   type LucraDepositOptions,
   type LucraMinigamesTriggerOptions,
   type LucraMatchupJoinedBody,
@@ -315,6 +317,15 @@ export class LucraClientBase extends EventTarget {
     MessageTypeToLucraClient.enterRecreationalGameOutcomeRequest,
     LucraClientMessageType.enterRecreationalGameOutcomeResponse,
     "enterRecreationalGameOutcome",
+    { rejectWhilePending: true }
+  );
+  private _startRecreationalGameRequest = this._request<
+    LucraStartRecreationalGameResult,
+    LucraStartRecreationalGameInput
+  >(
+    MessageTypeToLucraClient.startRecreationalGameRequest,
+    LucraClientMessageType.startRecreationalGameResponse,
+    "startRecreationalGame",
     { rejectWhilePending: true }
   );
   // Last details seen for the subscribed matchup, to derive matchupJoined/matchupSettled.
@@ -1395,6 +1406,14 @@ export class LucraClientBase extends EventTarget {
     ): Promise<LucraEnterRecreationalGameOutcomeResult> => {
       this._assertOpen("call api.enterRecreationalGameOutcome");
       return this._enterRecreationalGameOutcomeRequest.send(input);
+    },
+    // Creator only: starts an OPEN recreational game, so nobody else can join. A free for all
+    // that settles from scores then settles once every player has a final score.
+    startRecreationalGame: async (
+      matchupId: string
+    ): Promise<LucraStartRecreationalGameResult> => {
+      this._assertOpen("call api.startRecreationalGame");
+      return this._startRecreationalGameRequest.send({ matchupId });
     },
     // Resolves with the current details, then delivers each change as a
     // matchupDetailsUpdated event until cancelled, close(), or the next subscribe.

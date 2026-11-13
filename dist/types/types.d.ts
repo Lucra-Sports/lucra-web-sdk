@@ -42,6 +42,7 @@ export declare enum LucraClientMessageType {
     userMatchupsResponse = "userMatchupsResponse",
     submitTournamentScoreResponse = "submitTournamentScoreResponse",
     enterRecreationalGameOutcomeResponse = "enterRecreationalGameOutcomeResponse",
+    startRecreationalGameResponse = "startRecreationalGameResponse",
     termsAccepted = "termsAccepted"
 }
 export declare enum MessageTypeToLucraClient {
@@ -73,6 +74,7 @@ export declare enum MessageTypeToLucraClient {
     userMatchupsRequest = "userMatchupsRequest",
     submitTournamentScoreRequest = "submitTournamentScoreRequest",
     enterRecreationalGameOutcomeRequest = "enterRecreationalGameOutcomeRequest",
+    startRecreationalGameRequest = "startRecreationalGameRequest",
     refreshUser = "refreshUser"
 }
 export type LucraConvertToCreditResponse = {
@@ -587,6 +589,12 @@ export type LucraEnterRecreationalGameOutcomeInput = {
     isTie?: boolean;
 };
 export type LucraEnterRecreationalGameOutcomeResult = {
+    matchupId: string;
+};
+export type LucraStartRecreationalGameInput = {
+    matchupId: string;
+};
+export type LucraStartRecreationalGameResult = {
     matchupId: string;
 };
 export type LucraDepositOptions = {

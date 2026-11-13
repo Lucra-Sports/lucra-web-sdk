@@ -55,6 +55,7 @@ export enum LucraClientMessageType {
   userMatchupsResponse = "userMatchupsResponse",
   submitTournamentScoreResponse = "submitTournamentScoreResponse",
   enterRecreationalGameOutcomeResponse = "enterRecreationalGameOutcomeResponse",
+  startRecreationalGameResponse = "startRecreationalGameResponse",
   termsAccepted = "termsAccepted",
 }
 
@@ -87,6 +88,7 @@ export enum MessageTypeToLucraClient {
   userMatchupsRequest = "userMatchupsRequest",
   submitTournamentScoreRequest = "submitTournamentScoreRequest",
   enterRecreationalGameOutcomeRequest = "enterRecreationalGameOutcomeRequest",
+  startRecreationalGameRequest = "startRecreationalGameRequest",
   // Fire-and-forget: re-read the user (balance) and send userInfo. Sent when a deposit popup
   // closes, because the popup cannot reach the hidden iframe itself.
   refreshUser = "refreshUser",
@@ -839,6 +841,13 @@ export type LucraEnterRecreationalGameOutcomeInput = {
 };
 
 export type LucraEnterRecreationalGameOutcomeResult = { matchupId: string };
+
+// Creator only, while the matchup is OPEN. Moves it to PENDING_OUTCOMES: nobody else can join.
+// A score-settled free for all then settles as soon as every player has a final score, instead of
+// waiting for its end time (a host-led game night: everyone in, start, play, settle).
+export type LucraStartRecreationalGameInput = { matchupId: string };
+
+export type LucraStartRecreationalGameResult = { matchupId: string };
 
 // Options for client.popup().deposit().
 export type LucraDepositOptions = {

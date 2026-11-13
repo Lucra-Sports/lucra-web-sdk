@@ -48,6 +48,7 @@ export var LucraClientMessageType;
     LucraClientMessageType["userMatchupsResponse"] = "userMatchupsResponse";
     LucraClientMessageType["submitTournamentScoreResponse"] = "submitTournamentScoreResponse";
     LucraClientMessageType["enterRecreationalGameOutcomeResponse"] = "enterRecreationalGameOutcomeResponse";
+    LucraClientMessageType["startRecreationalGameResponse"] = "startRecreationalGameResponse";
     LucraClientMessageType["termsAccepted"] = "termsAccepted";
 })(LucraClientMessageType || (LucraClientMessageType = {}));
 export var MessageTypeToLucraClient;
@@ -80,6 +81,7 @@ export var MessageTypeToLucraClient;
     MessageTypeToLucraClient["userMatchupsRequest"] = "userMatchupsRequest";
     MessageTypeToLucraClient["submitTournamentScoreRequest"] = "submitTournamentScoreRequest";
     MessageTypeToLucraClient["enterRecreationalGameOutcomeRequest"] = "enterRecreationalGameOutcomeRequest";
+    MessageTypeToLucraClient["startRecreationalGameRequest"] = "startRecreationalGameRequest";
     // Fire-and-forget: re-read the user (balance) and send userInfo. Sent when a deposit popup
     // closes, because the popup cannot reach the hidden iframe itself.
     MessageTypeToLucraClient["refreshUser"] = "refreshUser";

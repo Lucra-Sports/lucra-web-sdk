@@ -71,6 +71,8 @@ export type {
   LucraSubmitTournamentScoreResult,
   LucraEnterRecreationalGameOutcomeInput,
   LucraEnterRecreationalGameOutcomeResult,
+  LucraStartRecreationalGameInput,
+  LucraStartRecreationalGameResult,
   LucraDepositOptions,
   LucraMinigamesTriggerOptions,
   LucraApiErrorBody,

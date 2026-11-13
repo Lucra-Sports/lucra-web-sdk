@@ -170,6 +170,13 @@ describe("new reads and writes", () => {
       "enterRecreationalGameOutcomeResponse",
       { matchupId: "m1", winningGroupId: "g1" },
     ],
+    [
+      "startRecreationalGame",
+      (c) => c.api.startRecreationalGame("m1"),
+      "startRecreationalGameRequest",
+      "startRecreationalGameResponse",
+      { matchupId: "m1" },
+    ],
   ];
 
   for (const [name, call, requestType, responseType, body] of cases) {
