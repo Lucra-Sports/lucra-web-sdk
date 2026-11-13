@@ -9,7 +9,7 @@ export function createAuth(options) {
         responseType: LucraClientMessageType.isLoggedInResponse,
         kind: "read",
         // `pending` means Lucra is still restoring a session and will answer again.
-        interim: (data) => data.pending === true,
+        interim: (data) => data?.pending === true,
         maxTimeoutMs: timeouts.authCheckMaxMs,
     };
     let state = { status: "loading", user: null };
@@ -86,7 +86,8 @@ export function createAuth(options) {
         session.request(loginCheck, { awaitsPending: true }).then((answer) => {
             if (destroyed || generation !== checkGeneration)
                 return;
-            if (!answer.isLoggedIn) {
+            // An answer with no body has no user in it.
+            if (!answer?.isLoggedIn) {
                 setLoggedOut();
                 settleLogout();
                 return;
@@ -131,7 +132,9 @@ export function createAuth(options) {
             knownUser = null;
             if (state.status === "loggedIn")
                 setState("loading", state.user);
-            runLoginCheck(false);
+            // A logout whose wait already ran out was being decided by a check this
+            // restart cut short, so this check decides it instead.
+            runLoginCheck(pendingLogout !== null && pendingLogout.timer === null);
         }),
         session.on(LucraClientMessageType.loginSuccess, (data) => {
             ready = true;

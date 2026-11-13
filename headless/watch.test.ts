@@ -201,6 +201,47 @@ describe("createWatch", () => {
     expect(onError.mock.calls[0][0].code).toBe("TIMEOUT");
   });
 
+  it("cancels the subscription inside Lucra when subscribing fails", async () => {
+    const { frame, watch } = setup({ requestMs: 20 });
+    frame.deliver("initialized", { success: true });
+    const onUpdate = mock(() => {});
+    // The app retries on the same matchup from onError.
+    watch.watch("m1", {
+      onUpdate: () => {},
+      onError: () => {
+        watch.watch("m1", { onUpdate });
+      },
+    });
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    const types = frame.posted.map((message) => message.type);
+    expect(count(frame, "cancelMatchupDetailsSubscription")).toBe(1);
+    expect(frame.lastPosted("cancelMatchupDetailsSubscription")?.body).toBeNull();
+    // The cancel goes out before the retry subscribes, so it cannot end the retry.
+    expect(types.indexOf("cancelMatchupDetailsSubscription")).toBeLessThan(
+      types.lastIndexOf("subscribeMatchupDetailsRequest")
+    );
+    answerSubscribe(frame, "m1");
+    await tick();
+    expect(onUpdate).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not cancel a newer watch when a replaced subscribe fails late", async () => {
+    const { frame, watch } = setup({ requestMs: 20 });
+    frame.deliver("initialized", { success: true });
+    watch.watch("m1", { onUpdate: () => {} }).stop();
+    const onUpdate = mock(() => {});
+    const onError = mock(() => {});
+    watch.watch("m1", { onUpdate, onError });
+    await tick();
+    answerSubscribe(frame, "m1");
+    // The first subscribe was never answered and times out now.
+    await new Promise((resolve) => setTimeout(resolve, 40));
+    expect(count(frame, "cancelMatchupDetailsSubscription")).toBe(1);
+    expect(onError).toHaveBeenCalledTimes(0);
+    frame.deliver("matchupDetailsUpdated", details("m1", "CONFIRMED"));
+    expect(onUpdate).toHaveBeenCalledTimes(2);
+  });
+
   it("works without an onError handler", async () => {
     const { frame, watch } = setup();
     frame.deliver("initialized", { success: true });
