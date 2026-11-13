@@ -86,6 +86,8 @@ export function createLucraClient(config) {
     if (!config || !config.apiKey || !config.tenantId || !config.env) {
         throw new LucraError(LucraErrorCode.INVALID_CONFIG, "apiKey, tenantId, and env are required");
     }
+    // Throws INVALID_CONFIG before anything is added to the page.
+    const origin = lucraOrigin(config);
     const key = JSON.stringify([
         config.apiKey,
         config.tenantId,
@@ -102,7 +104,7 @@ export function createLucraClient(config) {
     }
     const supported = hasDom();
     const client = createClient(config, {
-        frame: supported ? createDomFrame(lucraOrigin(config)) : createNullFrame(),
+        frame: supported ? createDomFrame(origin) : createNullFrame(),
         parentOrigin: supported ? pageOrigin() : "",
         unsupported: !supported,
         onDestroy: () => {

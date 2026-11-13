@@ -1,5 +1,6 @@
 import { describe, it, expect } from "bun:test";
 import { SDK_VERSION } from "../version.ts";
+import { LucraError } from "./errors.ts";
 import { HOME_PATH, buildUrl, lucraOrigin, navigateTarget, type UrlContext } from "./url.ts";
 
 const context: UrlContext = {
@@ -16,6 +17,35 @@ describe("lucraOrigin", () => {
       "https://test-tenant.lucrasports.com"
     );
     expect(lucraOrigin({ tenantId: "x", env: "local" })).toBe("http://localhost:3000");
+  });
+
+  it("keeps a normal tenant and lowercases it", () => {
+    expect(lucraOrigin({ tenantId: "Acme-Sports", env: "staging" })).toBe(
+      "https://acme-sports.staging.lucrasports.com"
+    );
+  });
+
+  it("refuses a tenantId or env that would point somewhere other than Lucra", () => {
+    for (const bad of [
+      { tenantId: "evil.example/", env: "sandbox" },
+      { tenantId: "evil.example#", env: "sandbox" },
+      { tenantId: "evil.example?", env: "sandbox" },
+      { tenantId: "x@evil.example/", env: "sandbox" },
+      { tenantId: "evil.example/", env: "production" },
+      { tenantId: "a b", env: "sandbox" },
+      { tenantId: "acme", env: "x.evil.example/" },
+      { tenantId: "acme", env: "qa" },
+      { tenantId: "acme", env: "constructor" },
+    ]) {
+      let error: unknown;
+      try {
+        lucraOrigin(bad as never);
+      } catch (e) {
+        error = e;
+      }
+      expect(error).toBeInstanceOf(LucraError);
+      expect((error as LucraError).code).toBe("INVALID_CONFIG");
+    }
   });
 });
 
