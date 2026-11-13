@@ -11,6 +11,11 @@
       "types": "./dist/types/types.d.ts",
       "import": "./dist/types/types.js",
       "default": "./dist/types/types.js"
+    },
+    "./headless": {
+      "types": "./dist/headless/index.d.ts",
+      "import": "./dist/headless/index.js",
+      "default": "./dist/headless/index.js"
     }
   },
   "type": "module",
