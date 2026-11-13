@@ -55,6 +55,26 @@ export type {
   LucraCreateRecreationalGameInput,
   LucraRecreationalGameResult,
   LucraCancelRecreationalGameResult,
+  LucraMatchupJoinedBody,
+  LucraMatchupSettledBody,
+  LucraHowToWin,
+  LucraTrackResults,
+  LucraGameType,
+  LucraGameTypesResponse,
+  LucraMinigameMode,
+  LucraMinigame,
+  LucraMinigamesResponse,
+  LucraUserMatchupsFilter,
+  LucraUserMatchupsInput,
+  LucraUserMatchupsResponse,
+  LucraSubmitTournamentScoreInput,
+  LucraSubmitTournamentScoreResult,
+  LucraEnterRecreationalGameOutcomeInput,
+  LucraEnterRecreationalGameOutcomeResult,
+  LucraStartRecreationalGameInput,
+  LucraStartRecreationalGameResult,
+  LucraDepositOptions,
+  LucraMinigamesTriggerOptions,
   LucraApiErrorBody,
   LucraSdkDiagnosticBody,
   LucraIsLoggedInRequestBody,
@@ -75,4 +95,10 @@ export type {
 
 export { LucraApiErrorCode } from "./types/types.js";
 export { LucraClient } from "./v1.js";
-export { LucraUserNotLoggedIn, LucraClientNotOpen, LucraApiError } from "./errors.js";
+export {
+  LucraUserNotLoggedIn,
+  LucraClientNotOpen,
+  LucraApiError,
+  LucraMinigamesTriggerTimeout,
+  LucraMinigamesTriggerCanceled,
+} from "./errors.js";

@@ -25,6 +25,7 @@ const API_ERROR_MESSAGES = {
     [LucraApiErrorCode.invalidAtStake]: "The stake is invalid",
     [LucraApiErrorCode.invalidRewardType]: "The reward type is invalid",
     [LucraApiErrorCode.invalidPlayStyle]: "The play style is invalid",
+    [LucraApiErrorCode.termsNotAccepted]: "The user has not accepted Lucra's terms",
     [LucraApiErrorCode.apiError]: "The request could not be completed",
 };
 // Thrown (as a promise rejection) by Lucra API calls when the web-app reports a
@@ -37,5 +38,21 @@ export class LucraApiError extends Error {
         this.name = "LucraApiError";
         this.code = code;
         Object.setPrototypeOf(this, LucraApiError.prototype);
+    }
+}
+// minigamesTrigger: no session started within `timeoutMs`. The Start overlay is removed.
+export class LucraMinigamesTriggerTimeout extends Error {
+    constructor(message = "The minigame session did not start in time") {
+        super(message);
+        this.name = "LucraMinigamesTriggerTimeout";
+        Object.setPrototypeOf(this, LucraMinigamesTriggerTimeout.prototype);
+    }
+}
+// minigamesTrigger: the host aborted the `signal`. The Start overlay is removed.
+export class LucraMinigamesTriggerCanceled extends Error {
+    constructor(message = "The minigame session was canceled") {
+        super(message);
+        this.name = "LucraMinigamesTriggerCanceled";
+        Object.setPrototypeOf(this, LucraMinigamesTriggerCanceled.prototype);
     }
 }

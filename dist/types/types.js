@@ -43,6 +43,13 @@ export var LucraClientMessageType;
     LucraClientMessageType["createRecreationalGameResponse"] = "createRecreationalGameResponse";
     LucraClientMessageType["acceptRecreationalGameResponse"] = "acceptRecreationalGameResponse";
     LucraClientMessageType["cancelRecreationalGameResponse"] = "cancelRecreationalGameResponse";
+    LucraClientMessageType["gameTypesResponse"] = "gameTypesResponse";
+    LucraClientMessageType["minigamesResponse"] = "minigamesResponse";
+    LucraClientMessageType["userMatchupsResponse"] = "userMatchupsResponse";
+    LucraClientMessageType["submitTournamentScoreResponse"] = "submitTournamentScoreResponse";
+    LucraClientMessageType["enterRecreationalGameOutcomeResponse"] = "enterRecreationalGameOutcomeResponse";
+    LucraClientMessageType["startRecreationalGameResponse"] = "startRecreationalGameResponse";
+    LucraClientMessageType["termsAccepted"] = "termsAccepted";
 })(LucraClientMessageType || (LucraClientMessageType = {}));
 export var MessageTypeToLucraClient;
 (function (MessageTypeToLucraClient) {
@@ -69,6 +76,15 @@ export var MessageTypeToLucraClient;
     MessageTypeToLucraClient["acceptRecreationalGameRequest"] = "acceptRecreationalGameRequest";
     MessageTypeToLucraClient["cancelRecreationalGameRequest"] = "cancelRecreationalGameRequest";
     MessageTypeToLucraClient["sdkDiagnostic"] = "sdkDiagnostic";
+    MessageTypeToLucraClient["gameTypesRequest"] = "gameTypesRequest";
+    MessageTypeToLucraClient["minigamesRequest"] = "minigamesRequest";
+    MessageTypeToLucraClient["userMatchupsRequest"] = "userMatchupsRequest";
+    MessageTypeToLucraClient["submitTournamentScoreRequest"] = "submitTournamentScoreRequest";
+    MessageTypeToLucraClient["enterRecreationalGameOutcomeRequest"] = "enterRecreationalGameOutcomeRequest";
+    MessageTypeToLucraClient["startRecreationalGameRequest"] = "startRecreationalGameRequest";
+    // Fire-and-forget: re-read the user (balance) and send userInfo. Sent when a deposit popup
+    // closes, because the popup cannot reach the hidden iframe itself.
+    MessageTypeToLucraClient["refreshUser"] = "refreshUser";
 })(MessageTypeToLucraClient || (MessageTypeToLucraClient = {}));
 // Message the Lucra web app posts to the opener when a deposit finishes in a
 // popup (see client.popup()). The envelope is flat (no nested `data`).
@@ -128,5 +144,8 @@ export var LucraApiErrorCode;
     // Catch-all for a failure with no more specific code: an API or network
     // error, or a rejection the web-app cannot classify. `message` carries the
     // detail returned by the API when there is one.
+    // The user has not accepted Lucra's current terms. Present dialog().terms() from a user
+    // gesture, wait for the termsAccepted event, then retry the call.
+    LucraApiErrorCode["termsNotAccepted"] = "TERMS_NOT_ACCEPTED";
     LucraApiErrorCode["apiError"] = "API_ERROR";
 })(LucraApiErrorCode || (LucraApiErrorCode = {}));

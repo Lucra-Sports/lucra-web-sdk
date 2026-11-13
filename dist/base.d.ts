@@ -1,4 +1,4 @@
-import { type LucraClientSendMessage, type LucraDeepLinkResponse, type LucraClientConstructor, type LucraAchievementsResponse, type LucraTournamentsResponse, type LucraTournamentResponse, type LucraTournamentLeaderboardResponse, type LucraAutoJoinedTournamentsBody, type LucraJoinTournamentResponse, type LucraMatchup, type LucraMatchupDetails, type LucraCreateRecreationalGameInput, type LucraCancelRecreationalGameResult, type LucraRecreationalGameResult, type LucraApiErrorBody, type SDKLucraUser, type LucraMinigamesTriggerInput, type LucraStartMinigamesSessionResponse, type LucraInitializedBody, type LucraDialog, type LucraPopup, type LucraPopupResult } from "./types/types.js";
+import { type LucraClientSendMessage, type LucraDeepLinkResponse, type LucraClientConstructor, type LucraAchievementsResponse, type LucraTournamentsResponse, type LucraTournamentResponse, type LucraTournamentLeaderboardResponse, type LucraAutoJoinedTournamentsBody, type LucraJoinTournamentResponse, type LucraMatchup, type LucraMatchupDetails, type LucraCreateRecreationalGameInput, type LucraCancelRecreationalGameResult, type LucraRecreationalGameResult, type LucraApiErrorBody, type SDKLucraUser, type LucraMinigamesTriggerInput, type LucraStartMinigamesSessionResponse, type LucraInitializedBody, type LucraDialog, type LucraPopup, type LucraPopupResult, type LucraGameTypesResponse, type LucraMinigamesResponse, type LucraUserMatchupsInput, type LucraUserMatchupsResponse, type LucraSubmitTournamentScoreInput, type LucraSubmitTournamentScoreResult, type LucraEnterRecreationalGameOutcomeInput, type LucraEnterRecreationalGameOutcomeResult, type LucraStartRecreationalGameResult, type LucraDepositOptions, type LucraMinigamesTriggerOptions, type LucraMatchupJoinedBody, type LucraMatchupSettledBody } from "./types/types.js";
 type LucraNavigation = {
     profile: () => LucraClientBase;
     wallet: () => LucraClientBase;
@@ -17,9 +17,10 @@ type LucraNavigation = {
     kyc: () => LucraClientBase;
     demographic: () => LucraClientBase;
     locationGrant: () => LucraClientBase;
+    terms: () => LucraClientBase;
 };
 type LucraOpenNavigation = LucraNavigation & {
-    minigamesTrigger: (input: LucraMinigamesTriggerInput) => Promise<LucraStartMinigamesSessionResponse>;
+    minigamesTrigger: (input: LucraMinigamesTriggerInput, options?: LucraMinigamesTriggerOptions) => Promise<LucraStartMinigamesSessionResponse>;
     login: (options?: {
         loginOnly?: boolean;
     }) => LucraClientBase;
@@ -42,9 +43,10 @@ type LucraDialogNavigation = {
     kyc: () => LucraDialog;
     demographic: () => LucraDialog;
     locationGrant: () => LucraDialog;
+    terms: () => LucraDialog;
 };
 type LucraPopupNavigation = {
-    deposit: () => LucraPopup;
+    deposit: (options?: LucraDepositOptions) => LucraPopup;
 };
 type TriggerHandle = {
     iframe: HTMLIFrameElement;
@@ -77,6 +79,13 @@ export declare class LucraClientBase extends EventTarget {
     private _cancelRecreationalGameRequest;
     private _joinTournamentRequest;
     private _autoJoinTournamentsRequest;
+    private _gameTypesRequest;
+    private _minigamesRequest;
+    private _userMatchupsRequest;
+    private _submitTournamentScoreRequest;
+    private _enterRecreationalGameOutcomeRequest;
+    private _startRecreationalGameRequest;
+    private _lastMatchupDetails;
     private _isLoggedInRequest;
     protected triggerFrames: Map<Window, TriggerHandle>;
     protected _user: SDKLucraUser | null;
@@ -162,6 +171,13 @@ export declare class LucraClientBase extends EventTarget {
     protected _handleLogoutComplete(): void;
     private _resetMatchupDetailsSubscription;
     protected _isActiveMatchupDetailsUpdate(details: any): boolean;
+    protected _deriveMatchupEvents(next: LucraMatchupDetails): Array<{
+        type: "matchupJoined";
+        detail: LucraMatchupJoinedBody;
+    } | {
+        type: "matchupSettled";
+        detail: LucraMatchupSettledBody;
+    }>;
     protected _resumeMatchupDetailsSubscription(): void;
     api: {
         achievements: () => Promise<LucraAchievementsResponse>;
@@ -179,6 +195,13 @@ export declare class LucraClientBase extends EventTarget {
         acceptVersusRecreationalGame: (matchupId: string, teamId: string) => Promise<LucraRecreationalGameResult>;
         acceptFreeForAllRecreationalGame: (matchupId: string) => Promise<LucraRecreationalGameResult>;
         cancelRecreationalGame: (matchupId: string) => Promise<LucraCancelRecreationalGameResult>;
+        acceptVersusRecreationalGameAsOpponent: (matchupId: string) => Promise<LucraRecreationalGameResult>;
+        gameTypes: () => Promise<LucraGameTypesResponse>;
+        minigames: () => Promise<LucraMinigamesResponse>;
+        userMatchups: (input?: LucraUserMatchupsInput) => Promise<LucraUserMatchupsResponse>;
+        submitTournamentScore: (input: LucraSubmitTournamentScoreInput) => Promise<LucraSubmitTournamentScoreResult>;
+        enterRecreationalGameOutcome: (input: LucraEnterRecreationalGameOutcomeInput) => Promise<LucraEnterRecreationalGameOutcomeResult>;
+        startRecreationalGame: (matchupId: string) => Promise<LucraStartRecreationalGameResult>;
         subscribeToMatchupDetails: (matchupId: string) => Promise<LucraMatchupDetails>;
         cancelMatchupDetailsSubscription: () => void;
     };
