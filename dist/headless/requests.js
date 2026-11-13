@@ -23,13 +23,13 @@ export function createRequests(options) {
         if (!entry)
             return;
         try {
-            options.onTimeout?.(entry.type, options.timeoutMs);
+            options.onTimeout?.(entry.spec.type, options.timeoutMs);
         }
         catch {
             // Reporting is best effort. The request must still reject.
         }
         entry.reject(new LucraError(LucraErrorCode.TIMEOUT, undefined, {
-            outcomeUnknown: entry.kind === "write",
+            outcomeUnknown: entry.spec.kind === "write",
         }));
     }, options.timeoutMs);
     return {
@@ -37,12 +37,7 @@ export function createRequests(options) {
             const requestId = String(++lastRequestId);
             return new Promise((resolve, reject) => {
                 pending.set(requestId, {
-                    type: spec.type,
-                    responseType: spec.responseType,
-                    kind: spec.kind,
-                    unknownOnApiError: spec.unknownOnApiError === true,
-                    interim: spec.interim,
-                    maxTimeoutMs: spec.maxTimeoutMs,
+                    spec: spec,
                     resolve: resolve,
                     reject,
                     timer: startTimer(requestId),
@@ -68,19 +63,16 @@ export function createRequests(options) {
                 return false;
             if (ERROR_TYPES.has(message.type)) {
                 take(message.requestId);
-                entry.reject(fromApiError(message.data, {
-                    kind: entry.kind,
-                    unknownOnApiError: entry.unknownOnApiError,
-                }));
+                entry.reject(fromApiError(message.data, entry.spec));
                 return true;
             }
-            if (message.type !== entry.responseType)
+            if (message.type !== entry.spec.responseType)
                 return false;
-            if (entry.interim?.(message.data)) {
+            if (entry.spec.interim?.(message.data)) {
                 // "Not yet": keep waiting and restart the clock, but only until the
                 // absolute deadline, so a responder stuck saying "not yet" still times out.
-                if (entry.maxTimeoutMs === undefined ||
-                    Date.now() - entry.sentAt < entry.maxTimeoutMs) {
+                if (entry.spec.maxTimeoutMs === undefined ||
+                    Date.now() - entry.sentAt < entry.spec.maxTimeoutMs) {
                     clearTimeout(entry.timer);
                     entry.timer = startTimer(message.requestId);
                 }
@@ -94,7 +86,7 @@ export function createRequests(options) {
             for (const requestId of [...pending.keys()]) {
                 const entry = take(requestId);
                 entry?.reject(new LucraError(code, undefined, {
-                    outcomeUnknown: entry.kind === "write",
+                    outcomeUnknown: entry.spec.kind === "write",
                 }));
             }
         },
