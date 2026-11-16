@@ -129,7 +129,11 @@ export function createClient(
 }
 
 // The one live client on this page, and the config it was made with.
-let live: { key: string; client: LucraHeadlessClient } | null = null;
+let live: {
+  key: string;
+  container: HTMLElement | undefined;
+  client: LucraHeadlessClient;
+} | null = null;
 
 export function createLucraClient(config: LucraClientConfig): LucraHeadlessClient {
   if (!config || !config.apiKey || !config.tenantId || !config.env) {
@@ -138,8 +142,16 @@ export function createLucraClient(config: LucraClientConfig): LucraHeadlessClien
       "apiKey, tenantId, and env are required"
     );
   }
+  const { container } = config;
+  if (
+    container !== undefined &&
+    typeof (container as { appendChild?: unknown } | null)?.appendChild !== "function"
+  ) {
+    throw new LucraError(LucraErrorCode.INVALID_CONFIG, "container must be an HTML element");
+  }
   // Throws INVALID_CONFIG before anything is added to the page.
   const origin = lucraOrigin(config);
+  // The container is compared on its own: an element turns into {} as JSON.
   const key = JSON.stringify([
     config.apiKey,
     config.tenantId,
@@ -150,7 +162,7 @@ export function createLucraClient(config: LucraClientConfig): LucraHeadlessClien
   if (live) {
     // The same config again returns the same client, so a hot reload or a
     // second import does not start a second Lucra session.
-    if (live.key === key) return live.client;
+    if (live.key === key && live.container === container) return live.client;
     throw new LucraError(
       LucraErrorCode.INVALID_CONFIG,
       "A Lucra client already exists with a different configuration. Call destroy() on it first."
@@ -159,7 +171,7 @@ export function createLucraClient(config: LucraClientConfig): LucraHeadlessClien
 
   const supported = hasDom();
   const client = createClient(config, {
-    frame: supported ? createDomFrame(origin) : createNullFrame(),
+    frame: supported ? createDomFrame(origin, container) : createNullFrame(),
     parentOrigin: supported ? pageOrigin() : "",
     unsupported: !supported,
     onDestroy: () => {
@@ -167,6 +179,6 @@ export function createLucraClient(config: LucraClientConfig): LucraHeadlessClien
     },
   });
   // A client made where there is no page is inert, so it is not remembered.
-  if (supported) live = { key, client };
+  if (supported) live = { key, container, client };
   return client;
 }

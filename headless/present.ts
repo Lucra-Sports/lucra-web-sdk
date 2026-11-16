@@ -116,7 +116,8 @@ export function createPresent(options: {
         // Dismissed or replaced while waiting.
         if (done) return;
 
-        overlay = frame.openOverlay(handle.dismiss);
+        overlay = frame.openOverlay();
+        // The SDK draws no exit. The user leaves with Lucra's own control.
         cleanups.push(session.on(LucraClientMessageType.exitLucra, handle.dismiss));
         if (screen.needsLogin) {
           // The user signed out from inside the screen.

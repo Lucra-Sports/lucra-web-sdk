@@ -27,10 +27,12 @@ const HOST_ID = "lucra-headless-host";
 const FRAME_ALLOW = "geolocation *; web-share; accelerometer *; bluetooth *; gyroscope *; clipboard-write *; payment;";
 const HIDDEN_CSS = "display:none;";
 const OVERLAY_CSS = "position:fixed;inset:0;z-index:2147483647;display:flex;flex-direction:column;background:#000;";
-const BAR_CSS = "flex:0 0 auto;display:flex;justify-content:flex-end;padding:calc(4px + env(safe-area-inset-top, 0px)) 4px 4px;";
-const CLOSE_CSS = "background:transparent;border:0;color:#fff;font:600 14px system-ui,sans-serif;padding:8px 12px;cursor:pointer;";
-const IFRAME_CSS = "flex:1 1 auto;width:100%;height:100%;border:0;";
-export function createDomFrame(origin) {
+const CONTAINED_CSS = "display:block;width:100%;height:100%;";
+// Block, so an inline frame's baseline gap cannot overflow the container.
+const IFRAME_CSS = "display:block;flex:1 1 auto;width:100%;height:100%;border:0;";
+// With a container, the frame lives and shows there. Without one, it lives in
+// the body and shows full screen.
+export function createDomFrame(origin, container) {
     let host = null;
     let iframe = null;
     let destroyed = false;
@@ -76,12 +78,12 @@ export function createDomFrame(origin) {
         iframe.style.cssText = IFRAME_CSS;
         iframe.src = url;
         host.appendChild(iframe);
-        document.body.appendChild(host);
+        (container ?? document.body).appendChild(host);
     };
     return {
         mount(url) {
             window.addEventListener("message", onWindowMessage);
-            if (document.body) {
+            if (container || document.body) {
                 attach(url);
             }
             else {
@@ -103,36 +105,23 @@ export function createDomFrame(origin) {
                 listeners.delete(listener);
             };
         },
-        openOverlay(onUserClose) {
+        openOverlay() {
             closeOverlay?.();
             if (!host || !iframe)
                 return { close() { } };
             const overlayHost = host;
-            const overlayFrame = iframe;
             const previousFocus = document.activeElement;
-            // Most Lucra screens have no exit of their own, so the SDK draws one.
-            const bar = document.createElement("div");
-            bar.style.cssText = BAR_CSS;
-            const button = document.createElement("button");
-            button.type = "button";
-            button.textContent = "Close";
-            button.setAttribute("aria-label", "Close");
-            button.style.cssText = CLOSE_CSS;
-            button.addEventListener("click", onUserClose);
-            bar.appendChild(button);
-            overlayHost.insertBefore(bar, overlayFrame);
-            overlayHost.style.cssText = OVERLAY_CSS;
-            overlayHost.setAttribute("role", "dialog");
-            overlayHost.setAttribute("aria-modal", "true");
+            if (container) {
+                overlayHost.style.cssText = CONTAINED_CSS;
+            }
+            else {
+                // Full screen covers the page, so it is a modal dialog.
+                overlayHost.style.cssText = OVERLAY_CSS;
+                overlayHost.setAttribute("role", "dialog");
+                overlayHost.setAttribute("aria-modal", "true");
+            }
             overlayHost.setAttribute("aria-label", "Lucra");
-            // Escape only reaches this listener while focus is outside the frame.
-            // The Close button covers the other case.
-            const onKeydown = (event) => {
-                if (event.key === "Escape")
-                    onUserClose();
-            };
-            document.addEventListener("keydown", onKeydown);
-            overlayFrame.focus();
+            iframe.focus();
             let closed = false;
             const close = () => {
                 if (closed)
@@ -140,8 +129,6 @@ export function createDomFrame(origin) {
                 closed = true;
                 if (closeOverlay === close)
                     closeOverlay = null;
-                document.removeEventListener("keydown", onKeydown);
-                bar.remove();
                 overlayHost.style.cssText = HIDDEN_CSS;
                 overlayHost.removeAttribute("role");
                 overlayHost.removeAttribute("aria-modal");

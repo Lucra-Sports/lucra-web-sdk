@@ -46,26 +46,20 @@ describe("createFakeFrame", () => {
     });
   });
 
-  it("tracks the overlay and reports a user close without closing", () => {
+  it("tracks whether the overlay is open", () => {
     const frame = createFakeFrame();
-    const onUserClose = mock(() => {});
-    const overlay = frame.openOverlay(onUserClose);
+    const overlay = frame.openOverlay();
     expect(frame.overlayOpen).toBe(true);
     expect(frame.overlaysOpened).toBe(1);
-    frame.userClose();
-    expect(onUserClose).toHaveBeenCalledTimes(1);
-    expect(frame.overlayOpen).toBe(true);
     overlay.close();
     overlay.close();
     expect(frame.overlayOpen).toBe(false);
-    frame.userClose();
-    expect(onUserClose).toHaveBeenCalledTimes(1);
   });
 
   it("keeps the newer overlay open when an older one is closed late", () => {
     const frame = createFakeFrame();
-    const older = frame.openOverlay(() => {});
-    frame.openOverlay(() => {});
+    const older = frame.openOverlay();
+    frame.openOverlay();
     older.close();
     expect(frame.overlayOpen).toBe(true);
     expect(frame.overlaysOpened).toBe(2);
@@ -100,7 +94,7 @@ describe("createFakeFrame", () => {
     const frame = createFakeFrame();
     const listener = mock(() => {});
     frame.onMessage(listener);
-    frame.openOverlay(() => {});
+    frame.openOverlay();
     frame.destroy();
     expect(frame.destroyed).toBe(true);
     expect(frame.overlayOpen).toBe(false);

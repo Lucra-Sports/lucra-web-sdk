@@ -223,6 +223,14 @@ describe("createLucraClient", () => {
     }
   });
 
+  it("throws INVALID_CONFIG for a container that is not an element", () => {
+    for (const container of [{}, "app", 1, null]) {
+      const error = thrown(() => createLucraClient({ ...config, container } as never));
+      expect(error).toBeInstanceOf(LucraError);
+      expect(error.code).toBe("INVALID_CONFIG");
+    }
+  });
+
   it("returns an inert client where there is no browser, and does not remember it", async () => {
     // bun test has no window or document, so this is the no browser path.
     const first = createLucraClient(config);
@@ -241,11 +249,9 @@ describe("createLucraClient", () => {
     const element = () => ({
       style: { cssText: "" },
       appendChild() {},
-      insertBefore() {},
       remove() {},
       setAttribute() {},
       removeAttribute() {},
-      addEventListener() {},
       focus() {},
       contentWindow: { postMessage() {} },
     });
@@ -285,10 +291,44 @@ describe("createLucraClient", () => {
         { ...config, env: "production" as const },
         { ...config, locationId: "loc-1" },
         { ...config, autoJoin: false },
+        { ...config, container: element() as unknown as HTMLElement },
       ]) {
         expect(thrown(() => createLucraClient(other)).code).toBe("INVALID_CONFIG");
       }
       first.destroy();
+    });
+
+    it("returns the same client for the same container, and throws for another", () => {
+      const container = element() as unknown as HTMLElement;
+      const first = createLucraClient({ ...config, container });
+      expect(createLucraClient({ ...config, container })).toBe(first);
+      expect(thrown(() => createLucraClient(config)).code).toBe("INVALID_CONFIG");
+      const other = element() as unknown as HTMLElement;
+      expect(thrown(() => createLucraClient({ ...config, container: other })).code).toBe(
+        "INVALID_CONFIG"
+      );
+      first.destroy();
+    });
+
+    it("puts Lucra in the container instead of the body", () => {
+      const added = { body: 0, container: 0 };
+      const doc = (globalThis as unknown as { document: { body: { appendChild(): void } } })
+        .document;
+      doc.body.appendChild = () => {
+        added.body += 1;
+      };
+      const container = {
+        ...element(),
+        appendChild() {
+          added.container += 1;
+        },
+      };
+      const client = createLucraClient({
+        ...config,
+        container: container as unknown as HTMLElement,
+      });
+      expect(added).toEqual({ body: 0, container: 1 });
+      client.destroy();
     });
 
     it("adds nothing to the page for a config that is not a Lucra address", () => {

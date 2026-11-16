@@ -4,7 +4,7 @@
 
 ### Added
 
-- **Preview:** a headless client, `createLucraClient`, exported from `lucra-web-sdk/headless`. It is for apps that show Lucra data in their own screens. Calls wait for Lucra on their own, every failure is a `LucraError` with a `code`, and `lucra.present` shows the few Lucra screens an app cannot rebuild, such as login and Add Funds. `LucraClient` is unchanged. The two cannot be used on the same page. The headless client's API can still change before it becomes version 2.0.0. See [Headless client](3.0_headless_client.md).
+- **Preview:** a headless client, `createLucraClient`, exported from `lucra-web-sdk/headless`. It is for apps that show Lucra data in their own screens. Calls wait for Lucra on their own, every failure is a `LucraError` with a `code`, and `lucra.present` shows the few Lucra screens an app cannot rebuild, such as login and Add Funds. Those screens cover the page, or show inside an element you pass as `container`, and the user leaves them with Lucra's own exit control. `LucraClient` is unchanged. The two cannot be used on the same page. The headless client's API can still change before it becomes version 2.0.0. See [Headless client](3.0_headless_client.md).
 
 ## [v1.15.0]
 

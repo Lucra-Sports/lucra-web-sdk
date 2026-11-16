@@ -1,6 +1,6 @@
 import type { LucraPopupHandle } from "../popup.js";
 import type { LucraPopupResult } from "../types/types.js";
-import type { Frame, InboundMessage, OutboundMessage } from "./frame.js";
+import type { Frame, InboundMessage, OutboundMessage, Overlay } from "./frame.js";
 
 export type FakePopup = {
   url: string;
@@ -23,8 +23,6 @@ export type FakeFrame = Frame & {
   destroyed: boolean;
   // Simulates a message from the Lucra app.
   deliver(type: string, data?: unknown, requestId?: string): void;
-  // Simulates the user pressing Close or Escape on the overlay.
-  userClose(): void;
   // The most recent posted message of this type.
   lastPosted(type: string): OutboundMessage | undefined;
   // Answers the most recent posted request of `requestType` with its requestId.
@@ -33,7 +31,8 @@ export type FakeFrame = Frame & {
 
 export function createFakeFrame(): FakeFrame {
   const listeners = new Set<(message: InboundMessage) => void>();
-  let onUserClose: (() => void) | null = null;
+  // The overlay on show. Closing an older one late leaves it open.
+  let currentOverlay: Overlay | null = null;
 
   const frame: FakeFrame = {
     urls: [],
@@ -59,21 +58,18 @@ export function createFakeFrame(): FakeFrame {
         listeners.delete(listener);
       };
     },
-    openOverlay(handler) {
+    openOverlay() {
       frame.overlayOpen = true;
       frame.overlaysOpened += 1;
-      onUserClose = handler;
-      let closed = false;
-      return {
+      const overlay: Overlay = {
         close() {
-          if (closed) return;
-          closed = true;
-          if (onUserClose === handler) {
-            onUserClose = null;
-            frame.overlayOpen = false;
-          }
+          if (currentOverlay !== overlay) return;
+          currentOverlay = null;
+          frame.overlayOpen = false;
         },
       };
+      currentOverlay = overlay;
+      return overlay;
     },
     openPopup(url) {
       if (frame.blockPopups) throw new Error("Popup blocked");
@@ -107,15 +103,12 @@ export function createFakeFrame(): FakeFrame {
     destroy() {
       frame.destroyed = true;
       frame.overlayOpen = false;
-      onUserClose = null;
+      currentOverlay = null;
       listeners.clear();
     },
 
     deliver(type, data, requestId) {
       for (const listener of [...listeners]) listener({ type, data, requestId });
-    },
-    userClose() {
-      onUserClose?.();
     },
     lastPosted(type) {
       for (let i = frame.posted.length - 1; i >= 0; i -= 1) {

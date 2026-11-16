@@ -23,16 +23,16 @@ export type Overlay = { close(): void };
 // Everything the client needs from the page. This file implements it with the
 // DOM. Tests use the fake in testing.ts. No other file may touch the DOM.
 export type Frame = {
-  // Creates the hidden frame and loads `url`. Safe to call before <body> exists.
+  // Creates the hidden frame, in the app's container or the body, and loads
+  // `url`. Safe to call before <body> exists.
   mount(url: string): void;
   // Loads `url` in the existing frame. The Lucra app starts over.
   reload(url: string): void;
   post(message: OutboundMessage): void;
   onMessage(listener: (message: InboundMessage) => void): () => void;
-  // Shows the frame full screen with a Close button. `onUserClose` runs when the
-  // user presses Close or Escape. It does not close the overlay: the caller
-  // decides, then calls close().
-  openOverlay(onUserClose: () => void): Overlay;
+  // Shows the frame full screen, or filling the app's container. It draws no
+  // exit: Lucra shows its own, and the app can call present.dismiss().
+  openOverlay(): Overlay;
   // Opens a real popup window. Throws when the browser blocks it.
   openPopup(url: string): LucraPopupHandle;
   destroy(): void;
@@ -70,13 +70,13 @@ const FRAME_ALLOW =
 const HIDDEN_CSS = "display:none;";
 const OVERLAY_CSS =
   "position:fixed;inset:0;z-index:2147483647;display:flex;flex-direction:column;background:#000;";
-const BAR_CSS =
-  "flex:0 0 auto;display:flex;justify-content:flex-end;padding:calc(4px + env(safe-area-inset-top, 0px)) 4px 4px;";
-const CLOSE_CSS =
-  "background:transparent;border:0;color:#fff;font:600 14px system-ui,sans-serif;padding:8px 12px;cursor:pointer;";
-const IFRAME_CSS = "flex:1 1 auto;width:100%;height:100%;border:0;";
+const CONTAINED_CSS = "display:block;width:100%;height:100%;";
+// Block, so an inline frame's baseline gap cannot overflow the container.
+const IFRAME_CSS = "display:block;flex:1 1 auto;width:100%;height:100%;border:0;";
 
-export function createDomFrame(origin: string): Frame {
+// With a container, the frame lives and shows there. Without one, it lives in
+// the body and shows full screen.
+export function createDomFrame(origin: string, container?: HTMLElement): Frame {
   let host: HTMLDivElement | null = null;
   let iframe: HTMLIFrameElement | null = null;
   let destroyed = false;
@@ -119,13 +119,13 @@ export function createDomFrame(origin: string): Frame {
     iframe.style.cssText = IFRAME_CSS;
     iframe.src = url;
     host.appendChild(iframe);
-    document.body.appendChild(host);
+    (container ?? document.body).appendChild(host);
   };
 
   return {
     mount(url) {
       window.addEventListener("message", onWindowMessage);
-      if (document.body) {
+      if (container || document.body) {
         attach(url);
       } else {
         document.addEventListener("DOMContentLoaded", () => attach(url), {
@@ -149,45 +149,28 @@ export function createDomFrame(origin: string): Frame {
       };
     },
 
-    openOverlay(onUserClose) {
+    openOverlay() {
       closeOverlay?.();
       if (!host || !iframe) return { close() {} };
       const overlayHost = host;
-      const overlayFrame = iframe;
       const previousFocus = document.activeElement as HTMLElement | null;
 
-      // Most Lucra screens have no exit of their own, so the SDK draws one.
-      const bar = document.createElement("div");
-      bar.style.cssText = BAR_CSS;
-      const button = document.createElement("button");
-      button.type = "button";
-      button.textContent = "Close";
-      button.setAttribute("aria-label", "Close");
-      button.style.cssText = CLOSE_CSS;
-      button.addEventListener("click", onUserClose);
-      bar.appendChild(button);
-      overlayHost.insertBefore(bar, overlayFrame);
-
-      overlayHost.style.cssText = OVERLAY_CSS;
-      overlayHost.setAttribute("role", "dialog");
-      overlayHost.setAttribute("aria-modal", "true");
+      if (container) {
+        overlayHost.style.cssText = CONTAINED_CSS;
+      } else {
+        // Full screen covers the page, so it is a modal dialog.
+        overlayHost.style.cssText = OVERLAY_CSS;
+        overlayHost.setAttribute("role", "dialog");
+        overlayHost.setAttribute("aria-modal", "true");
+      }
       overlayHost.setAttribute("aria-label", "Lucra");
-
-      // Escape only reaches this listener while focus is outside the frame.
-      // The Close button covers the other case.
-      const onKeydown = (event: KeyboardEvent) => {
-        if (event.key === "Escape") onUserClose();
-      };
-      document.addEventListener("keydown", onKeydown);
-      overlayFrame.focus();
+      iframe.focus();
 
       let closed = false;
       const close = () => {
         if (closed) return;
         closed = true;
         if (closeOverlay === close) closeOverlay = null;
-        document.removeEventListener("keydown", onKeydown);
-        bar.remove();
         overlayHost.style.cssText = HIDDEN_CSS;
         overlayHost.removeAttribute("role");
         overlayHost.removeAttribute("aria-modal");

@@ -54,6 +54,10 @@ export type LucraClientConfig = {
   env: LucraEnvironment;
   locationId?: string;
   autoJoin?: boolean;
+  // Where Lucra screens show. Without it they cover the page. It must be in the
+  // page when the client is created and stay there: moving it restarts Lucra
+  // and removing it ends Lucra, so destroy the client before doing either.
+  container?: HTMLElement;
 };
 
 // "loading" until Lucra has answered whether a user is logged in.
