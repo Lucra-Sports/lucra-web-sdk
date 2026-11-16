@@ -247,12 +247,11 @@ describe("createLucraClient", () => {
       document: (globalThis as { document?: unknown }).document,
     };
     const element = () => ({
+      nodeType: 1,
+      isConnected: true,
       style: { cssText: "" },
       appendChild() {},
       remove() {},
-      setAttribute() {},
-      removeAttribute() {},
-      focus() {},
       contentWindow: { postMessage() {} },
     });
 
@@ -265,10 +264,7 @@ describe("createLucraClient", () => {
       };
       (globalThis as { document?: unknown }).document = {
         body: element(),
-        activeElement: null,
         createElement: element,
-        addEventListener() {},
-        removeEventListener() {},
       };
     });
     afterEach(() => {
@@ -348,6 +344,32 @@ describe("createLucraClient", () => {
       const client = createLucraClient({ ...config, tenantId: "Test-Tenant" });
       expect(created.length).toBeGreaterThan(0);
       client.destroy();
+    });
+
+    it("refuses a container that is not an element in the page, and adds nothing", () => {
+      const added: string[] = [];
+      const page = globalThis as unknown as {
+        window: { addEventListener: (type: string) => void };
+        document: { createElement: () => unknown };
+      };
+      page.window.addEventListener = (type) => added.push(`listener:${type}`);
+      const original = page.document.createElement;
+      page.document.createElement = () => {
+        added.push("element");
+        return original();
+      };
+      for (const [container, message] of [
+        [{ ...element(), nodeType: 3 }, "element"], // a text node
+        [{ ...element(), nodeType: 9 }, "element"], // a document
+        [{ ...element(), isConnected: false }, "in the page"],
+      ] as const) {
+        const error = thrown(() => createLucraClient({ ...config, container } as never));
+        expect(error.code).toBe("INVALID_CONFIG");
+        expect(error.message).toContain(message);
+      }
+      expect(added).toEqual([]);
+      // Nothing was remembered, so a good config still makes a client.
+      createLucraClient(config).destroy();
     });
 
     it("makes a new client after destroy", () => {

@@ -93,7 +93,6 @@ beforeEach(() => {
     activeElement: focused,
     createElement: makeElement,
     addEventListener: add(documentListeners),
-    removeEventListener: remove(documentListeners),
   };
   (globalThis as { window?: unknown }).window = {
     location: { origin: "https://host.example" },
@@ -228,7 +227,11 @@ describe("createDomFrame: overlay", () => {
     const frame = createDomFrame(ORIGIN);
     frame.mount(URL_1);
     frame.openOverlay();
-    expect(host().style.cssText).toContain("position:fixed");
+    // Padded so iOS bars and the notch do not cover Lucra's own controls.
+    expect(host().style.cssText).toBe(
+      "position:fixed;inset:0;z-index:2147483647;display:flex;flex-direction:column;background:#000;" +
+        "padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);box-sizing:border-box;"
+    );
     expect(host().attributes).toEqual({
       role: "dialog",
       "aria-modal": "true",

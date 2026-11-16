@@ -143,11 +143,15 @@ export function createLucraClient(config: LucraClientConfig): LucraHeadlessClien
     );
   }
   const { container } = config;
-  if (
-    container !== undefined &&
-    typeof (container as { appendChild?: unknown } | null)?.appendChild !== "function"
-  ) {
-    throw new LucraError(LucraErrorCode.INVALID_CONFIG, "container must be an HTML element");
+  if (container !== undefined) {
+    // 1 is an element node. Unlike instanceof, this also works for an element
+    // from another window, such as a same origin iframe.
+    if ((container as { nodeType?: unknown } | null)?.nodeType !== 1) {
+      throw new LucraError(LucraErrorCode.INVALID_CONFIG, "container must be an HTML element");
+    }
+    if (container.isConnected !== true) {
+      throw new LucraError(LucraErrorCode.INVALID_CONFIG, "container must be in the page");
+    }
   }
   // Throws INVALID_CONFIG before anything is added to the page.
   const origin = lucraOrigin(config);

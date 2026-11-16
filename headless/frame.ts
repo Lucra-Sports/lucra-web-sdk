@@ -68,8 +68,10 @@ const HOST_ID = "lucra-headless-host";
 const FRAME_ALLOW =
   "geolocation *; web-share; accelerometer *; bluetooth *; gyroscope *; clipboard-write *; payment;";
 const HIDDEN_CSS = "display:none;";
+// Padded so iOS bars and the notch do not cover Lucra's own controls.
 const OVERLAY_CSS =
-  "position:fixed;inset:0;z-index:2147483647;display:flex;flex-direction:column;background:#000;";
+  "position:fixed;inset:0;z-index:2147483647;display:flex;flex-direction:column;background:#000;" +
+  "padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);box-sizing:border-box;";
 const CONTAINED_CSS = "display:block;width:100%;height:100%;";
 // Block, so an inline frame's baseline gap cannot overflow the container.
 const IFRAME_CSS = "display:block;flex:1 1 auto;width:100%;height:100%;border:0;";
@@ -167,11 +169,10 @@ export function createDomFrame(origin: string, container?: HTMLElement): Frame {
       }
       iframe.focus();
 
-      let closed = false;
       const close = () => {
-        if (closed) return;
-        closed = true;
-        if (closeOverlay === close) closeOverlay = null;
+        // Only the overlay on show can close. A late close of an older one does nothing.
+        if (closeOverlay !== close) return;
+        closeOverlay = null;
         overlayHost.style.cssText = HIDDEN_CSS;
         overlayHost.removeAttribute("role");
         overlayHost.removeAttribute("aria-modal");

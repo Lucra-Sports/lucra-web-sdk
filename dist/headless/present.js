@@ -75,7 +75,16 @@ export function createPresent(options) {
                 const enableExit = () => session.post(MessageTypeToLucraClient.enableExitLucra, true);
                 cleanups.push(session.onConnected(enableExit));
                 enableExit();
+                // Lucra may start over while the screen shows: login always does, and
+                // the page can reload itself. If it cannot start again, the screen
+                // will never come back, so close it with the reason. finish does
+                // nothing once this screen is done, so a late failure cannot touch it.
+                const closeIfLucraFails = () => {
+                    session.whenConnected().catch((error) => finish({ error }));
+                };
+                cleanups.push(session.on(LucraClientMessageType.initialized, closeIfLucraFails));
                 screen.show();
+                closeIfLucraFails();
             })().catch((error) => finish({ error }));
         });
     };
