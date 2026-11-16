@@ -333,7 +333,8 @@ describe("createLucraClient", () => {
 
     it("adds nothing to the page for a config that is not a Lucra address", () => {
       const created: unknown[] = [];
-      const doc = (globalThis as { document: { createElement: () => unknown } }).document;
+      const doc = (globalThis as unknown as { document: { createElement: () => unknown } })
+        .document;
       const original = doc.createElement;
       doc.createElement = () => {
         const made = original();

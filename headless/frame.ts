@@ -156,14 +156,15 @@ export function createDomFrame(origin: string, container?: HTMLElement): Frame {
       const previousFocus = document.activeElement as HTMLElement | null;
 
       if (container) {
+        // A div with no role cannot be named. The frame's own title names it.
         overlayHost.style.cssText = CONTAINED_CSS;
       } else {
         // Full screen covers the page, so it is a modal dialog.
         overlayHost.style.cssText = OVERLAY_CSS;
         overlayHost.setAttribute("role", "dialog");
         overlayHost.setAttribute("aria-modal", "true");
+        overlayHost.setAttribute("aria-label", "Lucra");
       }
-      overlayHost.setAttribute("aria-label", "Lucra");
       iframe.focus();
 
       let closed = false;

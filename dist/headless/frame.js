@@ -112,6 +112,7 @@ export function createDomFrame(origin, container) {
             const overlayHost = host;
             const previousFocus = document.activeElement;
             if (container) {
+                // A div with no role cannot be named. The frame's own title names it.
                 overlayHost.style.cssText = CONTAINED_CSS;
             }
             else {
@@ -119,8 +120,8 @@ export function createDomFrame(origin, container) {
                 overlayHost.style.cssText = OVERLAY_CSS;
                 overlayHost.setAttribute("role", "dialog");
                 overlayHost.setAttribute("aria-modal", "true");
+                overlayHost.setAttribute("aria-label", "Lucra");
             }
-            overlayHost.setAttribute("aria-label", "Lucra");
             iframe.focus();
             let closed = false;
             const close = () => {

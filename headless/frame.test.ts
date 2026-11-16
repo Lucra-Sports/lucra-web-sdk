@@ -300,7 +300,8 @@ describe("createDomFrame: in a container", () => {
     frame.mount(URL_1);
     const overlay = frame.openOverlay();
     expect(wrapper().style.cssText).toBe("display:block;width:100%;height:100%;");
-    expect(wrapper().attributes).toEqual({ "aria-label": "Lucra" });
+    // A div with no role cannot be named. The frame's own title names it.
+    expect(wrapper().attributes).toEqual({});
     expect(wrapper().children.map((child) => child.tag)).toEqual(["iframe"]);
     expect(dom.documentListeners.get("keydown")?.size ?? 0).toBe(0);
     expect(wrapper().children[0].focus).toHaveBeenCalledTimes(1);
