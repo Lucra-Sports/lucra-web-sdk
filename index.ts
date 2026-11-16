@@ -10,8 +10,6 @@ export type {
   LucraMatchupCanceledBody,
   LucraActiveMatchupStartedBody,
   LucraTournamentJoinedBody,
-  LucraConvertToCreditBody,
-  LucraConvertToCreditResponse,
   LucraDeepLinkBody,
   LucraDeepLinkResponse,
   LucraNavigationEventBody,

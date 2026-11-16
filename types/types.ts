@@ -19,7 +19,6 @@ export enum LucraClientMessageType {
   autoJoinedTournaments = "autoJoinedTournaments",
   autoJoinTournamentsError = "autoJoinTournamentsError",
   claimReward = "claimReward",
-  convertToCredit = "convertToCredit",
   deepLink = "deepLink",
   demographicComplete = "demographicComplete",
   exitLucra = "exitLucra",
@@ -57,10 +56,8 @@ export enum MessageTypeToLucraClient {
   autoJoinTournamentsRequest = "autoJoinTournamentsRequest",
   availableRewards = "availableRewards",
   clientUserInfo = "clientUserInfo",
-  convertToCreditResponse = "convertToCreditResponse",
   deepLinkResponse = "deepLinkResponse",
   matchupInviteUrlResponse = "matchupInviteUrlResponse",
-  enableConvertToCredit = "enableConvertToCredit",
   enableExitLucra = "enableExitLucra",
   navigate = "navigate",
   tournamentsRequest = "tournamentsRequest",
@@ -77,18 +74,6 @@ export enum MessageTypeToLucraClient {
   cancelRecreationalGameRequest = "cancelRecreationalGameRequest",
   sdkDiagnostic = "sdkDiagnostic",
 }
-
-export type LucraConvertToCreditResponse = {
-  id: string;
-  title: string;
-  iconUrl?: string;
-  conversionTerms: string;
-  convertedAmount: number;
-  convertedDisplayAmount: string;
-  shortDescription: string;
-  longDescription: string;
-  metaData?: Record<string, string>;
-};
 
 export type LucraDeepLinkResponse = {
   url: string;
@@ -109,7 +94,6 @@ export type LucraMatchupCanceledBody = { matchupId: string };
 export type LucraMatchupAcceptedBody = { matchupId: string };
 export type LucraTournamentJoinedBody = { matchupId: string };
 export type LucraAutoJoinedTournamentsBody = { matchupIds: string[] };
-export type LucraConvertToCreditBody = { amount: number };
 export type LucraDeepLinkBody = { url: string };
 export type LucraMatchupInviteUrlBody = { matchupId: string };
 export type LucraMatchupInviteUrlTransformer = (
@@ -168,7 +152,6 @@ export type LucraEventMap = {
   matchupStarted: LucraMatchupStartedBody;
   matchupAccepted: LucraMatchupAcceptedBody;
   matchupCanceled: LucraMatchupCanceledBody;
-  convertToCredit: LucraConvertToCreditBody;
   tournamentJoined: LucraTournamentJoinedBody;
   autoJoinedTournaments: LucraAutoJoinedTournamentsBody;
   deepLink: LucraDeepLinkBody;
@@ -188,8 +171,6 @@ export type LucraEventMap = {
 
 export type LucraClientSendMessage = {
   userUpdated: (data: SDKClientUser) => void;
-  convertToCreditResponse: (data: LucraConvertToCreditResponse) => void;
-  enableConvertToCredit: () => void;
   deepLinkResponse: (data: LucraDeepLinkResponse) => void;
   navigate: (data: LucraNavigateRequest) => void;
   availableRewards: (data: LucraAvailableRewards) => void;
