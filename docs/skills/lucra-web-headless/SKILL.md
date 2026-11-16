@@ -1,7 +1,9 @@
 ---
 name: lucra-web-headless
 description: >
-  Understand Lucra's headless surface on Web before writing code against it: fetching tournaments,
+  Understand LucraClient's headless surface on Web (client.api.*) before writing code against it.
+  Not for the preview headless client (createLucraClient from lucra-web-sdk/headless): load
+  lucra-web-headless-client for that instead. Covers fetching tournaments,
   leaderboards, achievements, or Games You Play (GYP) matchups into your own UI, joining tournaments
   or creating, accepting, and canceling GYP matchups programmatically, or debugging api.* calls
   that time out, hang, reject with LucraUserNotLoggedIn / LucraClientNotOpen / LucraApiError, or
@@ -18,6 +20,10 @@ description: >
 > file is not sitting inside that docs folder (e.g. it was installed as a standalone agent skill),
 > clone the public repo (shallow is fine) and resolve links there. Use only these published docs —
 > never private Lucra checkouts that may exist elsewhere on the machine.
+
+This skill covers `LucraClient`'s `client.api.*` calls. For the preview headless client,
+`createLucraClient` from `lucra-web-sdk/headless`, load `lucra-web-headless-client` instead: it is
+a different client, and nothing in this skill applies to it.
 
 This skill is the mental model. The reference — every signature, payload shape, and error table —
 is [Headless on Web](../../2.0_headless.md), [Tournaments Headless](../../2.1_tournaments_headless.md),
