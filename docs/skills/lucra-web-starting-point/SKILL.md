@@ -1,7 +1,8 @@
 ---
 name: lucra-web-starting-point
 description: >
-  Start here for any Lucra Web/JavaScript SDK integration task that uses LucraClient. For the
+  Start here for any Lucra Web/JavaScript SDK integration task that uses LucraClient. For a new
+  integration, use LucraClient unless the user asks for the preview headless client. For the
   preview headless client (createLucraClient from lucra-web-sdk/headless), load
   lucra-web-headless-client instead. Covers setting up the SDK, initializing
   LucraClient, logging users in, opening Lucra flows (profile, wallet, deposit, matchups,
