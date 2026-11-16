@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## [Unreleased]
+
+### Breaking
+
+- Convert to Credit is removed. `sendMessage.enableConvertToCredit()`, `sendMessage.convertToCreditResponse()`, the `convertToCredit` event, the exported types `LucraConvertToCreditBody` and `LucraConvertToCreditResponse`, and the enum members `LucraClientMessageType.convertToCredit`, `MessageTypeToLucraClient.convertToCreditResponse`, and `MessageTypeToLucraClient.enableConvertToCredit` no longer exist, and the Convert to Credit guide is gone. Remove those calls and any `convertToCredit` listener. There is no replacement.
+
 ## [v1.15.0]
 
 ### Added
