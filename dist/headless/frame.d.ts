@@ -18,11 +18,11 @@ export type Frame = {
     reload(url: string): void;
     post(message: OutboundMessage): void;
     onMessage(listener: (message: InboundMessage) => void): () => void;
-    openOverlay(onUserClose: () => void): Overlay;
+    openOverlay(): Overlay;
     openPopup(url: string): LucraPopupHandle;
     destroy(): void;
 };
 export declare function hasDom(): boolean;
 export declare function pageOrigin(): string;
 export declare function createNullFrame(): Frame;
-export declare function createDomFrame(origin: string): Frame;
+export declare function createDomFrame(origin: string, container?: HTMLElement): Frame;

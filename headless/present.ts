@@ -116,7 +116,8 @@ export function createPresent(options: {
         // Dismissed or replaced while waiting.
         if (done) return;
 
-        overlay = frame.openOverlay(handle.dismiss);
+        overlay = frame.openOverlay();
+        // The SDK draws no exit. The user leaves with Lucra's own control.
         cleanups.push(session.on(LucraClientMessageType.exitLucra, handle.dismiss));
         if (screen.needsLogin) {
           // The user signed out from inside the screen.
@@ -135,7 +136,18 @@ export function createPresent(options: {
           session.post(MessageTypeToLucraClient.enableExitLucra, true);
         cleanups.push(session.onConnected(enableExit));
         enableExit();
+        // Lucra may start over while the screen shows: login always does, and
+        // the page can reload itself. If it cannot start again, the screen
+        // will never come back, so close it with the reason. finish does
+        // nothing once this screen is done, so a late failure cannot touch it.
+        const closeIfLucraFails = () => {
+          session.whenConnected().catch((error: unknown) => finish({ error }));
+        };
+        cleanups.push(
+          session.on(LucraClientMessageType.initialized, closeIfLucraFails)
+        );
         screen.show();
+        closeIfLucraFails();
       })().catch((error: unknown) => finish({ error }));
     });
   };

@@ -213,7 +213,7 @@ describe("createWatch", () => {
       },
     });
     await new Promise((resolve) => setTimeout(resolve, 30));
-    const types = frame.posted.map((message) => message.type);
+    const types: string[] = frame.posted.map((message) => message.type);
     expect(count(frame, "cancelMatchupDetailsSubscription")).toBe(1);
     expect(frame.lastPosted("cancelMatchupDetailsSubscription")?.body).toBeNull();
     // The cancel goes out before the retry subscribes, so it cannot end the retry.

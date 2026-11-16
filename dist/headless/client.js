@@ -86,8 +86,20 @@ export function createLucraClient(config) {
     if (!config || !config.apiKey || !config.tenantId || !config.env) {
         throw new LucraError(LucraErrorCode.INVALID_CONFIG, "apiKey, tenantId, and env are required");
     }
+    const { container } = config;
+    if (container !== undefined) {
+        // 1 is an element node. Unlike instanceof, this also works for an element
+        // from another window, such as a same origin iframe.
+        if (container?.nodeType !== 1) {
+            throw new LucraError(LucraErrorCode.INVALID_CONFIG, "container must be an HTML element");
+        }
+        if (container.isConnected !== true) {
+            throw new LucraError(LucraErrorCode.INVALID_CONFIG, "container must be in the page");
+        }
+    }
     // Throws INVALID_CONFIG before anything is added to the page.
     const origin = lucraOrigin(config);
+    // The container is compared on its own: an element turns into {} as JSON.
     const key = JSON.stringify([
         config.apiKey,
         config.tenantId,
@@ -98,13 +110,13 @@ export function createLucraClient(config) {
     if (live) {
         // The same config again returns the same client, so a hot reload or a
         // second import does not start a second Lucra session.
-        if (live.key === key)
+        if (live.key === key && live.container === container)
             return live.client;
         throw new LucraError(LucraErrorCode.INVALID_CONFIG, "A Lucra client already exists with a different configuration. Call destroy() on it first.");
     }
     const supported = hasDom();
     const client = createClient(config, {
-        frame: supported ? createDomFrame(origin) : createNullFrame(),
+        frame: supported ? createDomFrame(origin, container) : createNullFrame(),
         parentOrigin: supported ? pageOrigin() : "",
         unsupported: !supported,
         onDestroy: () => {
@@ -114,6 +126,6 @@ export function createLucraClient(config) {
     });
     // A client made where there is no page is inert, so it is not remembered.
     if (supported)
-        live = { key, client };
+        live = { key, container, client };
     return client;
 }

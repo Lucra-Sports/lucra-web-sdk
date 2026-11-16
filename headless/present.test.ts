@@ -110,27 +110,23 @@ describe("createPresent: screens", () => {
         frame.deliver("kycComplete", null);
         frame.deliver("demographicComplete", null);
         expect(frame.overlayOpen).toBe(true);
-        frame.userClose();
+        frame.deliver("exitLucra", true);
         expect(await shown).toEqual({ status: "dismissed" });
       }
     }
   });
 
-  it("resolves dismissed on Close, exitLucra, and dismiss()", async () => {
+  it("resolves dismissed on exitLucra and dismiss()", async () => {
     const { frame, present } = setup();
     await connectLoggedIn(frame);
     const a = present.kyc();
     await tick();
-    frame.userClose();
-    expect(await a).toEqual({ status: "dismissed" });
-    const b = present.wallet();
-    await tick();
     frame.deliver("exitLucra", true);
-    expect(await b).toEqual({ status: "dismissed" });
-    const c = present.profile();
+    expect(await a).toEqual({ status: "dismissed" });
+    const b = present.profile();
     await tick();
     present.dismiss();
-    expect(await c).toEqual({ status: "dismissed" });
+    expect(await b).toEqual({ status: "dismissed" });
     expect(frame.overlayOpen).toBe(false);
     present.dismiss();
   });
@@ -146,7 +142,7 @@ describe("createPresent: screens", () => {
     await tick();
     expect(frame.overlayOpen).toBe(true);
     expect(frame.overlaysOpened).toBe(2);
-    frame.userClose();
+    frame.deliver("exitLucra", true);
     expect(await second).toEqual({ status: "dismissed" });
     expect(activity.screenOpen).toBe(false);
   });
@@ -175,7 +171,7 @@ describe("createPresent: screens", () => {
     await tick();
     expect(frame.overlayOpen).toBe(true);
     expect((await caught(api.tournaments.join("t2"))).code).toBe("SCREEN_OPEN");
-    frame.userClose();
+    present.dismiss();
     await shown;
     const again = api.tournaments.join("t2");
     await tick();
@@ -212,10 +208,22 @@ describe("createPresent: screens", () => {
     expect(count(frame, "enableExitLucra")).toBe(1);
     frame.deliver("initialized", { success: true });
     expect(count(frame, "enableExitLucra")).toBe(2);
-    frame.userClose();
+    frame.deliver("exitLucra", true);
     await shown;
     frame.deliver("initialized", { success: true });
     expect(count(frame, "enableExitLucra")).toBe(2);
+  });
+
+  it("closes a screen with the error when Lucra restarts and cannot start", async () => {
+    const { frame, activity, present } = setup();
+    await connectLoggedIn(frame);
+    const shown = caught(present.profile());
+    await tick();
+    expect(frame.overlayOpen).toBe(true);
+    frame.deliver("initialized", { success: false });
+    expect((await shown).code).toBe("CONNECTION_FAILED");
+    expect(frame.overlayOpen).toBe(false);
+    expect(activity.screenOpen).toBe(false);
   });
 
   it("rejects when Lucra cannot start", async () => {
@@ -284,12 +292,12 @@ describe("createPresent: login", () => {
     expect(activity.screenOpen).toBe(false);
   });
 
-  it("resolves dismissed when the user closes it, and can be shown again", async () => {
+  it("resolves dismissed when the user exits it, and can be shown again", async () => {
     const { frame, present } = setup();
     await connectLoggedOut(frame);
     const first = present.login();
     await tick();
-    frame.userClose();
+    frame.deliver("exitLucra", true);
     expect(await first).toEqual({ status: "dismissed" });
     expect(frame.overlayOpen).toBe(false);
     // Lucra finishes loading its login page, still logged out.
@@ -302,6 +310,28 @@ describe("createPresent: login", () => {
     expect(frame.urls.length).toBe(3);
     frame.deliver("loginSuccess", USER);
     expect((await second).status).toBe("completed");
+  });
+
+  it("closes with the error when the login screen never starts", async () => {
+    const { frame, activity, present } = setup({ connectMs: 20 });
+    await connectLoggedOut(frame);
+    const login = caught(present.login());
+    await tick();
+    expect(frame.overlayOpen).toBe(true);
+    expect((await login).code).toBe("CONNECTION_TIMEOUT");
+    expect(frame.overlayOpen).toBe(false);
+    expect(activity.screenOpen).toBe(false);
+  });
+
+  it("closes with the error when the login screen cannot start", async () => {
+    const { frame, activity, present } = setup();
+    await connectLoggedOut(frame);
+    const login = caught(present.login());
+    await tick();
+    frame.deliver("initialized", { success: false });
+    expect((await login).code).toBe("CONNECTION_FAILED");
+    expect(frame.overlayOpen).toBe(false);
+    expect(activity.screenOpen).toBe(false);
   });
 
   it("rejects pending reads with CONNECTION_RESET when login restarts Lucra", async () => {
