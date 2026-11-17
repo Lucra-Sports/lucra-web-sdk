@@ -287,6 +287,34 @@ describe("createWatch", () => {
     expect(onUpdate).toHaveBeenCalledTimes(1);
   });
 
+  it("reports the failure when Lucra reloads and cannot start", async () => {
+    const { frame, watch } = setup();
+    frame.deliver("initialized", { success: true });
+    const onUpdate = mock(() => {});
+    const failed = new Promise<LucraError>((resolve) => {
+      watch.watch("m1", { onUpdate, onError: resolve });
+    });
+    await tick();
+    answerSubscribe(frame, "m1");
+    await tick();
+    frame.deliver("initialized", { success: false });
+    expect((await failed).code).toBe("CONNECTION_FAILED");
+    // The watch is over, so its updates no longer arrive.
+    frame.deliver("matchupDetailsUpdated", details("m1", "CONFIRMED"));
+    expect(onUpdate).toHaveBeenCalledTimes(1);
+  }, 500);
+
+  it("reports the failure when Lucra reloads mid subscribe and cannot start", async () => {
+    const { frame, watch } = setup();
+    frame.deliver("initialized", { success: true });
+    const failed = new Promise<LucraError>((resolve) => {
+      watch.watch("m1", { onUpdate: () => {}, onError: resolve });
+    });
+    await tick();
+    frame.deliver("initialized", { success: false });
+    expect((await failed).code).toBe("CONNECTION_FAILED");
+  }, 500);
+
   it("keeps going when a listener throws", async () => {
     const error = spyOn(console, "error").mockImplementation(() => {});
     const { frame, watch } = setup();

@@ -185,6 +185,11 @@ export function createAuth(options: {
       setLoggedOut();
       settleLogout();
     }),
+    // A reload cut the login check short. If Lucra cannot start again, no
+    // connection follows to check again, so fail the calls waiting on it.
+    session.on(LucraClientMessageType.initialized, () => {
+      session.whenConnected().catch((error: LucraError) => settleWaiters(error));
+    }),
   ];
 
   const whenLoggedIn = () => {
