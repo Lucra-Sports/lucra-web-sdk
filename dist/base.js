@@ -853,22 +853,9 @@ export class LucraClientBase extends EventTarget {
                 body: data,
             });
         },
-        // convertToCreditResponse and deepLinkResponse reply to iframe-initiated
-        // requests, so they stay unguarded like _matchupInviteUrlResponse: a
-        // delayed reply after close() is dropped rather than throwing.
-        convertToCreditResponse: (data) => {
-            this._sendMessage({
-                type: MessageTypeToLucraClient.convertToCreditResponse,
-                body: data,
-            });
-        },
-        enableConvertToCredit: () => {
-            this._assertOpen("call sendMessage.enableConvertToCredit");
-            this._sendMessage({
-                type: MessageTypeToLucraClient.enableConvertToCredit,
-                body: null,
-            });
-        },
+        // deepLinkResponse replies to an iframe-initiated request, so it stays
+        // unguarded like _matchupInviteUrlResponse: a delayed reply after close()
+        // is dropped rather than throwing.
         deepLinkResponse: (data) => {
             this._sendMessage({
                 type: MessageTypeToLucraClient.deepLinkResponse,
