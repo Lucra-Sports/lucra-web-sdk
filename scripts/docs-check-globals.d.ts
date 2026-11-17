@@ -25,3 +25,11 @@ declare function showAddFundsPrompt(onAddFunds: () => void, onCancel: () => void
 
 // One item from the list the surrounding example fetched.
 declare const a: import("lucra-web-sdk").LucraAchievement;
+
+// The integrator's own UI that the headless examples render into.
+declare function showAccount(user: unknown): void;
+declare const statusText: HTMLElement;
+declare const closeButton: HTMLButtonElement;
+
+// The headless client, as created in docs/3.0_headless_client.md.
+declare const lucra: import("lucra-web-sdk/headless").LucraHeadlessClient;
