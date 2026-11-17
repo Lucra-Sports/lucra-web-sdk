@@ -50,7 +50,8 @@ is unchanged by the preview.
   yet, and a full screen one leaves the user no way out. Show screens in a `container`, next to
   your own close button that calls `lucra.present.dismiss()`.
 - **Every failure is a `LucraError`.** `remediation` names the screen to show: show it, then
-  try again if it resolves `"completed"`. `outcomeUnknown: true` means a write may have gone
+  try again once if it resolves `"completed"`. If that fails too, show the error in your own UI
+  instead of the screen again. `outcomeUnknown: true` means a write may have gone
   through: never retry it automatically, read back first.
 - **One write at a time, and none while a `present.*` call is pending** (Add Funds aside). A
   refused write sends nothing, so a double click cannot send it twice.
@@ -126,9 +127,10 @@ Writes are what the guide calls changes
 
 Check with `isLucraError(error)`.
 
-- **`remediation`** names the screen to show. Try the call again if it resolves `"completed"`.
-  `"addFunds"` needs a click, so show your own Add Funds button instead of calling it from a
-  `catch`.
+- **`remediation`** names the screen to show. Try the call again once if it resolves
+  `"completed"`, and send a second failure to your own UI: for `demographics()` and `kyc()`,
+  `"completed"` only means the screen closed. `"addFunds"` needs a click, so show your own Add
+  Funds button instead of calling it from a `catch`.
 - **`outcomeUnknown: true` means read back before retrying.** It is set on some failures of a
   write already sent to Lucra, such as a `TIMEOUT` or a `CONNECTION_RESET`. Branch on the flag,
   not on `code`. Never retry it automatically: read the matchup, or ask the user. A second
