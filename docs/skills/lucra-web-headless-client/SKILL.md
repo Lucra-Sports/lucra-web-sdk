@@ -33,7 +33,7 @@ is unchanged by the preview.
 
 ## 1. It is a preview
 
-- Its API can still change before it becomes version 2.0.0 of the SDK.
+- Its API can still change while it is a preview.
 - The SDK is not on npm. Install it from GitHub, pinned to a tag or commit that includes
   `lucra-web-sdk/headless`: `"lucra-web-sdk": "github:Lucra-Sports/lucra-web-sdk#<tag or commit>"`.
 - Before building, ask your Lucra contact to confirm your Lucra environment supports the
