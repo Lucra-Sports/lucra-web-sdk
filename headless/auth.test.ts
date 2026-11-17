@@ -248,6 +248,38 @@ describe("createAuth: whenLoggedIn and isLoggedIn", () => {
     frame.deliver("initialized", { success: false });
     expect((await caught(auth.isLoggedIn())).code).toBe("CONNECTION_FAILED");
   });
+
+  it("rejects waiting calls when Lucra reloads and cannot start", async () => {
+    const { frame, auth } = setup();
+    frame.deliver("initialized", { success: true });
+    // The login check is still unanswered.
+    const waiting = caught(auth.whenLoggedIn());
+    const asking = caught(auth.isLoggedIn());
+    await tick();
+    frame.deliver("initialized", { success: false });
+    expect((await waiting).code).toBe("CONNECTION_FAILED");
+    expect((await asking).code).toBe("CONNECTION_FAILED");
+  }, 500);
+
+  it("keeps waiting calls waiting through a reload that starts", async () => {
+    const { frame, auth } = setup();
+    frame.deliver("initialized", { success: true });
+    let settled = false;
+    const waiting = auth.whenLoggedIn().finally(() => {
+      settled = true;
+    });
+    const asking = auth.isLoggedIn();
+    await tick();
+    frame.deliver("initialized", { success: true });
+    await tick();
+    expect(settled).toBe(false);
+    expect(count(frame, "isLoggedInRequest")).toBe(2);
+    answerLoginCheck(frame, { isLoggedIn: true });
+    await tick();
+    frame.deliver("loginSuccess", USER);
+    await waiting;
+    expect(await asking).toBe(true);
+  });
 });
 
 describe("createAuth: logout", () => {

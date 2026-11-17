@@ -80,6 +80,13 @@ export function createWatch(options) {
             if (active)
                 subscribe(active);
         }),
+        // If Lucra cannot start again, nothing will subscribe again, so end the watch.
+        session.on(LucraClientMessageType.initialized, () => {
+            session.whenConnected().catch((error) => {
+                if (active)
+                    fail(active, error);
+            });
+        }),
         session.on(LucraClientMessageType.matchupDetailsUpdated, (data) => {
             const details = data;
             // Only the active watch's updates count. Ones for a replaced or stopped
