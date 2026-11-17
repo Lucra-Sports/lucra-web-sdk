@@ -1934,6 +1934,19 @@ describe("LucraClient location grant navigation", () => {
   });
 });
 
+describe("LucraClient.sendMessage", () => {
+  it("exposes only userUpdated, deepLinkResponse, navigate, and availableRewards", () => {
+    const client = LucraClient.initialize(baseConfig);
+
+    expect(Object.keys(client.sendMessage).sort()).toEqual([
+      "availableRewards",
+      "deepLinkResponse",
+      "navigate",
+      "userUpdated",
+    ]);
+  });
+});
+
 describe("LucraClientNotOpen", () => {
   it("is a named Error with a default message", () => {
     const error = new LucraClientNotOpen();
@@ -1951,7 +1964,6 @@ describe("LucraClientNotOpen", () => {
     (client as any)._sendMessage = sendMessage;
     const calls: Array<() => void> = [
       () => client.sendMessage.userUpdated({} as any),
-      () => client.sendMessage.enableConvertToCredit(),
       () => client.sendMessage.navigate({ pathname: "/app/home" }),
       () => client.sendMessage.availableRewards({ rewards: [] }),
     ];
@@ -1967,9 +1979,6 @@ describe("LucraClientNotOpen", () => {
 
     expect(() =>
       client.sendMessage.deepLinkResponse({ url: "https://x.test" })
-    ).not.toThrow();
-    expect(() =>
-      client.sendMessage.convertToCreditResponse({} as any)
     ).not.toThrow();
   });
 

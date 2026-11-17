@@ -1,10 +1,14 @@
 # CHANGELOG
 
-## [Unreleased]
+## [v1.16.0]
+
+### Breaking
+
+- Convert to Credit is removed. `sendMessage.enableConvertToCredit()`, `sendMessage.convertToCreditResponse()`, the `convertToCredit` event, the exported types `LucraConvertToCreditBody` and `LucraConvertToCreditResponse`, and the enum members `LucraClientMessageType.convertToCredit`, `MessageTypeToLucraClient.convertToCreditResponse`, and `MessageTypeToLucraClient.enableConvertToCredit` no longer exist, and the Convert to Credit guide is gone. Remove those calls and any `convertToCredit` listener. There is no replacement.
 
 ### Added
 
-- **Preview:** a headless client, `createLucraClient`, exported from `lucra-web-sdk/headless`. It is for apps that show Lucra data in their own screens. Calls wait for Lucra on their own, every failure is a `LucraError` with a `code`, and `lucra.present` shows the few Lucra screens an app cannot rebuild, such as login and Add Funds. Those screens cover the page, or show inside an element you pass as `container`, and the user leaves them with Lucra's own exit control where a screen has one, or the app closes them with `lucra.present.dismiss()`. `LucraClient` is unchanged. The two cannot be used on the same page. The headless client's API can still change while it is a preview. See [Headless client](3.0_headless_client.md).
+- **Preview:** a headless client, `createLucraClient`, exported from `lucra-web-sdk/headless`. It is for apps that show Lucra data in their own screens. Calls wait for Lucra on their own, every failure is a `LucraError` with a `code`, and `lucra.present` shows the few Lucra screens an app cannot rebuild, such as login and Add Funds. Those screens cover the page, or show inside an element you pass as `container`, and the user leaves them with Lucra's own exit control where a screen has one, or the app closes them with `lucra.present.dismiss()`. `LucraClient` is unaffected by it. The two cannot be used on the same page. The headless client's API can still change while it is a preview. See [Headless client](3.0_headless_client.md).
 - An agent skill for the preview headless client, [`lucra-web-headless-client`](skills/lucra-web-headless-client/SKILL.md). It covers setup, how calls wait and fail, screens and containers, Add Funds, Games You Play writes, React, and troubleshooting by error code. The `lucra-web-starting-point` and `lucra-web-headless` skills cover `LucraClient` and send headless client work to it.
 
 ## [v1.15.0]

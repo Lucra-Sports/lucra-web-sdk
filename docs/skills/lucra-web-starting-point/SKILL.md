@@ -43,7 +43,7 @@ You are integrating Lucra's Web SDK (`lucra-web-sdk`): an iframe-embedding JavaS
 | React to Lucra events | [Lucra Event Listener](../../1.6_lucra_event_listener.md) |
 | Fetch Lucra data into your own UI (tournaments, leaderboards, achievements, GYP matchups), join tournaments, or create, accept, and cancel GYP matchups headlessly | [Headless on Web](../../2.0_headless.md), [Tournaments Headless](../../2.1_tournaments_headless.md), [Games You Play Headless](../../2.2_gyp_headless.md). Load the companion skill `lucra-web-headless` for the mental model first |
 | Link/prefill your user's identity | [Updating Users](../../1.8_updating_users.md) |
-| Rewards / convert-to-credit | [Rewards](../../1.9_rewards.md), [Convert to Credit](../../1.7_convert_to_credit.md) |
+| Rewards | [Rewards](../../1.9_rewards.md) |
 | What changed between versions | [Changelog](../../CHANGELOG.md) |
 
 ## Checkpoints — confirm each stage before building the next
