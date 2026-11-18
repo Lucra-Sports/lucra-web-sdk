@@ -39,7 +39,8 @@ export declare enum LucraClientMessageType {
     searchMatchupsByMetadataResponse = "searchMatchupsByMetadataResponse",
     userTournamentRewardsResponse = "userTournamentRewardsResponse",
     claimTournamentRewardResponse = "claimTournamentRewardResponse",
-    claimAchievementResponse = "claimAchievementResponse"
+    claimAchievementResponse = "claimAchievementResponse",
+    userMatchupsResponse = "userMatchupsResponse"
 }
 export declare enum MessageTypeToLucraClient {
     achievementsRequest = "achievementsRequest",
@@ -66,6 +67,7 @@ export declare enum MessageTypeToLucraClient {
     userTournamentRewardsRequest = "userTournamentRewardsRequest",
     claimTournamentRewardRequest = "claimTournamentRewardRequest",
     claimAchievementRequest = "claimAchievementRequest",
+    userMatchupsRequest = "userMatchupsRequest",
     sdkDiagnostic = "sdkDiagnostic"
 }
 export type LucraDeepLinkResponse = {
@@ -540,6 +542,62 @@ export type LucraSearchMatchupsByMetadataInput = {
 };
 export type LucraSearchMatchupsByMetadataResponse = {
     matchupIds: string[];
+};
+export type LucraUserMatchupType = "GAMES" | "SPORTS" | "TOURNAMENTS";
+export type LucraUserMatchupStatus = "IN_PROGRESS" | "PENDING" | "RESULTS" | "UPCOMING";
+export type LucraUserMatchup = {
+    id: string;
+    created_at?: string | null;
+    game_id?: string | null;
+    image_url?: string | null;
+    name: string;
+    status: LucraUserMatchupStatus;
+    type: LucraUserMatchupType;
+    buy_in_amount?: number | null;
+    user_payout?: number | null;
+    reward?: unknown;
+    game_details?: {
+        outcome?: "LOSS" | "TIE" | "WIN" | null;
+        subtype: LucraPlayStyle;
+        subtype_label: string;
+    } | null;
+    tournament_details?: {
+        position: string;
+        starts_at?: string | null;
+    } | null;
+};
+export type LucraUserMatchupsPage = {
+    matchups: LucraUserMatchup[];
+    empty_cta_label: string;
+    empty_image_id: string;
+    empty_message: string;
+    empty_title: string;
+    limit: number;
+    offset: number;
+    sort?: number | null;
+    status: string;
+    status_label: string;
+    total_matchups: number;
+    type: LucraUserMatchupType;
+    type_label: string;
+};
+export type LucraUserMatchupsGroup = LucraUserMatchupsPage & {
+    total_matchups_played: number;
+    total_matchups_won: number;
+    total_money_won: number;
+};
+export type LucraUserMatchups = {
+    matchup_types: {
+        type: LucraUserMatchupType;
+        label: string;
+    }[];
+    total_matchups_played: number;
+    total_matchups_won: number;
+    total_money_won: number;
+    user_matchups_by_type_status: LucraUserMatchupsGroup[];
+};
+export type LucraUserMatchupsInput = {
+    limit: number;
 };
 export type LucraAcceptRecreationalGameBody = {
     matchupId: string;

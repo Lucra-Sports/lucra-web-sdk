@@ -19,6 +19,8 @@ import {
   type LucraTournamentLeaderboardResponse,
   type LucraTournamentResponse,
   type LucraTournamentsResponse,
+  type LucraUserMatchups,
+  type LucraUserMatchupsInput,
   type LucraUserTournamentReward,
   type LucraUserTournamentRewardsResponse,
 } from "../types/types.js";
@@ -81,6 +83,10 @@ const SPECS = {
     MessageTypeToLucraClient.searchMatchupsByMetadataRequest,
     LucraClientMessageType.searchMatchupsByMetadataResponse
   ),
+  matchupsListMine: read<LucraUserMatchups>(
+    MessageTypeToLucraClient.userMatchupsRequest,
+    LucraClientMessageType.userMatchupsResponse
+  ),
   // For these three a plain API_ERROR may mean the write still went through.
   matchupsCreate: write<LucraRecreationalGameResult>(
     MessageTypeToLucraClient.createRecreationalGameRequest,
@@ -134,6 +140,7 @@ export type Api = {
     get(matchupId: string): Promise<LucraMatchup>;
     getDetails(matchupId: string): Promise<LucraMatchupDetails>;
     searchByMetadata(filters: LucraSearchMatchupsByMetadataInput): Promise<string[]>;
+    listMine(options: LucraUserMatchupsInput): Promise<LucraUserMatchups>;
     create(input: LucraCreateRecreationalGameInput): Promise<LucraRecreationalGameResult>;
     accept(
       matchupId: string,
@@ -225,6 +232,8 @@ export function createApi(options: {
         send(SPECS.matchupsGetDetails, { matchupId }, false),
       searchByMetadata: (filters) =>
         send(SPECS.matchupsSearchByMetadata, filters, true).then((r) => r.matchupIds),
+      listMine: (options) =>
+        send(SPECS.matchupsListMine, { limit: options.limit }, true),
       create: (input) => sendWrite(SPECS.matchupsCreate, input),
       accept: (matchupId, acceptOptions) =>
         sendWrite(

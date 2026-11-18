@@ -44,6 +44,12 @@ export type {
   LucraRecreationalGameResult,
   LucraCancelRecreationalGameResult,
   LucraSearchMatchupsByMetadataInput,
+  LucraUserMatchups,
+  LucraUserMatchupsGroup,
+  LucraUserMatchupsPage,
+  LucraUserMatchup,
+  LucraUserMatchupType,
+  LucraUserMatchupStatus,
   LucraUserTournamentReward,
   LucraReward,
 } from "../types/types.js";

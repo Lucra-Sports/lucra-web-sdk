@@ -95,6 +95,7 @@ describe("createApi: reads", () => {
       () => api.achievements.list(),
       () => api.matchups.searchByMetadata({}),
       () => api.rewards.list(),
+      () => api.matchups.listMine({ limit: 5 }),
     ]) {
       const error = await caught(call());
       expect(error.code).toBe("NOT_LOGGED_IN");
@@ -105,6 +106,7 @@ describe("createApi: reads", () => {
     expect(count(frame, "achievementsRequest")).toBe(0);
     expect(count(frame, "searchMatchupsByMetadataRequest")).toBe(0);
     expect(count(frame, "userTournamentRewardsRequest")).toBe(0);
+    expect(count(frame, "userMatchupsRequest")).toBe(0);
   });
 
   it("holds a read that needs login until loginSuccess, not just a yes", async () => {
@@ -202,6 +204,25 @@ describe("createApi: reads", () => {
     });
     frame.answer("userTournamentRewardsRequest", "userTournamentRewardsResponse", { rewards: [] });
     expect(await all).toEqual([]);
+  });
+
+  it("lists the user's matchups and returns the answer as is", async () => {
+    const { frame, api } = setup();
+    await connectLoggedIn(frame);
+    const mine = api.matchups.listMine({ limit: 5 });
+    await tick();
+    expect(frame.lastPosted("userMatchupsRequest")?.body).toEqual({ limit: 5 });
+    const answer = {
+      matchup_types: [{ type: "GAMES", label: "Games" }],
+      total_matchups_played: 2,
+      total_matchups_won: 1,
+      total_money_won: 10,
+      user_matchups_by_type_status: [
+        { type: "GAMES", status: "RESULTS", matchups: [{ id: "m1", name: "Test game" }] },
+      ],
+    };
+    frame.answer("userMatchupsRequest", "userMatchupsResponse", answer);
+    expect<unknown>(await mine).toEqual(answer);
   });
 
   it("rejects with CONNECTION_FAILED when Lucra refuses the config", async () => {
