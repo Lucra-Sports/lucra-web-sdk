@@ -19,6 +19,7 @@ export type LucraHeadlessClient = {
     present: Omit<Present, "destroy">;
     on<K extends keyof LucraHeadlessEventMap>(event: K, listener: (data: LucraHeadlessEventMap[K]) => void): () => void;
     whenConnected(): Promise<void>;
+    withRemediation<T>(call: () => Promise<T>): Promise<T>;
     destroy(): void;
 };
 export declare function createClient(config: LucraClientConfig, deps: {

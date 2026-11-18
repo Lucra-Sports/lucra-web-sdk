@@ -10,6 +10,7 @@ import {
   type Frame,
 } from "./frame.js";
 import { createPresent, type Present } from "./present.js";
+import { createWithRemediation } from "./remediate.js";
 import { DEFAULT_TIMEOUTS, createSession, type Timeouts } from "./session.js";
 import type {
   LucraAuthState,
@@ -42,6 +43,10 @@ export type LucraHeadlessClient = {
     listener: (data: LucraHeadlessEventMap[K]) => void
   ): () => void;
   whenConnected(): Promise<void>;
+  // Runs `call`. When it fails with an error the user can fix in Lucra, Lucra
+  // shows what the user needs, then `call` runs again. Settles with the call's
+  // own result, or with the error that asked for the fix.
+  withRemediation<T>(call: () => Promise<T>): Promise<T>;
   destroy(): void;
 };
 
@@ -119,6 +124,7 @@ export function createClient(
     },
     on: events.on,
     whenConnected: session.whenConnected,
+    withRemediation: createWithRemediation(present),
     destroy() {
       if (destroyed) return;
       destroyed = true;

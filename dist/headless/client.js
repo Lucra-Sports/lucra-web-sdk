@@ -4,6 +4,7 @@ import { LucraError, LucraErrorCode, isLucraError } from "./errors.js";
 import { createEmitter } from "./events.js";
 import { createDomFrame, createNullFrame, hasDom, pageOrigin, } from "./frame.js";
 import { createPresent } from "./present.js";
+import { createWithRemediation } from "./remediate.js";
 import { DEFAULT_TIMEOUTS, createSession } from "./session.js";
 import { HOME_PATH, buildUrl, lucraOrigin } from "./url.js";
 import { createWatch } from "./watch.js";
@@ -70,6 +71,7 @@ export function createClient(config, deps) {
         },
         on: events.on,
         whenConnected: session.whenConnected,
+        withRemediation: createWithRemediation(present),
         destroy() {
             if (destroyed)
                 return;

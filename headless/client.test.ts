@@ -63,7 +63,7 @@ describe("createClient", () => {
   it("exposes exactly the public surface", () => {
     const { client } = setup();
     expect(Object.keys(client).sort()).toEqual(
-      ["achievements", "auth", "destroy", "matchups", "on", "present", "rewards", "tournaments", "whenConnected"]
+      ["achievements", "auth", "destroy", "matchups", "on", "present", "rewards", "tournaments", "whenConnected", "withRemediation"]
     );
     expect(Object.keys(client.auth).sort()).toEqual(["getState", "isLoggedIn", "logout", "subscribe"]);
     expect(Object.keys(client.tournaments).sort()).toEqual(["autoJoin", "get", "join", "leaderboard", "list"]);
@@ -73,6 +73,23 @@ describe("createClient", () => {
     expect(Object.keys(client.present).sort()).toEqual(
       ["addFunds", "demographics", "dismiss", "getState", "kyc", "locationGrant", "login", "profile", "subscribe", "wallet", "withdraw"]
     );
+  });
+
+  it("withRemediation shows the location screen, then sends the write again", async () => {
+    const { frame, client } = setup();
+    await connectLoggedIn(frame);
+    const joined = client.withRemediation(() => client.tournaments.join("t1"));
+    await tick();
+    frame.answer("joinTournamentRequest", "joinTournamentError", { code: "LOCATION_NEEDED" });
+    await tick();
+    expect(client.present.getState().screen).toBe("locationGrant");
+    frame.deliver("locationGranted", null);
+    await tick();
+    const joins = frame.posted.filter((message) => message.type === "joinTournamentRequest");
+    expect(joins.length).toBe(2);
+    expect(joins[1].requestId).not.toBe(joins[0].requestId);
+    frame.answer("joinTournamentRequest", "joinTournamentResponse", { matchupId: "t1" });
+    expect(await joined).toEqual({ matchupId: "t1" });
   });
 
   it("wires auth, data calls, watch, and screens together", async () => {
