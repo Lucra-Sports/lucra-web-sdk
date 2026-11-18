@@ -39,6 +39,7 @@ export function createClient(config, deps) {
         urls,
         activity,
         whenWriteSettled: api.whenWriteSettled,
+        startMinigame: api.startMinigame,
     });
     const events = createEmitter();
     for (const type of EVENTS) {
@@ -59,6 +60,7 @@ export function createClient(config, deps) {
         present: {
             login: present.login,
             addFunds: present.addFunds,
+            minigame: present.minigame,
             demographics: present.demographics,
             kyc: present.kyc,
             locationGrant: present.locationGrant,

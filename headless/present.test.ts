@@ -29,6 +29,7 @@ function setup(overrides: Partial<Timeouts> = {}) {
     urls,
     activity,
     whenWriteSettled: api.whenWriteSettled,
+    startMinigame: api.startMinigame,
   });
   return { frame, session, auth, activity, api, present };
 }
@@ -1004,8 +1005,440 @@ describe("LucraScreen", () => {
 
   it("names every present call that shows in the page", () => {
     const { present } = setup();
-    const notScreens = ["addFunds", "dismiss", "getState", "subscribe", "destroy"];
+    // minigame() needs an input, so lucra.present[screen]() could not call it.
+    const notScreens = ["addFunds", "minigame", "dismiss", "getState", "subscribe", "destroy"];
     const screens = Object.keys(present).filter((key) => !notScreens.includes(key));
     expect(Object.keys(SCREENS).sort()).toEqual(screens.sort());
+  });
+});
+
+describe("createPresent: minigame", () => {
+  const GAME = { gameId: "g1", mode: "1v1" as const, amount: 5, matchupId: "m1" };
+  const STARTED = { sessionId: "s1", matchupId: "m1" };
+  const HOME = { pathname: `/app/headless?${PARENT}` };
+  const WALLET = { pathname: `/app/wallet?${PARENT}` };
+  const starts = (frame: FakeFrame) => count(frame, "presentMinigameRequest");
+  const answer = (frame: FakeFrame, data: unknown = STARTED) =>
+    frame.answer("presentMinigameRequest", "presentMinigameResponse", data);
+  const refuse = (frame: FakeFrame, code: string) =>
+    frame.answer("presentMinigameRequest", "apiRequestError", { code });
+  const navigations = (frame: FakeFrame) =>
+    frame.posted.filter((message) => message.type === "navigate").map((message) => message.body);
+  // Records how a promise settled, so a test can check it is still pending.
+  const track = (promise: Promise<unknown>) => {
+    const seen: { settled: boolean; value?: unknown; error?: LucraError } = { settled: false };
+    promise.then(
+      (value) => Object.assign(seen, { settled: true, value }),
+      (error) => Object.assign(seen, { settled: true, error })
+    );
+    return seen;
+  };
+
+  // Starts the game and waits until it shows.
+  async function showGame(
+    present: ReturnType<typeof setup>["present"],
+    frame: FakeFrame,
+    signal?: AbortSignal
+  ) {
+    const game = present.minigame({ ...GAME, signal });
+    await tick();
+    answer(frame);
+    await tick();
+    expect(present.getState()).toEqual({ screen: "minigame" });
+    // Wrapped, so awaiting this helper does not wait for the game to end.
+    return { game };
+  }
+
+  it("rejects an invalid input with INVALID_ARGUMENT, sends nothing, and leaves the screen on show", async () => {
+    const { frame, activity, present } = setup();
+    await connectLoggedIn(frame);
+    const wallet = track(present.wallet());
+    await tick();
+    const posted = frame.posted.length;
+    for (const input of [
+      undefined,
+      null,
+      "g1",
+      {},
+      { mode: "1v1" },
+      { gameId: "", mode: "1v1" },
+      { gameId: 1, mode: "1v1" },
+      { gameId: "g1" },
+      { gameId: "g1", mode: "duel" },
+      { gameId: "g1", mode: "1v1", amount: -1 },
+      { gameId: "g1", mode: "1v1", amount: Number.NaN },
+      { gameId: "g1", mode: "1v1", amount: Number.POSITIVE_INFINITY },
+      { gameId: "g1", mode: "1v1", amount: "5" },
+      { gameId: "g1", mode: "1v1", matchupId: "" },
+      { gameId: "g1", mode: "1v1", matchupId: 7 },
+      { gameId: "g1", mode: "1v1", signal: {} },
+    ]) {
+      const error = await caught(present.minigame(input as never));
+      expect(error.code).toBe("INVALID_ARGUMENT");
+      expect(error.hint).toBeTruthy();
+    }
+    await tick();
+    expect(frame.posted.length).toBe(posted);
+    expect(wallet.settled).toBe(false);
+    expect(present.getState()).toEqual({ screen: "wallet" });
+    expect(activity.screenOpen).toBe(true);
+    present.dismiss();
+  });
+
+  it("refuses when logged out and sends nothing", async () => {
+    const { frame, activity, present } = setup();
+    await connectLoggedOut(frame);
+    const error = await caught(present.minigame(GAME));
+    expect(error.code).toBe("NOT_LOGGED_IN");
+    expect(starts(frame)).toBe(0);
+    expect(frame.overlaysOpened).toBe(0);
+    expect(activity.screenOpen).toBe(false);
+  });
+
+  it("starts the game, shows it once Lucra answers, and completes when it closes", async () => {
+    const { frame, activity, present } = setup();
+    await connectLoggedIn(frame);
+    const game = track(present.minigame(GAME));
+    expect(activity.screenOpen).toBe(true);
+    await tick();
+    expect(starts(frame)).toBe(1);
+    const request = frame.lastPosted("presentMinigameRequest")!;
+    expect(request.body).toEqual({ gameId: "g1", mode: "1v1", amount: 5, matchupId: "m1" });
+    expect(typeof request.requestId).toBe("string");
+    // Nothing shows until the game has started.
+    expect(frame.overlayOpen).toBe(false);
+    expect(present.getState()).toEqual({ screen: null });
+    expect(count(frame, "enableExitLucra")).toBe(0);
+    answer(frame);
+    await tick();
+    expect(frame.overlayOpen).toBe(true);
+    expect(present.getState()).toEqual({ screen: "minigame" });
+    expect(frame.lastPosted("enableExitLucra")?.body).toBe(true);
+    // Lucra already shows the game: the SDK does not navigate it.
+    expect(count(frame, "navigate")).toBe(0);
+    frame.deliver("minigameClosed", { sessionId: "other" });
+    await tick();
+    expect(game.settled).toBe(false);
+    expect(frame.overlayOpen).toBe(true);
+    frame.deliver("minigameClosed", { sessionId: "s1" });
+    await tick();
+    expect(game.value).toEqual({ status: "completed", sessionId: "s1", matchupId: "m1" });
+    expect(frame.overlayOpen).toBe(false);
+    expect(present.getState()).toEqual({ screen: null });
+    expect(activity.screenOpen).toBe(false);
+    expect(navigations(frame)).toEqual([HOME]);
+    expect(starts(frame)).toBe(1);
+  });
+
+  it("leaves out the optional fields and the signal", async () => {
+    const { frame, present } = setup();
+    await connectLoggedIn(frame);
+    const game = present.minigame({
+      gameId: "g2",
+      mode: "practice",
+      signal: new AbortController().signal,
+    });
+    await tick();
+    expect(frame.lastPosted("presentMinigameRequest")?.body).toEqual({ gameId: "g2", mode: "practice" });
+    answer(frame, { sessionId: "s2", matchupId: null });
+    await tick();
+    frame.deliver("minigameClosed", { sessionId: "s2" });
+    expect(await game).toEqual({ status: "completed", sessionId: "s2", matchupId: null });
+    const free = present.minigame({ gameId: "g3", mode: "tournament", amount: 0, matchupId: "t1" });
+    await tick();
+    expect(frame.lastPosted("presentMinigameRequest")?.body).toEqual({
+      gameId: "g3",
+      mode: "tournament",
+      amount: 0,
+      matchupId: "t1",
+    });
+    present.dismiss();
+    answer(frame, { sessionId: "s3", matchupId: "t1" });
+    await free;
+  });
+
+  it("rejects with Lucra's refusal and its remediation, shows nothing, and leaves no screen open", async () => {
+    const { frame, activity, api, present } = setup();
+    await connectLoggedIn(frame);
+    const game = caught(present.minigame(GAME));
+    await tick();
+    refuse(frame, "LOCATION_NEEDED");
+    const error = await game;
+    expect(error).toBeInstanceOf(LucraError);
+    expect(error.code).toBe("LOCATION_NEEDED");
+    expect(error.remediation).toBe("locationGrant");
+    expect(error.outcomeUnknown).toBe(false);
+    expect(frame.overlaysOpened).toBe(0);
+    expect(present.getState()).toEqual({ screen: null });
+    expect(activity.screenOpen).toBe(false);
+    const join = api.tournaments.join("t1");
+    await tick();
+    expect(count(frame, "joinTournamentRequest")).toBe(1);
+    frame.answer("joinTournamentRequest", "joinTournamentResponse", { matchupId: "t1" });
+    await join;
+  });
+
+  it("rejects with outcomeUnknown on API_ERROR, a timeout, and a restart", async () => {
+    const apiError = setup();
+    await connectLoggedIn(apiError.frame);
+    const failed = caught(apiError.present.minigame(GAME));
+    await tick();
+    refuse(apiError.frame, "API_ERROR");
+    expect((await failed).code).toBe("API_ERROR");
+    expect((await failed).outcomeUnknown).toBe(true);
+
+    const timeout = setup({ requestMs: 20 });
+    await connectLoggedIn(timeout.frame);
+    const late = await caught(timeout.present.minigame(GAME));
+    expect(late.code).toBe("TIMEOUT");
+    expect(late.outcomeUnknown).toBe(true);
+    expect(timeout.frame.overlaysOpened).toBe(0);
+    expect(timeout.activity.screenOpen).toBe(false);
+
+    const restart = setup();
+    await connectLoggedIn(restart.frame);
+    const reset = caught(restart.present.minigame(GAME));
+    await tick();
+    restart.frame.deliver("initialized", { success: true });
+    expect((await reset).code).toBe("CONNECTION_RESET");
+    expect((await reset).outcomeUnknown).toBe(true);
+    expect(starts(restart.frame)).toBe(1);
+  });
+
+  it("refuses other changes while it starts and while it shows, and waits for one pending before", async () => {
+    const { frame, api, present } = setup();
+    await connectLoggedIn(frame);
+    const join = api.tournaments.join("t1");
+    await tick();
+    const game = present.minigame(GAME);
+    await tick();
+    // The join is still pending, so the game is not started yet.
+    expect(starts(frame)).toBe(0);
+    frame.answer("joinTournamentRequest", "joinTournamentResponse", { matchupId: "t1" });
+    await join;
+    await tick();
+    expect(starts(frame)).toBe(1);
+    expect((await caught(api.tournaments.join("t2"))).code).toBe("SCREEN_OPEN");
+    answer(frame);
+    await tick();
+    expect((await caught(api.matchups.cancel("m1"))).code).toBe("SCREEN_OPEN");
+    present.dismiss();
+    expect(await game).toEqual({ status: "dismissed", reason: "dismissed", ...STARTED });
+  });
+
+  it("resolves dismissed with the ids for each way the game can close, and sends Lucra home", async () => {
+    type Close = (
+      frame: FakeFrame,
+      present: ReturnType<typeof setup>["present"],
+      abort: () => void
+    ) => void;
+    const closers: [LucraDismissReason, Close][] = [
+      ["exit", (frame) => frame.deliver("exitLucra", true)],
+      ["dismissed", (_frame, present) => present.dismiss()],
+      ["aborted", (_frame, _present, abort) => abort()],
+      ["loggedOut", (frame) => frame.deliver("logoutComplete", null)],
+      ["destroyed", (_frame, present) => present.destroy()],
+      ["replaced", (_frame, present) => void present.wallet().catch(() => {})],
+    ];
+    for (const [reason, close] of closers) {
+      const { frame, present } = setup();
+      await connectLoggedIn(frame);
+      const controller = new AbortController();
+      const { game } = await showGame(present, frame, controller.signal);
+      close(frame, present, () => controller.abort());
+      expect(await game).toEqual({ status: "dismissed", reason, ...STARTED });
+      // The game is not left running out of sight.
+      expect(navigations(frame)[0]).toEqual(HOME);
+      if (reason !== "replaced") expect(frame.overlayOpen).toBe(false);
+    }
+  });
+
+  it("settles at once with no ids when dismissed before the request is sent, and sends nothing", async () => {
+    const connecting = setup();
+    const early = connecting.present.minigame(GAME);
+    connecting.present.dismiss();
+    expect(await early).toEqual({
+      status: "dismissed",
+      reason: "dismissed",
+      sessionId: null,
+      matchupId: null,
+    });
+    await connectLoggedIn(connecting.frame);
+    await tick();
+    expect(starts(connecting.frame)).toBe(0);
+
+    const aborted = setup();
+    await connectLoggedIn(aborted.frame);
+    expect(await aborted.present.minigame({ ...GAME, signal: AbortSignal.abort() })).toEqual({
+      status: "dismissed",
+      reason: "aborted",
+      sessionId: null,
+      matchupId: null,
+    });
+    expect(starts(aborted.frame)).toBe(0);
+    expect(aborted.activity.screenOpen).toBe(false);
+
+    const waiting = setup();
+    await connectLoggedIn(waiting.frame);
+    const join = waiting.api.tournaments.join("t1");
+    await tick();
+    const controller = new AbortController();
+    const game = waiting.present.minigame({ ...GAME, signal: controller.signal });
+    await tick();
+    controller.abort();
+    expect(await game).toEqual({
+      status: "dismissed",
+      reason: "aborted",
+      sessionId: null,
+      matchupId: null,
+    });
+    waiting.frame.answer("joinTournamentRequest", "joinTournamentResponse", { matchupId: "t1" });
+    await join;
+    await tick();
+    expect(starts(waiting.frame)).toBe(0);
+  });
+
+  describe("dismissed while the request is in flight", () => {
+    for (const [reason, how] of [
+      ["dismissed", "dismiss()"],
+      ["aborted", "the signal"],
+    ] as const) {
+      it(`by ${how}: waits for Lucra, then resolves with the ids and sends Lucra home`, async () => {
+        const { frame, activity, api, present } = setup();
+        await connectLoggedIn(frame);
+        const screens: unknown[] = [];
+        present.subscribe((state) => screens.push(state.screen));
+        const controller = new AbortController();
+        const game = track(present.minigame({ ...GAME, signal: controller.signal }));
+        await tick();
+        expect(starts(frame)).toBe(1);
+        if (reason === "dismissed") present.dismiss();
+        else controller.abort();
+        await tick();
+        // A stake may be placed, so the call waits for Lucra's answer.
+        expect(game.settled).toBe(false);
+        expect(activity.screenOpen).toBe(false);
+        // The start is still a pending change.
+        expect((await caught(api.tournaments.join("t1"))).code).toBe("IN_PROGRESS");
+        answer(frame);
+        await tick();
+        expect(game.value).toEqual({ status: "dismissed", reason, ...STARTED });
+        expect(frame.overlaysOpened).toBe(0);
+        expect(screens).toEqual([null]);
+        expect(navigations(frame)).toEqual([HOME]);
+      });
+    }
+
+    it("by another screen: the new screen waits for Lucra's answer, then shows on its own page", async () => {
+      const { frame, activity, present } = setup();
+      await connectLoggedIn(frame);
+      const game = track(present.minigame(GAME));
+      await tick();
+      const wallet = track(present.wallet());
+      await tick();
+      expect(game.settled).toBe(false);
+      expect(activity.screenOpen).toBe(true);
+      expect(frame.overlaysOpened).toBe(0);
+      expect(present.getState()).toEqual({ screen: null });
+      expect(navigations(frame)).toEqual([]);
+      answer(frame);
+      await tick();
+      expect(game.value).toEqual({ status: "dismissed", reason: "replaced", ...STARTED });
+      // No home navigation: the wallet navigates Lucra itself.
+      expect(navigations(frame)).toEqual([WALLET]);
+      expect(frame.overlaysOpened).toBe(1);
+      expect(present.getState()).toEqual({ screen: "wallet" });
+      expect(wallet.settled).toBe(false);
+      present.dismiss();
+      await tick();
+      expect(wallet.value).toEqual({ status: "dismissed", reason: "dismissed" });
+    });
+
+    it("rejects with Lucra's refusal", async () => {
+      const { frame, present } = setup();
+      await connectLoggedIn(frame);
+      const game = caught(present.minigame(GAME));
+      await tick();
+      present.dismiss();
+      refuse(frame, "LOCATION_NEEDED");
+      const error = await game;
+      expect(error.code).toBe("LOCATION_NEEDED");
+      expect(error.remediation).toBe("locationGrant");
+      expect(navigations(frame)).toEqual([]);
+    });
+
+    it("rejects with outcomeUnknown on a timeout", async () => {
+      const { frame, present } = setup({ requestMs: 20 });
+      await connectLoggedIn(frame);
+      const game = caught(present.minigame(GAME));
+      await tick();
+      present.dismiss();
+      const error = await game;
+      expect(error.code).toBe("TIMEOUT");
+      expect(error.outcomeUnknown).toBe(true);
+      expect(frame.overlaysOpened).toBe(0);
+    });
+
+    it("by present.destroy(): waits for Lucra, then resolves destroyed with the ids", async () => {
+      const { frame, present } = setup();
+      await connectLoggedIn(frame);
+      const game = track(present.minigame(GAME));
+      await tick();
+      present.destroy();
+      await tick();
+      expect(game.settled).toBe(false);
+      answer(frame);
+      await tick();
+      expect(game.value).toEqual({ status: "dismissed", reason: "destroyed", ...STARTED });
+      expect(frame.overlaysOpened).toBe(0);
+    });
+  });
+
+  it("a second minigame while the first starts waits for it, then starts its own", async () => {
+    const { frame, present } = setup();
+    await connectLoggedIn(frame);
+    const first = track(present.minigame(GAME));
+    await tick();
+    const second = track(present.minigame({ gameId: "g2", mode: "practice" }));
+    await tick();
+    expect(starts(frame)).toBe(1);
+    answer(frame);
+    await tick();
+    expect(first.value).toEqual({ status: "dismissed", reason: "replaced", ...STARTED });
+    expect(starts(frame)).toBe(2);
+    expect(frame.lastPosted("presentMinigameRequest")?.body).toEqual({ gameId: "g2", mode: "practice" });
+    expect(frame.overlaysOpened).toBe(0);
+    answer(frame, { sessionId: "s2", matchupId: null });
+    await tick();
+    expect(present.getState()).toEqual({ screen: "minigame" });
+    frame.deliver("minigameClosed", { sessionId: "s2" });
+    await tick();
+    expect(second.value).toEqual({ status: "completed", sessionId: "s2", matchupId: null });
+    expect(navigations(frame)).toEqual([HOME]);
+  });
+
+  it("a second minigame while the first shows replaces it", async () => {
+    const { frame, present } = setup();
+    await connectLoggedIn(frame);
+    const { game: first } = await showGame(present, frame);
+    const second = present.minigame({ gameId: "g2", mode: "practice" });
+    expect(await first).toEqual({ status: "dismissed", reason: "replaced", ...STARTED });
+    expect(present.getState()).toEqual({ screen: null });
+    await tick();
+    expect(starts(frame)).toBe(2);
+    answer(frame, { sessionId: "s2", matchupId: null });
+    await tick();
+    expect(present.getState()).toEqual({ screen: "minigame" });
+    // A message for the first game does not close the second.
+    frame.deliver("minigameClosed", { sessionId: "s1" });
+    await tick();
+    expect(frame.overlayOpen).toBe(true);
+    frame.deliver("exitLucra", true);
+    expect(await second).toEqual({
+      status: "dismissed",
+      reason: "exit",
+      sessionId: "s2",
+      matchupId: null,
+    });
   });
 });

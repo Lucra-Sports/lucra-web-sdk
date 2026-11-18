@@ -73,7 +73,7 @@ describe("createClient", () => {
     expect(Object.keys(client.achievements).sort()).toEqual(["claim", "list", "markViewed"]);
     expect(Object.keys(client.rewards).sort()).toEqual(["claim", "list"]);
     expect(Object.keys(client.present).sort()).toEqual(
-      ["addFunds", "demographics", "dismiss", "getState", "kyc", "locationGrant", "login", "profile", "subscribe", "wallet", "withdraw"]
+      ["addFunds", "demographics", "dismiss", "getState", "kyc", "locationGrant", "login", "minigame", "profile", "subscribe", "wallet", "withdraw"]
     );
   });
 
@@ -142,6 +142,67 @@ describe("createClient", () => {
     client.destroy();
     expect((await joined).code).toBe("DESTROYED");
     expect(count(frame, "joinTournamentRequest")).toBe(1);
+  });
+
+  it("withRemediation shows the fix for a refused minigame, then starts the game", async () => {
+    const { frame, client } = setup();
+    await connectLoggedIn(frame);
+    const game = client.withRemediation(() =>
+      client.present.minigame({ gameId: "g1", mode: "1v1", amount: 5 })
+    );
+    await tick();
+    frame.answer("presentMinigameRequest", "apiRequestError", { code: "LOCATION_NEEDED" });
+    await tick();
+    expect(client.present.getState().screen).toBe("locationGrant");
+    frame.deliver("locationGranted", null);
+    await tick();
+    const starts = frame.posted.filter((message) => message.type === "presentMinigameRequest");
+    expect(starts.length).toBe(2);
+    expect(starts[1].requestId).not.toBe(starts[0].requestId);
+    expect(starts[1].body).toEqual({ gameId: "g1", mode: "1v1", amount: 5 });
+    frame.answer("presentMinigameRequest", "presentMinigameResponse", { sessionId: "s1", matchupId: "m1" });
+    await tick();
+    expect(client.present.getState().screen).toBe("minigame");
+    frame.deliver("minigameClosed", { sessionId: "s1" });
+    expect(await game).toEqual({ status: "completed", sessionId: "s1", matchupId: "m1" });
+  });
+
+  it("destroy while a minigame starts rejects DESTROYED with an unknown outcome", async () => {
+    const { frame, client } = setup();
+    await connectLoggedIn(frame);
+    const game = caught(client.present.minigame({ gameId: "g1", mode: "practice" }));
+    await tick();
+    expect(count(frame, "presentMinigameRequest")).toBe(1);
+    client.destroy();
+    const error = await game;
+    expect(error.code).toBe("DESTROYED");
+    expect(error.outcomeUnknown).toBe(true);
+    expect(frame.overlaysOpened).toBe(0);
+  });
+
+  it("destroy while a minigame shows resolves dismissed with the ids", async () => {
+    const { frame, client } = setup();
+    await connectLoggedIn(frame);
+    const game = client.present.minigame({ gameId: "g1", mode: "practice" });
+    await tick();
+    frame.answer("presentMinigameRequest", "presentMinigameResponse", { sessionId: "s1", matchupId: null });
+    await tick();
+    expect(frame.overlayOpen).toBe(true);
+    client.destroy();
+    expect(await game).toEqual({ status: "dismissed", reason: "destroyed", sessionId: "s1", matchupId: null });
+    expect(frame.overlayOpen).toBe(false);
+  });
+
+  it("types minigame as needing its input", () => {
+    // Only type checked, never run.
+    const check = (client: ReturnType<typeof setup>["client"]) => {
+      // @ts-expect-error minigame needs { gameId, mode }.
+      void client.present.minigame();
+      // @ts-expect-error mode is required.
+      void client.present.minigame({ gameId: "g1" });
+      void client.present.minigame({ gameId: "g1", mode: "practice" });
+    };
+    expect(typeof check).toBe("function");
   });
 
   it("wires auth, data calls, watch, and screens together", async () => {

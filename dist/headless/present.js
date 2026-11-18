@@ -3,8 +3,11 @@ import { LucraError, LucraErrorCode, isLucraError } from "./errors.js";
 import { createEmitter } from "./events.js";
 import { HOME_PATH, buildUrl, navigateTarget } from "./url.js";
 const PHONE_NUMBER = /^[0-9]{10}$/;
+const MINIGAME_MODES = ["practice", "1v1", "free_for_all", "tournament"];
+const invalid = (hint) => Promise.reject(new LucraError(LucraErrorCode.INVALID_ARGUMENT, undefined, { hint }));
+const isText = (value) => typeof value === "string" && value !== "";
 export function createPresent(options) {
-    const { session, auth, frame, urls, activity, whenWriteSettled } = options;
+    const { session, auth, frame, urls, activity, whenWriteSettled, startMinigame } = options;
     // The overlay screen on show, if any. Only one at a time.
     let current = null;
     // The Add Funds window, while it is open.
@@ -47,6 +50,9 @@ export function createPresent(options) {
         return new Promise((resolve, reject) => {
             let overlay = null;
             let done = false;
+            // True while screen.start runs. A dismissal then waits for its answer.
+            let starting = false;
+            let dismissedWhileStarting = null;
             const cleanups = [];
             const finish = (outcome) => {
                 if (done)
@@ -65,13 +71,21 @@ export function createPresent(options) {
                         navigate(HOME_PATH);
                     }
                 }
+                // Only a dismissal can end the call while it starts. The start's
+                // answer settles it.
+                if (starting)
+                    return;
                 if ("error" in outcome)
                     reject(outcome.error);
                 else
                     resolve(outcome.result);
             };
             const handle = {
-                dismiss: (reason) => finish({ result: { status: "dismissed", reason } }),
+                dismiss: (reason) => {
+                    if (starting && !done)
+                        dismissedWhileStarting = reason;
+                    finish({ result: { status: "dismissed", reason } });
+                },
             };
             current = handle;
             // The signal ends only this call. Once it has finished, for example
@@ -99,6 +113,30 @@ export function createPresent(options) {
                 // Dismissed, replaced, or aborted while waiting.
                 if (done)
                     return;
+                if (screen.start) {
+                    starting = true;
+                    try {
+                        await screen.start();
+                    }
+                    catch (error) {
+                        starting = false;
+                        if (dismissedWhileStarting === null)
+                            throw error;
+                        reject(error);
+                        return;
+                    }
+                    starting = false;
+                    const reason = dismissedWhileStarting;
+                    if (reason !== null) {
+                        // Lucra put the screen on its page after all. Take it down, unless
+                        // another screen replaced this one: that screen navigates Lucra itself.
+                        if (screen.goHomeAfter && reason !== "replaced" && session.status() === "connected") {
+                            navigate(HOME_PATH);
+                        }
+                        resolve({ status: "dismissed", reason });
+                        return;
+                    }
+                }
                 overlay = frame.openOverlay();
                 setScreen(screen.name);
                 // A listener told about the screen may have closed it already.
@@ -112,7 +150,11 @@ export function createPresent(options) {
                 }
                 const { completeOn, completed } = screen;
                 if (completeOn && completed) {
-                    cleanups.push(session.on(completeOn, (data) => finish({ result: completed(data) })));
+                    cleanups.push(session.on(completeOn, (data) => {
+                        const result = completed(data);
+                        if (result !== null)
+                            finish({ result });
+                    }));
                 }
                 // Lucra forgets this setting each time it restarts.
                 const enableExit = () => session.post(MessageTypeToLucraClient.enableExitLucra, true);
@@ -126,7 +168,7 @@ export function createPresent(options) {
                     session.whenConnected().catch((error) => finish({ error }));
                 };
                 cleanups.push(session.on(LucraClientMessageType.initialized, closeIfLucraFails));
-                screen.show();
+                screen.show?.();
                 closeIfLucraFails();
             })().catch((error) => finish({ error }));
         });
@@ -231,6 +273,59 @@ export function createPresent(options) {
             });
             popup = handle;
             return result;
+        },
+        minigame(input) {
+            // Checked before anything changes, so a bad value leaves the screen on
+            // show alone. The signal is checked with the other screens'.
+            if (typeof input !== "object" || input === null) {
+                return invalid("lucra.present.minigame() takes { gameId, mode }.");
+            }
+            const { gameId, mode, amount, matchupId, signal } = input;
+            if (!isText(gameId))
+                return invalid("gameId must be a non empty string.");
+            if (!MINIGAME_MODES.includes(mode)) {
+                return invalid('mode must be "practice", "1v1", "free_for_all", or "tournament".');
+            }
+            if (amount !== undefined &&
+                !(typeof amount === "number" && Number.isFinite(amount) && amount >= 0)) {
+                return invalid("amount must be a number of 0 or more. Leave it out for practice.");
+            }
+            if (matchupId !== undefined && !isText(matchupId)) {
+                return invalid("matchupId must be a non empty string. Leave it out when you have none.");
+            }
+            // Only the fields given. The signal is not sent.
+            const body = { gameId, mode };
+            if (amount !== undefined)
+                body.amount = amount;
+            if (matchupId !== undefined)
+                body.matchupId = matchupId;
+            let started = null;
+            return present({
+                name: "minigame",
+                needsLogin: true,
+                // Lucra starts the session and puts the game on its page.
+                start: async () => {
+                    started = await startMinigame(body);
+                },
+                completeOn: LucraClientMessageType.minigameClosed,
+                completed: (data) => {
+                    const sessionId = data?.sessionId;
+                    if (!started || sessionId !== started.sessionId)
+                        return null;
+                    return { status: "completed", sessionId, matchupId: started.matchupId };
+                },
+                // So the game does not keep running out of sight.
+                goHomeAfter: true,
+            }, signal).then((result) => {
+                if (result.status === "completed")
+                    return result;
+                const ids = started;
+                return {
+                    ...result,
+                    sessionId: ids?.sessionId ?? null,
+                    matchupId: ids?.matchupId ?? null,
+                };
+            });
         },
         demographics: page("demographics", "app/demographicform", LucraClientMessageType.demographicComplete),
         kyc: page("kyc", "app/kyc", LucraClientMessageType.kycComplete),

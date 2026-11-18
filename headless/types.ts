@@ -1,6 +1,7 @@
 import type {
   LucraEnvironment,
   LucraMatchupDetails,
+  LucraMinigameMode,
   SDKLucraUser,
 } from "../types/types.js";
 import type { LucraError } from "./errors.js";
@@ -54,6 +55,7 @@ export type {
   LucraUserMatchupsByTypeStatusInput,
   LucraUserTournamentReward,
   LucraReward,
+  LucraMinigameMode,
 } from "../types/types.js";
 
 export type LucraUser = SDKLucraUser;
@@ -110,6 +112,28 @@ export type LucraPresentResult =
 export type LucraLoginResult =
   | { status: "completed"; user: LucraUser }
   | { status: "dismissed"; reason: LucraDismissReason };
+
+// What lucra.present.minigame() starts.
+export type LucraMinigameInput = {
+  gameId: string;
+  mode: LucraMinigameMode;
+  // The stake. Leave it out for practice.
+  amount?: number;
+  // The matchup to join, or the tournament id in tournament mode.
+  matchupId?: string;
+  signal?: AbortSignal;
+};
+
+// How a minigame ended. "completed": the game closed itself, which does not
+// mean it was won. The ids are null when no session was started.
+export type LucraMinigameResult =
+  | { status: "completed"; sessionId: string; matchupId: string | null }
+  | {
+      status: "dismissed";
+      reason: LucraDismissReason;
+      sessionId: string | null;
+      matchupId: string | null;
+    };
 
 // "alreadyOpen": the window was open already, so this call brought it to the
 // front. The call that opened it reports the deposit.

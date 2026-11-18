@@ -94,6 +94,7 @@ export function createClient(
     urls,
     activity,
     whenWriteSettled: api.whenWriteSettled,
+    startMinigame: api.startMinigame,
   });
   const events = createEmitter<LucraHeadlessEventMap>();
   for (const type of EVENTS) {
@@ -115,6 +116,7 @@ export function createClient(
     present: {
       login: present.login,
       addFunds: present.addFunds,
+      minigame: present.minigame,
       demographics: present.demographics,
       kyc: present.kyc,
       locationGrant: present.locationGrant,

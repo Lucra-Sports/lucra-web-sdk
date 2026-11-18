@@ -190,6 +190,7 @@ Every code: [Errors](../../3.0_headless_client.md#errors).
 | `present.locationGrant()` | The user shares their location |
 | `present.addFunds()` | The deposit goes through. It can also resolve `"failed"`, `"dismissed"`, or `"alreadyOpen"`. See [Add Funds](#add-funds) |
 | `present.withdraw()`, `present.profile()`, `present.wallet()` | Never. They resolve `"dismissed"` when closed |
+| `present.minigame(input)` | The game closes itself. See [Minigames](#minigames) |
 
 - **Where it shows.** Without `container`, a screen covers the whole page. With `container`, it
   fills that element. Lucra is hidden before a screen shows and after it ends.
@@ -199,7 +200,7 @@ Every code: [Errors](../../3.0_headless_client.md#errors).
   Lucra reloads and an open screen is not shown again. Call `lucra.destroy()` before you remove
   it.
 - **Show your own wrapper from state, not by wrapping calls.** `lucra.present.getState()` returns
-  `{ screen }`, the `LucraScreen` on show or `null`, and `lucra.present.subscribe(listener)`
+  `{ screen }`, the `LucraScreen` on show, `"minigame"` while a game shows, or `null`, and `lucra.present.subscribe(listener)`
   calls the listener now and on every change. They behave like `lucra.auth.getState()` and
   `subscribe()`. `screen` is set only while a screen is on show: not while it waits to connect,
   for a login, or for a write, and never for Add Funds. A replacement goes to `null` and then to
@@ -244,6 +245,26 @@ and `lucra.auth`, and have a human run login and Add Funds.
   close the window.
 - `message` is text from Lucra: show it as text, never as HTML. Read the new balance from
   `lucra.auth`.
+
+### Minigames
+
+- `lucra.present.minigame({ gameId, mode, amount, matchupId, signal })` starts a minigame
+  session, and Lucra shows the game in its own frame. Your page never sees the game's address.
+  `mode` is `"practice"`, `"1v1"`, `"free_for_all"`, or `"tournament"`. `amount` is the stake:
+  leave it out for practice. `matchupId` is the matchup to join, or the tournament id in
+  tournament mode. A bad input rejects with `INVALID_ARGUMENT` before anything changes.
+- **Starting is a change.** It runs one at a time, needs a logged in user, can reject with
+  a `remediation`, and works inside `lucra.withRemediation()`. Nothing shows until the game has
+  started.
+- It resolves `{ status: "completed", sessionId, matchupId }` when the game closes itself. That
+  does not mean the user won: for a paid game, read `lucra.matchups.get(matchupId)`. Any other
+  close resolves `"dismissed"` with `reason` and the same ids, which are `null` when no session
+  was started.
+- **`outcomeUnknown: true` means a stake may have been placed.** Read `lucra.matchups.list()`
+  before you try again. Never retry automatically.
+- Dismissing it while the game starts waits for Lucra's answer, then resolves `"dismissed"`
+  with the ids if the game started. The game never shows.
+- It needs a Lucra environment that answers it. Until then, it rejects with `TIMEOUT`.
 
 ## 7. Games You Play
 

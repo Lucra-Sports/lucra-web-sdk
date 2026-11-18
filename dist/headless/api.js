@@ -26,11 +26,15 @@ const SPECS = {
     // For these two a plain API_ERROR may mean the claim still went through.
     achievementsClaim: write(MessageTypeToLucraClient.claimAchievementRequest, LucraClientMessageType.claimAchievementResponse, true),
     rewardsClaim: write(MessageTypeToLucraClient.claimTournamentRewardRequest, LucraClientMessageType.claimTournamentRewardResponse, true),
+    // A stake may be placed, so a plain API_ERROR leaves the outcome unknown.
+    presentMinigame: write(MessageTypeToLucraClient.presentMinigameRequest, LucraClientMessageType.presentMinigameResponse, true),
 };
 export function createApi(options) {
     const { session, auth, activity, requestMs } = options;
     // The one write slot. Set while a write is pending, whatever its kind.
     let writeSettled = null;
+    // True while the pending write is a screen's own, such as a minigame start.
+    let screenWrite = false;
     const ready = async (needsLogin) => {
         await session.whenConnected();
         if (needsLogin)
@@ -72,16 +76,18 @@ export function createApi(options) {
             throw new LucraError(LucraErrorCode.TIMEOUT);
         return session.request(spec, body, left);
     };
-    const sendWrite = (spec, body) => {
+    // `forScreen`: the write a lucra.present screen makes for itself.
+    const sendWrite = (spec, body, forScreen = false) => {
         // These three checks run before the first await, so a double click is
         // refused instead of sending the write twice.
         if (session.status() === "destroyed") {
             return Promise.reject(new LucraError(LucraErrorCode.DESTROYED));
         }
         if (writeSettled) {
-            return Promise.reject(new LucraError(LucraErrorCode.IN_PROGRESS));
+            // A screen's own write counts as the screen while the screen is open.
+            return Promise.reject(new LucraError(screenWrite && activity.screenOpen ? LucraErrorCode.SCREEN_OPEN : LucraErrorCode.IN_PROGRESS));
         }
-        if (activity.screenOpen) {
+        if (activity.screenOpen && !forScreen) {
             return Promise.reject(new LucraError(LucraErrorCode.SCREEN_OPEN));
         }
         const run = send(spec, body, true);
@@ -89,8 +95,10 @@ export function createApi(options) {
         // the time the caller's own code continues.
         const free = () => {
             writeSettled = null;
+            screenWrite = false;
         };
         writeSettled = run.then(free, free);
+        screenWrite = forScreen;
         return run;
     };
     return {
@@ -127,5 +135,6 @@ export function createApi(options) {
             claim: (rewardId) => sendWrite(SPECS.rewardsClaim, { rewardId }).then(() => undefined),
         },
         whenWriteSettled: () => writeSettled ?? Promise.resolve(),
+        startMinigame: (body) => sendWrite(SPECS.presentMinigame, body, true),
     };
 }
