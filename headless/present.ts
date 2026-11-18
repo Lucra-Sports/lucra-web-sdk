@@ -2,6 +2,7 @@ import {
   LUCRA_POPUP_MESSAGE_TYPE,
   LucraClientMessageType,
   MessageTypeToLucraClient,
+  type LucraMinigameClosedBody,
   type LucraPresentMinigameBody,
   type LucraPresentMinigameResponse,
 } from "../types/types.js";
@@ -56,7 +57,7 @@ export type LucraPresentState = { readonly screen: LucraScreen | "minigame" | nu
 type Dismissed = { status: "dismissed"; reason: LucraDismissReason };
 
 type Screen<TResult> = {
-  name: NonNullable<LucraPresentState["screen"]>;
+  name: LucraScreen | "minigame";
   needsLogin: boolean;
   // Resolves with a result to skip the screen entirely, or null to show it.
   skip?: () => Promise<TResult | null>;
@@ -65,6 +66,9 @@ type Screen<TResult> = {
   // while it runs, the call still waits for it, because it may have changed
   // something. Then it rejects with its error, or resolves dismissed.
   start?: () => Promise<void>;
+  // Close with "restarted" when Lucra restarts while the screen shows, because
+  // what it shows cannot survive the reload.
+  endsOnRestart?: boolean;
   // Tells Lucra which screen to show. Runs once the overlay is visible.
   show?: () => void;
   // The Lucra message that means this screen finished, and the result it gives,
@@ -100,6 +104,8 @@ export function createPresent(options: {
   let popup: Popup | null = null;
   let destroyed = false;
   let state: LucraPresentState = { screen: null };
+  // A game may be on Lucra's page with nothing showing it.
+  let gameOutOfSight = false;
   const changes = createEmitter<{ change: LucraPresentState }>();
 
   const setScreen = (screen: LucraPresentState["screen"]) => {
@@ -112,6 +118,19 @@ export function createPresent(options: {
     session.post(MessageTypeToLucraClient.navigate, {
       pathname: navigateTarget(urls, path),
     });
+
+  const goHome = () => {
+    if (session.status() === "connected") navigate(HOME_PATH);
+  };
+
+  // Sends Lucra home so a game nobody can see does not keep running. Not while
+  // a call is current: that call navigates Lucra itself, and a home navigation
+  // would land after it. If that call ends without showing, it runs this again.
+  const hideGame = () => {
+    if (!gameOutOfSight || current || session.status() !== "connected") return;
+    gameOutOfSight = false;
+    navigate(HOME_PATH);
+  };
 
   const present = <TResult>(
     screen: Screen<TResult>,
@@ -163,9 +182,9 @@ export function createPresent(options: {
         if (overlay) {
           overlay.close();
           setScreen(null);
-          if (screen.goHomeAfter && session.status() === "connected") {
-            navigate(HOME_PATH);
-          }
+          if (screen.goHomeAfter) goHome();
+        } else {
+          hideGame();
         }
         // Only a dismissal can end the call while it starts. The start's
         // answer settles it.
@@ -176,7 +195,8 @@ export function createPresent(options: {
 
       const handle = {
         dismiss: (reason: LucraDismissReason) => {
-          if (starting && !done) dismissedWhileStarting = reason;
+          // The first reason wins.
+          if (starting) dismissedWhileStarting ??= reason;
           finish({ result: { status: "dismissed", reason } });
         },
       };
@@ -213,23 +233,24 @@ export function createPresent(options: {
           } catch (error) {
             starting = false;
             if (dismissedWhileStarting === null) throw error;
+            hideGame();
             reject(error);
             return;
           }
           starting = false;
           const reason = dismissedWhileStarting;
           if (reason !== null) {
-            // Lucra put the screen on its page after all. Take it down, unless
-            // another screen replaced this one: that screen navigates Lucra itself.
-            if (screen.goHomeAfter && reason !== "replaced" && session.status() === "connected") {
-              navigate(HOME_PATH);
-            }
+            // Lucra put the screen on its page after all, with nothing showing it.
+            gameOutOfSight = true;
+            hideGame();
             resolve({ status: "dismissed", reason });
             return;
           }
         }
 
         overlay = frame.openOverlay();
+        // This screen takes over Lucra's page.
+        gameOutOfSight = false;
         setScreen(screen.name);
         // A listener told about the screen may have closed it already.
         if (done) return;
@@ -267,7 +288,10 @@ export function createPresent(options: {
           session.whenConnected().catch((error: unknown) => finish({ error }));
         };
         cleanups.push(
-          session.on(LucraClientMessageType.initialized, closeIfLucraFails)
+          session.on(LucraClientMessageType.initialized, () => {
+            if (screen.endsOnRestart) handle.dismiss("restarted");
+            else closeIfLucraFails();
+          })
         );
         screen.show?.();
         closeIfLucraFails();
@@ -289,6 +313,13 @@ export function createPresent(options: {
         },
         pageOptions?.signal
       );
+
+  // An answer to a start that no longer waits for it, for example after a
+  // timeout. The game it started shows nowhere.
+  const unsubscribeLateStart = session.on(LucraClientMessageType.presentMinigameResponse, () => {
+    gameOutOfSight = true;
+    hideGame();
+  });
 
   const unsubscribePopup = session.on(LUCRA_POPUP_MESSAGE_TYPE, (data) => {
     const result = data as { toastType?: unknown; message?: unknown } | null;
@@ -413,18 +444,35 @@ export function createPresent(options: {
       if (amount !== undefined) body.amount = amount;
       if (matchupId !== undefined) body.matchupId = matchupId;
 
-      let started: LucraPresentMinigameResponse | null = null;
+      let started: LucraPresentMinigameResponse | undefined;
       return present<Extract<LucraMinigameResult, { status: "completed" }>>(
         {
           name: "minigame",
           needsLogin: true,
           // Lucra starts the session and puts the game on its page.
           start: async () => {
-            started = await startMinigame(body);
+            try {
+              const answer = (await startMinigame(body)) as Partial<LucraPresentMinigameResponse> | null;
+              if (!isText(answer?.sessionId)) {
+                throw new LucraError(LucraErrorCode.API_ERROR, undefined, {
+                  outcomeUnknown: true,
+                  hint: "Lucra's answer had no sessionId. Read lucra.matchups.list() before you try again.",
+                });
+              }
+              started = {
+                sessionId: answer.sessionId,
+                matchupId: isText(answer.matchupId) ? answer.matchupId : null,
+              };
+            } catch (error) {
+              // The game may be on Lucra's page all the same.
+              if (isLucraError(error) && error.outcomeUnknown) gameOutOfSight = true;
+              throw error;
+            }
           },
+          endsOnRestart: true,
           completeOn: LucraClientMessageType.minigameClosed,
           completed: (data) => {
-            const sessionId = (data as { sessionId?: unknown } | null)?.sessionId;
+            const sessionId = (data as Partial<LucraMinigameClosedBody> | null)?.sessionId;
             if (!started || sessionId !== started.sessionId) return null;
             return { status: "completed", sessionId, matchupId: started.matchupId };
           },
@@ -434,11 +482,10 @@ export function createPresent(options: {
         signal
       ).then((result): LucraMinigameResult => {
         if (result.status === "completed") return result;
-        const ids = started as LucraPresentMinigameResponse | null;
         return {
           ...result,
-          sessionId: ids?.sessionId ?? null,
-          matchupId: ids?.matchupId ?? null,
+          sessionId: started?.sessionId ?? null,
+          matchupId: started?.matchupId ?? null,
         };
       });
     },
@@ -483,6 +530,7 @@ export function createPresent(options: {
       current?.dismiss("destroyed");
       popup?.close();
       unsubscribePopup();
+      unsubscribeLateStart();
       changes.clear();
     },
   };

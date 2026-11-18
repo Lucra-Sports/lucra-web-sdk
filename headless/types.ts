@@ -102,7 +102,9 @@ export type LucraDismissReason =
   // The client was destroyed.
   | "destroyed"
   // The call's signal was aborted.
-  | "aborted";
+  | "aborted"
+  // Lucra restarted while a game was showing.
+  | "restarted";
 
 // How a Lucra screen shown by lucra.present ended.
 export type LucraPresentResult =

@@ -21,7 +21,7 @@ export type LucraPresentOptions = {
 export type LucraLoginOptions = LucraPresentOptions & {
     phoneNumber?: string;
 };
-export type LucraDismissReason = "exit" | "dismissed" | "replaced" | "loggedOut" | "destroyed" | "aborted";
+export type LucraDismissReason = "exit" | "dismissed" | "replaced" | "loggedOut" | "destroyed" | "aborted" | "restarted";
 export type LucraPresentResult = {
     status: "completed";
 } | {
