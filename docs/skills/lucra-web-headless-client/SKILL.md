@@ -104,7 +104,7 @@ login.
 
 | Works logged out | Needs a logged in user |
 | --- | --- |
-| `tournaments.list()`, `matchups.get()`, `matchups.getDetails()`, `matchups.watch()`, `present.login()` | `tournaments.get()`, `tournaments.leaderboard()`, `achievements.list()`, every write, every other `present.*` screen |
+| `tournaments.list()`, `matchups.get()`, `matchups.getDetails()`, `matchups.watch()`, `present.login()` | `tournaments.get()`, `tournaments.leaderboard()`, `matchups.searchByMetadata()`, `achievements.list()`, every write, every other `present.*` screen |
 
 `present.addFunds()` cannot wait out `"loading"`, so it rejects with `NOT_LOGGED_IN` only when
 the status is already `"loggedOut"`.

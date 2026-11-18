@@ -93,6 +93,7 @@ describe("createApi: reads", () => {
       () => api.tournaments.get("t1"),
       () => api.tournaments.leaderboard("t1"),
       () => api.achievements.list(),
+      () => api.matchups.searchByMetadata({}),
     ]) {
       const error = await caught(call());
       expect(error.code).toBe("NOT_LOGGED_IN");
@@ -101,6 +102,7 @@ describe("createApi: reads", () => {
     expect(count(frame, "tournamentRequest")).toBe(0);
     expect(count(frame, "tournamentLeaderboardRequest")).toBe(0);
     expect(count(frame, "achievementsRequest")).toBe(0);
+    expect(count(frame, "searchMatchupsByMetadataRequest")).toBe(0);
   });
 
   it("holds a read that needs login until loginSuccess, not just a yes", async () => {
@@ -155,6 +157,24 @@ describe("createApi: reads", () => {
     expect<unknown>(await second).toEqual({ id: "m2" });
     frame.answer("joinTournamentRequest", "joinTournamentResponse", { matchupId: "t1" });
     await join;
+  });
+
+  it("searches matchups by metadata and returns the ids", async () => {
+    const { frame, api } = setup();
+    await connectLoggedIn(frame);
+    const filters = {
+      gameId: "g1",
+      locationId: "l1",
+      matchupId: "m1",
+      matchupMetadata: { table: 4 },
+    };
+    const search = api.matchups.searchByMetadata(filters);
+    await tick();
+    expect(frame.lastPosted("searchMatchupsByMetadataRequest")?.body).toEqual(filters);
+    frame.answer("searchMatchupsByMetadataRequest", "searchMatchupsByMetadataResponse", {
+      matchupIds: ["m1", "m2"],
+    });
+    expect(await search).toEqual(["m1", "m2"]);
   });
 
   it("rejects with CONNECTION_FAILED when Lucra refuses the config", async () => {

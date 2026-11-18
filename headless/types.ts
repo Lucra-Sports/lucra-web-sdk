@@ -43,6 +43,7 @@ export type {
   LucraCreateRecreationalGameInput,
   LucraRecreationalGameResult,
   LucraCancelRecreationalGameResult,
+  LucraSearchMatchupsByMetadataInput,
   LucraReward,
 } from "../types/types.js";
 

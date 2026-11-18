@@ -1,4 +1,4 @@
-import { type LucraAchievement, type LucraAutoJoinedTournamentsBody, type LucraCancelRecreationalGameResult, type LucraCreateRecreationalGameInput, type LucraJoinTournamentResponse, type LucraMatchup, type LucraMatchupDetails, type LucraRecreationalGameResult, type LucraTournament, type LucraTournamentDetail } from "../types/types.js";
+import { type LucraAchievement, type LucraAutoJoinedTournamentsBody, type LucraCancelRecreationalGameResult, type LucraCreateRecreationalGameInput, type LucraJoinTournamentResponse, type LucraMatchup, type LucraMatchupDetails, type LucraRecreationalGameResult, type LucraSearchMatchupsByMetadataInput, type LucraTournament, type LucraTournamentDetail } from "../types/types.js";
 import type { Auth } from "./auth.js";
 import type { Session } from "./session.js";
 export type Activity = {
@@ -18,6 +18,7 @@ export type Api = {
     matchups: {
         get(matchupId: string): Promise<LucraMatchup>;
         getDetails(matchupId: string): Promise<LucraMatchupDetails>;
+        searchByMetadata(filters: LucraSearchMatchupsByMetadataInput): Promise<string[]>;
         create(input: LucraCreateRecreationalGameInput): Promise<LucraRecreationalGameResult>;
         accept(matchupId: string, options?: {
             groupId?: string;

@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## [v1.17.0]
+
+### Added
+
+- **Preview:** `lucra.matchups.searchByMetadata(filters)` on the headless client resolves with the ids of the logged in user's matchups that match the filters. The filters (`gameId`, `locationId`, `matchupId`, `matchupMetadata`) are all optional and typed as `LucraSearchMatchupsByMetadataInput`, exported from `lucra-web-sdk/headless`. Where Lucra does not answer this call yet, it rejects with `TIMEOUT`. See [Reading data](3.0_headless_client.md#reading-data).
+
 ## [v1.16.0]
 
 ### Breaking

@@ -49,6 +49,7 @@ export enum LucraClientMessageType {
   createRecreationalGameResponse = "createRecreationalGameResponse",
   acceptRecreationalGameResponse = "acceptRecreationalGameResponse",
   cancelRecreationalGameResponse = "cancelRecreationalGameResponse",
+  searchMatchupsByMetadataResponse = "searchMatchupsByMetadataResponse",
 }
 
 export enum MessageTypeToLucraClient {
@@ -72,6 +73,7 @@ export enum MessageTypeToLucraClient {
   createRecreationalGameRequest = "createRecreationalGameRequest",
   acceptRecreationalGameRequest = "acceptRecreationalGameRequest",
   cancelRecreationalGameRequest = "cancelRecreationalGameRequest",
+  searchMatchupsByMetadataRequest = "searchMatchupsByMetadataRequest",
   sdkDiagnostic = "sdkDiagnostic",
 }
 
@@ -705,6 +707,18 @@ export type LucraRecreationalGameResult = {
 
 export type LucraCancelRecreationalGameResult = {
   matchupId: string;
+};
+
+// Every filter is optional. One left out is not applied.
+export type LucraSearchMatchupsByMetadataInput = {
+  gameId?: string;
+  locationId?: string;
+  matchupId?: string;
+  matchupMetadata?: Record<string, unknown>;
+};
+
+export type LucraSearchMatchupsByMetadataResponse = {
+  matchupIds: string[];
 };
 
 // Wire-only body of acceptRecreationalGameRequest, not exported from index.ts. teamId is

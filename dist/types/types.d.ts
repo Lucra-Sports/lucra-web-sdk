@@ -35,7 +35,8 @@ export declare enum LucraClientMessageType {
     matchupDetailsUpdated = "matchupDetailsUpdated",
     createRecreationalGameResponse = "createRecreationalGameResponse",
     acceptRecreationalGameResponse = "acceptRecreationalGameResponse",
-    cancelRecreationalGameResponse = "cancelRecreationalGameResponse"
+    cancelRecreationalGameResponse = "cancelRecreationalGameResponse",
+    searchMatchupsByMetadataResponse = "searchMatchupsByMetadataResponse"
 }
 export declare enum MessageTypeToLucraClient {
     achievementsRequest = "achievementsRequest",
@@ -58,6 +59,7 @@ export declare enum MessageTypeToLucraClient {
     createRecreationalGameRequest = "createRecreationalGameRequest",
     acceptRecreationalGameRequest = "acceptRecreationalGameRequest",
     cancelRecreationalGameRequest = "cancelRecreationalGameRequest",
+    searchMatchupsByMetadataRequest = "searchMatchupsByMetadataRequest",
     sdkDiagnostic = "sdkDiagnostic"
 }
 export type LucraDeepLinkResponse = {
@@ -487,6 +489,15 @@ export type LucraRecreationalGameResult = {
 };
 export type LucraCancelRecreationalGameResult = {
     matchupId: string;
+};
+export type LucraSearchMatchupsByMetadataInput = {
+    gameId?: string;
+    locationId?: string;
+    matchupId?: string;
+    matchupMetadata?: Record<string, unknown>;
+};
+export type LucraSearchMatchupsByMetadataResponse = {
+    matchupIds: string[];
 };
 export type LucraAcceptRecreationalGameBody = {
     matchupId: string;
