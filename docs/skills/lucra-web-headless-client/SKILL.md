@@ -136,7 +136,8 @@ Check with `isLucraError(error)`.
   write already sent to Lucra, such as a `TIMEOUT` or a `CONNECTION_RESET`. Branch on the flag,
   not on `code`. Never retry it automatically: read the matchup (or `claimedAt` after a claim),
   or ask the user. A second create makes a second matchup with a second buy in. Reads never set
-  it and are safe to repeat.
+  it and are safe to repeat. One caveat: `rewards.list()` marks unviewed rewards as viewed, so a
+  repeat with `viewed: false` may not return them again.
 
 Every code: [Errors](../../3.0_headless_client.md#errors).
 
