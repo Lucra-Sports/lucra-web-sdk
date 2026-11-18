@@ -1,7 +1,8 @@
 // lucra.withRemediation(call): when the call fails with an error the user can
-// fix in Lucra, Lucra shows what the user needs, then the call runs again. It
-// settles with the call's own result, or with the error that asked for the fix.
-// Which screens show, in what order, and how many is not part of the contract.
+// fix in Lucra, Lucra shows what the user needs, then the call runs again,
+// possibly more than once. It resolves with the call's result, or rejects with
+// the error the call failed with, usually a LucraError. Which screens show, in
+// what order, how many, and which error comes back is not part of the contract.
 import {
   LucraError,
   LucraErrorCode,
@@ -10,12 +11,17 @@ import {
 } from "./errors.js";
 import type { Present } from "./present.js";
 
-// Add Funds is left out: its window must open from a click.
-type Fix = Exclude<LucraRemediation, "addFunds">;
+// The fixes this version can show. Add Funds is left out: its window must open
+// from a click.
+const FIXES = [
+  "login",
+  "demographics",
+  "locationGrant",
+  "kyc",
+] as const satisfies readonly LucraRemediation[];
+type Fix = (typeof FIXES)[number];
 
-export function createWithRemediation(
-  present: Pick<Present, Fix>
-): <T>(call: () => Promise<T>) => Promise<T> {
+export function createWithRemediation(present: Pick<Present, Fix>) {
   return async function withRemediation<T>(call: () => Promise<T>): Promise<T> {
     if (typeof call !== "function") {
       throw new LucraError(LucraErrorCode.INVALID_ARGUMENT, undefined, {
@@ -30,22 +36,23 @@ export function createWithRemediation(
         const fix = fixFor(error);
         if (!fix || shown.has(fix)) throw error;
         shown.add(fix);
-        let completed = false;
-        try {
-          completed = (await present[fix]()).status === "completed";
-        } catch {
-          // The screen failed. The caller gets the error that asked for it.
+        // A screen that fails leaves the caller with the error from the call.
+        const result = await present[fix]().catch(() => null);
+        if (result?.status === "completed") continue;
+        if (result?.status === "dismissed" && result.reason === "destroyed") {
+          throw new LucraError(LucraErrorCode.DESTROYED);
         }
-        if (!completed) throw error;
+        throw error;
       }
     }
   };
 }
 
 // The screen to show for this error, or null to pass the error on. A call
-// whose outcome is unknown is never run again.
+// whose outcome is unknown is never run again. Only a fix this version knows
+// is shown, whatever `remediation` holds.
 function fixFor(error: unknown): Fix | null {
   if (!isLucraError(error) || error.outcomeUnknown) return null;
   const { remediation } = error;
-  return remediation && remediation !== "addFunds" ? remediation : null;
+  return FIXES.find((fix) => fix === remediation) ?? null;
 }

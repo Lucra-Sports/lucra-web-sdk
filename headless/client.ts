@@ -44,8 +44,11 @@ export type LucraHeadlessClient = {
   ): () => void;
   whenConnected(): Promise<void>;
   // Runs `call`. When it fails with an error the user can fix in Lucra, Lucra
-  // shows what the user needs, then `call` runs again. Settles with the call's
-  // own result, or with the error that asked for the fix.
+  // shows what the user needs, then `call` runs again. Make one Lucra call in
+  // `call`: all of it may run again, more than once, so a second call in it
+  // would be repeated. Resolves with the call's result, or rejects with the
+  // error the call failed with, usually a LucraError. If the user leaves
+  // without finishing, it rejects with a LucraError.
   withRemediation<T>(call: () => Promise<T>): Promise<T>;
   destroy(): void;
 };

@@ -49,8 +49,9 @@ is unchanged by the preview.
 - **Prefer a container with your own close button.** Some Lucra screens have no exit control
   yet, and a full screen one leaves the user no way out. Show screens in a `container`, next to
   your own close button that calls `lucra.present.dismiss()`.
-- **Every failure is a `LucraError`.** Run writes with `lucra.withRemediation()`: Lucra shows
-  what the user needs, then the call runs again. What still rejects goes to your own UI.
+- **Every failure is a `LucraError`.** For a change the user started, prefer
+  `lucra.withRemediation()`, unless the app handles these steps itself: Lucra shows what the user
+  needs, then the call runs again. Pass it one Lucra call. What still rejects goes to your own UI.
   `outcomeUnknown: true` means a write may have gone through: never retry it automatically,
   read back first.
 - **One write at a time, and none while a `present.*` call is pending** (Add Funds aside). A
@@ -126,20 +127,27 @@ Writes are what the guide calls changes
   screen's result before the next write. A screen asked for while a write is pending waits for
   that write to finish.
 
-**Run a write with `lucra.withRemediation()` by default.** When the call fails with something
-the user can fix in Lucra, Lucra shows what the user needs, then the call runs again. It
-resolves with the call's result, or rejects with a `LucraError` for your own UI.
+**Prefer `lucra.withRemediation()` for a change the user started**, unless the app handles these
+steps itself. When the call fails with something the user can fix in Lucra, Lucra shows what the
+user needs, then the call runs again. It resolves with the call's result, or rejects with the
+error the call failed with, usually a `LucraError`, for your own UI. If the user leaves without
+finishing, it rejects with a `LucraError`.
+
+**Pass a function that makes one Lucra call.** Everything in it may run again, possibly more
+than once, so a second call in it would be repeated.
 
 ```typescript
 const result = await lucra.withRemediation(() => lucra.tournaments.join(tournamentId));
 ```
 
-- What Lucra shows, and how many screens, can change between releases. Never depend on it.
+- What Lucra shows can change between releases.
 - The promise stays pending while the user is in a Lucra screen. Keep the button disabled.
-- `INSUFFICIENT_FUNDS` still reaches you: offer your own button that calls
-  `lucra.present.addFunds()`.
-- A call whose outcome is unknown is never run again. If the user leaves without finishing, it
-  rejects with the error that asked for the fix.
+- Some errors still reach you, such as `INSUFFICIENT_FUNDS` today. For that one, offer your own
+  button that calls `lucra.present.addFunds()`.
+- A call whose outcome is unknown is never run again.
+- `lucra.present.dismiss()` ends a fix that is showing, and the call then rejects.
+- Run one `lucra.withRemediation()` at a time: a second one that needs a screen takes the first
+  one's place.
 - Close your own modal dialogs first: a Lucra screen under one cannot be reached.
 - It also works for a read that needs a logged in user.
 - To handle it yourself instead, show `lucra.present[error.remediation]()` and decide when to

@@ -18,6 +18,7 @@ function setup(result: () => Promise<LucraPresentResult> = async () => COMPLETED
     kyc: screen("kyc"),
     locationGrant: screen("locationGrant"),
     addFunds: mock(async () => ({ status: "completed" as const, message: "ok" })),
+    destroy: mock(() => {}),
   };
   const withRemediation = createWithRemediation(present as never);
   return { present, shown, withRemediation };
@@ -49,15 +50,9 @@ describe("createWithRemediation", () => {
     expect(shown).toEqual([]);
   });
 
-  it("shows login for NOT_LOGGED_IN, then runs the call again", async () => {
-    const { shown, withRemediation } = setup();
-    const { call } = failing("NOT_LOGGED_IN");
-    expect(await withRemediation(call)).toBe("done");
-    expect(shown).toEqual(["login"]);
-    expect(call).toHaveBeenCalledTimes(2);
-  });
-
-  it("shows each different fix in the order the errors ask for them", async () => {
+  // Pins today's internal behaviour, not a public promise: which screens show,
+  // in what order, and how many can change between releases.
+  it("shows each different fix in the order the errors ask for them (internal)", async () => {
     const { shown, withRemediation } = setup();
     const { call } = failing("NOT_LOGGED_IN", "DEMOGRAPHIC_INFORMATION_MISSING", "LOCATION_NEEDED");
     expect(await withRemediation(call)).toBe("done");
@@ -73,15 +68,35 @@ describe("createWithRemediation", () => {
     expect(call).toHaveBeenCalledTimes(2);
   });
 
-  it("rejects with the asking error when the user leaves the screen", async () => {
-    const { shown, withRemediation } = setup(async () => ({ status: "dismissed", reason: "exit" }));
-    const { call, errors } = failing("UNVERIFIED");
-    expect(await caught(withRemediation(call))).toBe(errors[0]);
-    expect(shown).toEqual(["kyc"]);
+  it("rejects after one more try when login completes and the call still fails NOT_LOGGED_IN", async () => {
+    const { shown, withRemediation } = setup();
+    const { call, errors } = failing("NOT_LOGGED_IN", "NOT_LOGGED_IN");
+    expect(await caught(withRemediation(call))).toBe(errors[1]);
+    expect(shown).toEqual(["login"]);
+    expect(call).toHaveBeenCalledTimes(2);
+  });
+
+  for (const reason of ["exit", "dismissed", "replaced", "loggedOut", "aborted"] as const) {
+    it(`rejects with the call's error when the screen closes with reason "${reason}"`, async () => {
+      const { shown, withRemediation } = setup(async () => ({ status: "dismissed", reason }));
+      const { call, errors } = failing("UNVERIFIED");
+      expect(await caught(withRemediation(call))).toBe(errors[0]);
+      expect(shown).toEqual(["kyc"]);
+      expect(call).toHaveBeenCalledTimes(1);
+    });
+  }
+
+  it("rejects DESTROYED when the client is destroyed during a fix", async () => {
+    const { shown, withRemediation } = setup(async () => ({ status: "dismissed", reason: "destroyed" }));
+    const { call } = failing("LOCATION_NEEDED");
+    const error = await caught(withRemediation(call));
+    expect(error).toBeInstanceOf(LucraError);
+    expect((error as LucraError).code).toBe("DESTROYED");
+    expect(shown).toEqual(["locationGrant"]);
     expect(call).toHaveBeenCalledTimes(1);
   });
 
-  it("rejects with the asking error when the screen fails", async () => {
+  it("rejects with the call's error when the screen fails", async () => {
     const { withRemediation } = setup(async () => {
       throw new LucraError("CONNECTION_FAILED");
     });
@@ -117,6 +132,14 @@ describe("createWithRemediation", () => {
     const other = new TypeError("boom");
     expect(await caught(withRemediation(() => Promise.reject(other)))).toBe(other);
     expect(shown).toEqual([]);
+  });
+
+  it("passes through an error whose remediation is not a known fix, and calls nothing", async () => {
+    const { present, shown, withRemediation } = setup();
+    const foreign = { name: "LucraError", code: "X", remediation: "destroy" };
+    expect(await caught(withRemediation(() => Promise.reject(foreign)))).toBe(foreign);
+    expect(shown).toEqual([]);
+    for (const fn of Object.values(present)) expect(fn).not.toHaveBeenCalled();
   });
 
   it("treats a call that throws at once as a rejection", async () => {

@@ -18,6 +18,8 @@ function setup() {
 }
 
 const tick = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+const count = (frame: FakeFrame, type: string) =>
+  frame.posted.filter((message) => message.type === type).length;
 const caught = (promise: Promise<unknown>): Promise<LucraError> =>
   promise.then(
     () => {
@@ -90,6 +92,56 @@ describe("createClient", () => {
     expect(joins[1].requestId).not.toBe(joins[0].requestId);
     frame.answer("joinTournamentRequest", "joinTournamentResponse", { matchupId: "t1" });
     expect(await joined).toEqual({ matchupId: "t1" });
+  });
+
+  it("withRemediation shows login, then sends the write once after the login", async () => {
+    const { frame, client } = setup();
+    frame.deliver("initialized", { success: true });
+    frame.answer("isLoggedInRequest", "isLoggedInResponse", { isLoggedIn: false });
+    await tick();
+    const joined = client.withRemediation(() => client.tournaments.join("t1"));
+    await tick();
+    expect(client.present.getState().screen).toBe("login");
+    // Loading the login screen restarts Lucra.
+    expect(frame.urls.length).toBe(2);
+    frame.deliver("initialized", { success: true });
+    frame.answer("isLoggedInRequest", "isLoggedInResponse", { isLoggedIn: false });
+    await tick();
+    expect(count(frame, "joinTournamentRequest")).toBe(0);
+    frame.deliver("loginSuccess", USER);
+    await tick();
+    expect(count(frame, "joinTournamentRequest")).toBe(1);
+    frame.answer("joinTournamentRequest", "joinTournamentResponse", { matchupId: "t1" });
+    expect(await joined).toEqual({ matchupId: "t1" });
+    expect(count(frame, "joinTournamentRequest")).toBe(1);
+  });
+
+  it("withRemediation rejects with the call's error when the user leaves the fix", async () => {
+    const { frame, client } = setup();
+    await connectLoggedIn(frame);
+    const joined = caught(client.withRemediation(() => client.tournaments.join("t1")));
+    await tick();
+    frame.answer("joinTournamentRequest", "joinTournamentError", { code: "LOCATION_NEEDED" });
+    await tick();
+    expect(client.present.getState().screen).toBe("locationGrant");
+    frame.deliver("exitLucra", true);
+    const error = await joined;
+    expect(error).toBeInstanceOf(LucraError);
+    expect(error.code).toBe("LOCATION_NEEDED");
+    expect(count(frame, "joinTournamentRequest")).toBe(1);
+  });
+
+  it("withRemediation rejects DESTROYED when the client is destroyed during a fix", async () => {
+    const { frame, client } = setup();
+    await connectLoggedIn(frame);
+    const joined = caught(client.withRemediation(() => client.tournaments.join("t1")));
+    await tick();
+    frame.answer("joinTournamentRequest", "joinTournamentError", { code: "LOCATION_NEEDED" });
+    await tick();
+    expect(client.present.getState().screen).toBe("locationGrant");
+    client.destroy();
+    expect((await joined).code).toBe("DESTROYED");
+    expect(count(frame, "joinTournamentRequest")).toBe(1);
   });
 
   it("wires auth, data calls, watch, and screens together", async () => {
