@@ -6,6 +6,10 @@
 
 - **Preview:** the type `LucraScreen` from `lucra-web-sdk/headless` names the `lucra.present` screens that show in the page: every one except `addFunds`. `lucra.present[screen]()` type checks for any `screen` of this type. See [Showing a Lucra screen](3.0_headless_client.md#showing-a-lucra-screen).
 
+### Fixed
+
+- **Preview:** showing the login screen with `lucra.present.login()` no longer adds a browser history entry, so Back works on the first press.
+
 ## [v1.18.0]
 
 ### Added

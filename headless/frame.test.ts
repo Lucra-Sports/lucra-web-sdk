@@ -16,7 +16,10 @@ type FakeElement = {
   attributes: Record<string, string>;
   children: FakeElement[];
   parent: FakeElement | null;
-  contentWindow?: { postMessage: ReturnType<typeof mock> };
+  contentWindow?: {
+    postMessage: ReturnType<typeof mock>;
+    location: { replace: ReturnType<typeof mock> };
+  };
   focus: ReturnType<typeof mock>;
   appendChild(child: FakeElement): void;
   remove(): void;
@@ -53,7 +56,12 @@ function makeElement(tag: string): FakeElement {
       delete element.attributes[name];
     },
   };
-  if (tag === "iframe") element.contentWindow = { postMessage: mock(() => {}) };
+  if (tag === "iframe") {
+    element.contentWindow = {
+      postMessage: mock(() => {}),
+      location: { replace: mock((_url: string) => {}) },
+    };
+  }
   return element;
 }
 
@@ -148,10 +156,33 @@ describe("createDomFrame: mount and messages", () => {
     expect(iframe().contentWindow?.postMessage).toHaveBeenCalledWith(outbound, ORIGIN);
   });
 
-  it("reloads the frame at a new url", () => {
+  it("reloads the frame in place, so the browser history does not grow", () => {
     const frame = createDomFrame(ORIGIN);
     frame.mount(URL_1);
     frame.reload(`${ORIGIN}/?login=true`);
+    expect(iframe().contentWindow?.location.replace).toHaveBeenCalledWith(
+      `${ORIGIN}/?login=true`
+    );
+    expect(iframe().src).toBe(URL_1);
+  });
+
+  it("reloads through src when the frame has no window", () => {
+    const frame = createDomFrame(ORIGIN);
+    frame.mount(URL_1);
+    iframe().contentWindow = undefined;
+    frame.reload(`${ORIGIN}/?login=true`);
+    expect(iframe().src).toBe(`${ORIGIN}/?login=true`);
+  });
+
+  it("reloads through src when replacing the location throws", () => {
+    const frame = createDomFrame(ORIGIN);
+    frame.mount(URL_1);
+    const replace = iframe().contentWindow?.location.replace;
+    replace?.mockImplementation(() => {
+      throw new Error("blocked");
+    });
+    frame.reload(`${ORIGIN}/?login=true`);
+    expect(replace).toHaveBeenCalledTimes(1);
     expect(iframe().src).toBe(`${ORIGIN}/?login=true`);
   });
 

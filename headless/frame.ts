@@ -137,7 +137,18 @@ export function createDomFrame(origin: string, container?: HTMLElement): Frame {
     },
 
     reload(url) {
-      if (iframe) iframe.src = url;
+      if (!iframe) return;
+      // Setting src on a loaded frame adds a browser history entry, so Back
+      // would first rewind the hidden frame. Replacing the location does not.
+      try {
+        if (iframe.contentWindow) {
+          iframe.contentWindow.location.replace(url);
+          return;
+        }
+      } catch {
+        // Fall back to src below.
+      }
+      iframe.src = url;
     },
 
     post(message) {
