@@ -23,7 +23,7 @@ export function createRequests(options) {
         if (!entry)
             return;
         try {
-            options.onTimeout?.(entry.spec.type, entry.timeoutMs);
+            options.onTimeout?.(entry.spec.type, options.timeoutMs);
         }
         catch {
             // Reporting is best effort. The request must still reject.
@@ -78,6 +78,7 @@ export function createRequests(options) {
                 if (entry.spec.maxTimeoutMs === undefined ||
                     Date.now() - entry.sentAt < entry.spec.maxTimeoutMs) {
                     clearTimeout(entry.timer);
+                    // A resent request would restart with only what it had left.
                     entry.timer = startTimer(message.requestId, entry.timeoutMs);
                 }
                 return true;

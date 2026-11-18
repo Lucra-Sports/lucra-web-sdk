@@ -28,8 +28,11 @@ function setup(overrides: Partial<Timeouts> = {}) {
 }
 
 const tick = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 const count = (frame: FakeFrame, type: string) =>
   frame.posted.filter((message) => message.type === type).length;
+const ids = (frame: FakeFrame, type: string) =>
+  frame.posted.filter((message) => message.type === type).map((m) => m.requestId);
 const caught = (promise: Promise<unknown>): Promise<LucraError> =>
   promise.then(
     () => {
@@ -479,7 +482,9 @@ describe("createApi: writes", () => {
     expect((await write).code).toBe("CONNECTION_RESET");
     expect((await write).outcomeUnknown).toBe(true);
     expect(count(frame, "joinTournamentRequest")).toBe(1);
-    expect(count(frame, "tournamentsRequest")).toBe(2);
+    const sent = ids(frame, "tournamentsRequest");
+    expect(sent.length).toBe(2);
+    expect(sent[0]).not.toBe(sent[1]);
     frame.answer("tournamentsRequest", "tournamentsResponse", {
       tournaments: [{ matchupId: "t2" }],
     });
@@ -513,25 +518,6 @@ describe("createApi: writes", () => {
 });
 
 describe("createApi: reads across a restart", () => {
-  const ids = (frame: FakeFrame, type: string) =>
-    frame.posted.filter((message) => message.type === type).map((m) => m.requestId);
-
-  it("sends the read again with a new request id and settles with that answer", async () => {
-    const { frame, api } = setup();
-    await connectLoggedIn(frame);
-    const read = api.tournaments.list();
-    await tick();
-    frame.deliver("initialized", { success: true });
-    await tick();
-    const sent = ids(frame, "tournamentsRequest");
-    expect(sent.length).toBe(2);
-    expect(sent[0]).not.toBe(sent[1]);
-    frame.answer("tournamentsRequest", "tournamentsResponse", {
-      tournaments: [{ matchupId: "t2" }],
-    });
-    expect(await read).toEqual([{ matchupId: "t2" }]);
-  });
-
   it("does not settle the read with a late answer to the first attempt", async () => {
     const { frame, api } = setup();
     await connectLoggedIn(frame);
@@ -613,33 +599,100 @@ describe("createApi: reads across a restart", () => {
     expect(count(frame, "tournamentsRequest")).toBe(1);
   });
 
+  // A restart at 150 ms of a 300 ms budget. A fresh full timeout for the
+  // second attempt could not end before 450 ms, so the bound below tells the
+  // two apart while leaving room for a slow machine.
   it("rejects TIMEOUT at the first deadline while Lucra has not started again", async () => {
-    const { frame, session, api } = setup({ requestMs: 100 });
+    const { frame, session, api } = setup({ requestMs: 300 });
     await connectLoggedIn(frame);
     const started = Date.now();
     const read = caught(api.tournaments.list());
-    await tick();
+    await sleep(150);
     session.restart("https://test-tenant.sandbox.lucrasports.com/");
     const error = await read;
     const elapsed = Date.now() - started;
     expect(error.code).toBe("TIMEOUT");
-    expect(elapsed).toBeGreaterThanOrEqual(90);
-    expect(elapsed).toBeLessThan(150);
+    expect(elapsed).toBeGreaterThanOrEqual(290);
+    expect(elapsed).toBeLessThan(440);
   });
 
   it("rejects TIMEOUT at the first deadline when the second attempt is not answered", async () => {
-    const { frame, api } = setup({ requestMs: 100 });
+    const { frame, api } = setup({ requestMs: 300 });
     await connectLoggedIn(frame);
     const started = Date.now();
     const read = caught(api.tournaments.list());
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await sleep(150);
     frame.deliver("initialized", { success: true });
     const error = await read;
     const elapsed = Date.now() - started;
     expect(error.code).toBe("TIMEOUT");
     expect(error.outcomeUnknown).toBe(false);
     expect(count(frame, "tournamentsRequest")).toBe(2);
-    expect(elapsed).toBeGreaterThanOrEqual(90);
-    expect(elapsed).toBeLessThan(140);
+    expect(elapsed).toBeGreaterThanOrEqual(290);
+    expect(elapsed).toBeLessThan(440);
+  });
+
+  it("reports the configured timeout when a resent read times out", async () => {
+    const { frame, api } = setup({ requestMs: 100 });
+    await connectLoggedIn(frame);
+    const read = caught(api.tournaments.list());
+    await sleep(40);
+    frame.deliver("initialized", { success: true });
+    expect((await read).code).toBe("TIMEOUT");
+    expect(count(frame, "tournamentsRequest")).toBe(2);
+    expect(frame.lastPosted("sdkDiagnostic")?.body).toMatchObject({
+      kind: "requestTimeout",
+      requestType: "tournamentsRequest",
+      timeoutMs: 100,
+    });
+  });
+
+  it("does not send the read when its time ran out while Lucra started again", async () => {
+    const { frame, session, api } = setup({ requestMs: 1000 });
+    await connectLoggedIn(frame);
+    const read = caught(api.tournaments.list());
+    await tick();
+    session.restart("https://test-tenant.sandbox.lucrasports.com/");
+    await tick();
+    // The timer that should have rejected is late, as in a throttled tab.
+    const realNow = Date.now;
+    const now = spyOn(Date, "now").mockImplementation(() => realNow() + 5000);
+    try {
+      frame.deliver("initialized", { success: true });
+      expect((await read).code).toBe("TIMEOUT");
+    } finally {
+      now.mockRestore();
+    }
+    expect(count(frame, "tournamentsRequest")).toBe(1);
+  });
+
+  it("waits for the login confirmation after a reload, then sends the read once", async () => {
+    const { frame, api } = setup();
+    await connectLoggedIn(frame);
+    const read = api.achievements.list();
+    await tick();
+    frame.deliver("initialized", { success: true });
+    await tick();
+    frame.answer("isLoggedInRequest", "isLoggedInResponse", { isLoggedIn: true });
+    await tick();
+    expect(count(frame, "achievementsRequest")).toBe(1);
+    frame.deliver("loginSuccess", USER);
+    await tick();
+    expect(count(frame, "achievementsRequest")).toBe(2);
+    frame.answer("achievementsRequest", "achievementsResponse", { achievements: [] });
+    expect(await read).toEqual([]);
+  });
+
+  it("rejects TIMEOUT and sends nothing when the login confirmation comes too late", async () => {
+    const { frame, api } = setup({ requestMs: 100 });
+    await connectLoggedIn(frame);
+    const read = caught(api.achievements.list());
+    await tick();
+    frame.deliver("initialized", { success: true });
+    frame.answer("isLoggedInRequest", "isLoggedInResponse", { isLoggedIn: true });
+    expect((await read).code).toBe("TIMEOUT");
+    frame.deliver("loginSuccess", USER);
+    await tick();
+    expect(count(frame, "achievementsRequest")).toBe(1);
   });
 });

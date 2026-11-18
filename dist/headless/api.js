@@ -36,6 +36,19 @@ export function createApi(options) {
         if (needsLogin)
             await auth.whenLoggedIn();
     };
+    // Like ready(), but rejects TIMEOUT at the deadline.
+    const readyBy = async (needsLogin, deadline) => {
+        let timer;
+        const outOfTime = new Promise((_, reject) => {
+            timer = setTimeout(() => reject(new LucraError(LucraErrorCode.TIMEOUT)), deadline - Date.now());
+        });
+        try {
+            await Promise.race([ready(needsLogin), outOfTime]);
+        }
+        finally {
+            clearTimeout(timer);
+        }
+    };
     const send = async (spec, body, needsLogin) => {
         await ready(needsLogin);
         const deadline = Date.now() + requestMs;
@@ -51,17 +64,13 @@ export function createApi(options) {
         }
         // Lucra restarted, so the read was lost. Send it once more, with a new
         // request id, in what is left of the time it had. A second restart rejects.
-        let timer;
-        const outOfTime = new Promise((_, reject) => {
-            timer = setTimeout(() => reject(new LucraError(LucraErrorCode.TIMEOUT)), deadline - Date.now());
-        });
-        try {
-            await Promise.race([ready(needsLogin), outOfTime]);
-        }
-        finally {
-            clearTimeout(timer);
-        }
-        return session.request(spec, body, deadline - Date.now());
+        await readyBy(needsLogin, deadline);
+        // A late timer, for example in a throttled background tab, can let the
+        // wait end after the deadline. Then there is no time left to send it.
+        const left = deadline - Date.now();
+        if (left <= 0)
+            throw new LucraError(LucraErrorCode.TIMEOUT);
+        return session.request(spec, body, left);
     };
     const sendWrite = (spec, body) => {
         // These three checks run before the first await, so a double click is

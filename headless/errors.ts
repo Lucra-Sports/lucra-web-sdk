@@ -98,7 +98,7 @@ const DEFAULT_HINT: Partial<Record<LucraErrorCode, string>> = {
   CONNECTION_TIMEOUT:
     "Lucra did not start within 30 seconds. Check that your Content-Security-Policy allows your Lucra address under frame-src.",
   CONNECTION_RESET:
-    "Lucra restarted while the call was waiting. A read was already sent again once. Read back after a write before you retry.",
+    "Lucra restarted while the call was waiting. After a write, read back before you retry. A read is sent again once by the SDK, so it gets this only after a second restart, and is safe to repeat.",
   DESTROYED: "lucra.destroy() was called. Create a new client to continue.",
   POPUP_BLOCKED:
     "The browser blocked the Add Funds window. Call lucra.present.addFunds() first in a click handler, with no await before it.",
