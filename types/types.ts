@@ -54,6 +54,7 @@ export enum LucraClientMessageType {
   claimTournamentRewardResponse = "claimTournamentRewardResponse",
   claimAchievementResponse = "claimAchievementResponse",
   userMatchupsResponse = "userMatchupsResponse",
+  userMatchupsByTypeStatusResponse = "userMatchupsByTypeStatusResponse",
 }
 
 export enum MessageTypeToLucraClient {
@@ -82,6 +83,7 @@ export enum MessageTypeToLucraClient {
   claimTournamentRewardRequest = "claimTournamentRewardRequest",
   claimAchievementRequest = "claimAchievementRequest",
   userMatchupsRequest = "userMatchupsRequest",
+  userMatchupsByTypeStatusRequest = "userMatchupsByTypeStatusRequest",
   sdkDiagnostic = "sdkDiagnostic",
 }
 
@@ -833,6 +835,13 @@ export type LucraUserMatchups = {
 
 export type LucraUserMatchupsInput = {
   limit: number;
+};
+
+export type LucraUserMatchupsByTypeStatusInput = {
+  type: LucraUserMatchupType;
+  status: LucraUserMatchupStatus;
+  limit: number;
+  offset: number;
 };
 
 // Wire-only body of acceptRecreationalGameRequest, not exported from index.ts. teamId is

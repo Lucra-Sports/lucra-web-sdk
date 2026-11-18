@@ -50,6 +50,7 @@ export type {
   LucraUserMatchup,
   LucraUserMatchupType,
   LucraUserMatchupStatus,
+  LucraUserMatchupsByTypeStatusInput,
   LucraUserTournamentReward,
   LucraReward,
 } from "../types/types.js";

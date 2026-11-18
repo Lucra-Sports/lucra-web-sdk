@@ -96,6 +96,7 @@ describe("createApi: reads", () => {
       () => api.matchups.searchByMetadata({}),
       () => api.rewards.list(),
       () => api.matchups.listMine({ limit: 5 }),
+      () => api.matchups.listMineByTypeStatus({ type: "GAMES" as const, status: "RESULTS" as const, limit: 10, offset: 20 }),
     ]) {
       const error = await caught(call());
       expect(error.code).toBe("NOT_LOGGED_IN");
@@ -107,6 +108,7 @@ describe("createApi: reads", () => {
     expect(count(frame, "searchMatchupsByMetadataRequest")).toBe(0);
     expect(count(frame, "userTournamentRewardsRequest")).toBe(0);
     expect(count(frame, "userMatchupsRequest")).toBe(0);
+    expect(count(frame, "userMatchupsByTypeStatusRequest")).toBe(0);
   });
 
   it("holds a read that needs login until loginSuccess, not just a yes", async () => {
@@ -223,6 +225,18 @@ describe("createApi: reads", () => {
     };
     frame.answer("userMatchupsRequest", "userMatchupsResponse", answer);
     expect<unknown>(await mine).toEqual(answer);
+  });
+
+  it("lists one page of the user's matchups and returns the answer as is", async () => {
+    const { frame, api } = setup();
+    await connectLoggedIn(frame);
+    const options = { type: "GAMES" as const, status: "RESULTS" as const, limit: 10, offset: 20 };
+    const page = api.matchups.listMineByTypeStatus(options);
+    await tick();
+    expect(frame.lastPosted("userMatchupsByTypeStatusRequest")?.body).toEqual(options);
+    const answer = { type: "GAMES", status: "RESULTS", total_matchups: 21, matchups: [{ id: "m1" }] };
+    frame.answer("userMatchupsByTypeStatusRequest", "userMatchupsByTypeStatusResponse", answer);
+    expect<unknown>(await page).toEqual(answer);
   });
 
   it("rejects with CONNECTION_FAILED when Lucra refuses the config", async () => {

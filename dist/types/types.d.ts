@@ -40,7 +40,8 @@ export declare enum LucraClientMessageType {
     userTournamentRewardsResponse = "userTournamentRewardsResponse",
     claimTournamentRewardResponse = "claimTournamentRewardResponse",
     claimAchievementResponse = "claimAchievementResponse",
-    userMatchupsResponse = "userMatchupsResponse"
+    userMatchupsResponse = "userMatchupsResponse",
+    userMatchupsByTypeStatusResponse = "userMatchupsByTypeStatusResponse"
 }
 export declare enum MessageTypeToLucraClient {
     achievementsRequest = "achievementsRequest",
@@ -68,6 +69,7 @@ export declare enum MessageTypeToLucraClient {
     claimTournamentRewardRequest = "claimTournamentRewardRequest",
     claimAchievementRequest = "claimAchievementRequest",
     userMatchupsRequest = "userMatchupsRequest",
+    userMatchupsByTypeStatusRequest = "userMatchupsByTypeStatusRequest",
     sdkDiagnostic = "sdkDiagnostic"
 }
 export type LucraDeepLinkResponse = {
@@ -598,6 +600,12 @@ export type LucraUserMatchups = {
 };
 export type LucraUserMatchupsInput = {
     limit: number;
+};
+export type LucraUserMatchupsByTypeStatusInput = {
+    type: LucraUserMatchupType;
+    status: LucraUserMatchupStatus;
+    limit: number;
+    offset: number;
 };
 export type LucraAcceptRecreationalGameBody = {
     matchupId: string;

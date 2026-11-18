@@ -67,7 +67,7 @@ describe("createClient", () => {
     );
     expect(Object.keys(client.auth).sort()).toEqual(["getState", "isLoggedIn", "logout", "subscribe"]);
     expect(Object.keys(client.tournaments).sort()).toEqual(["autoJoin", "get", "join", "leaderboard", "list"]);
-    expect(Object.keys(client.matchups).sort()).toEqual(["accept", "cancel", "create", "get", "getDetails", "listMine", "searchByMetadata", "watch"]);
+    expect(Object.keys(client.matchups).sort()).toEqual(["accept", "cancel", "create", "get", "getDetails", "listMine", "listMineByTypeStatus", "searchByMetadata", "watch"]);
     expect(Object.keys(client.achievements).sort()).toEqual(["claim", "list"]);
     expect(Object.keys(client.rewards).sort()).toEqual(["claim", "list"]);
     expect(Object.keys(client.present).sort()).toEqual(
