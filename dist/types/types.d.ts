@@ -265,9 +265,7 @@ export type LucraAchievementsResponse = {
 export type LucraClaimAchievementBody = {
     userAchievementId: string;
 };
-export type LucraClaimAchievementResult = {
-    userAchievementId: string;
-};
+export type LucraClaimAchievementResult = LucraClaimAchievementBody;
 export type LucraUserTournamentReward = {
     rewardId: string;
     matchupId: string;
@@ -295,9 +293,7 @@ export type LucraUserTournamentRewardsResponse = {
 export type LucraClaimTournamentRewardBody = {
     rewardId: string;
 };
-export type LucraClaimTournamentRewardResult = {
-    rewardId: string;
-};
+export type LucraClaimTournamentRewardResult = LucraClaimTournamentRewardBody;
 export type LucraTournament = {
     matchupId: string;
     canJoinTournament?: boolean | null;

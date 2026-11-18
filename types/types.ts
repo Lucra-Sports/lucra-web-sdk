@@ -414,13 +414,8 @@ export type LucraAchievementsResponse = {
   achievements: LucraAchievement[];
 };
 
-export type LucraClaimAchievementBody = {
-  userAchievementId: string;
-};
-
-export type LucraClaimAchievementResult = {
-  userAchievementId: string;
-};
+export type LucraClaimAchievementBody = { userAchievementId: string };
+export type LucraClaimAchievementResult = LucraClaimAchievementBody;
 
 // A reward the user won in a tournament. matchupId is the tournament it was won in.
 export type LucraUserTournamentReward = {
@@ -441,7 +436,7 @@ export type LucraUserTournamentReward = {
   };
 };
 
-// Wire body of userTournamentRewardsRequest. matchupId is the tournament id.
+// Wire body of userTournamentRewardsRequest.
 export type LucraUserTournamentRewardsInput = {
   matchupId?: string;
   viewed?: boolean;
@@ -452,13 +447,8 @@ export type LucraUserTournamentRewardsResponse = {
   rewards: LucraUserTournamentReward[];
 };
 
-export type LucraClaimTournamentRewardBody = {
-  rewardId: string;
-};
-
-export type LucraClaimTournamentRewardResult = {
-  rewardId: string;
-};
+export type LucraClaimTournamentRewardBody = { rewardId: string };
+export type LucraClaimTournamentRewardResult = LucraClaimTournamentRewardBody;
 
 // ---------------------------------------------------------------------------
 // Tournament wire shapes.
@@ -781,7 +771,7 @@ export type LucraUserMatchupType = "GAMES" | "SPORTS" | "TOURNAMENTS";
 
 export type LucraUserMatchupStatus = "IN_PROGRESS" | "PENDING" | "RESULTS" | "UPCOMING";
 
-// One of the logged in user's matchups, as their Lucra profile lists it.
+// One of the logged in user's matchups.
 export type LucraUserMatchup = {
   id: string;
   created_at?: string | null;
@@ -812,6 +802,7 @@ export type LucraUserMatchupsPage = {
   limit: number;
   offset: number;
   sort?: number | null;
+  // A plain string in Lucra's API, unlike a matchup's status.
   status: string;
   status_label: string;
   total_matchups: number;

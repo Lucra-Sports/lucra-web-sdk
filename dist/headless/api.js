@@ -19,10 +19,9 @@ const SPECS = {
     matchupsAccept: write(MessageTypeToLucraClient.acceptRecreationalGameRequest, LucraClientMessageType.acceptRecreationalGameResponse, true),
     matchupsCancel: write(MessageTypeToLucraClient.cancelRecreationalGameRequest, LucraClientMessageType.cancelRecreationalGameResponse, true),
     achievementsList: read(MessageTypeToLucraClient.achievementsRequest, LucraClientMessageType.achievementsResponse),
-    // A plain API_ERROR means the claim did not happen.
-    achievementsClaim: write(MessageTypeToLucraClient.claimAchievementRequest, LucraClientMessageType.claimAchievementResponse, false),
     rewardsList: read(MessageTypeToLucraClient.userTournamentRewardsRequest, LucraClientMessageType.userTournamentRewardsResponse),
-    // A plain API_ERROR means the claim did not happen.
+    // Like a tournament join, a claim's API_ERROR is not treated as "unknown".
+    achievementsClaim: write(MessageTypeToLucraClient.claimAchievementRequest, LucraClientMessageType.claimAchievementResponse, false),
     rewardsClaim: write(MessageTypeToLucraClient.claimTournamentRewardRequest, LucraClientMessageType.claimTournamentRewardResponse, false),
 };
 export function createApi(options) {
@@ -68,8 +67,8 @@ export function createApi(options) {
             get: (matchupId) => send(SPECS.matchupsGet, { matchupId }, false),
             getDetails: (matchupId) => send(SPECS.matchupsGetDetails, { matchupId }, false),
             searchByMetadata: (filters) => send(SPECS.matchupsSearchByMetadata, filters, true).then((r) => r.matchupIds),
-            listMine: (options) => send(SPECS.matchupsListMine, { limit: options.limit }, true),
-            listMineByTypeStatus: ({ type, status, limit, offset }) => send(SPECS.matchupsListMineByTypeStatus, { type, status, limit, offset }, true),
+            listMine: (options) => send(SPECS.matchupsListMine, options, true),
+            listMineByTypeStatus: (options) => send(SPECS.matchupsListMineByTypeStatus, options, true),
             create: (input) => sendWrite(SPECS.matchupsCreate, input),
             accept: (matchupId, acceptOptions) => sendWrite(SPECS.matchupsAccept, acceptOptions?.groupId !== undefined
                 ? { matchupId, playStyle: "GROUP_VS_GROUP", teamId: acceptOptions.groupId }

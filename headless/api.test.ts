@@ -96,7 +96,7 @@ describe("createApi: reads", () => {
       () => api.matchups.searchByMetadata({}),
       () => api.rewards.list(),
       () => api.matchups.listMine({ limit: 5 }),
-      () => api.matchups.listMineByTypeStatus({ type: "GAMES" as const, status: "RESULTS" as const, limit: 10, offset: 20 }),
+      () => api.matchups.listMineByTypeStatus({ type: "GAMES", status: "RESULTS", limit: 10, offset: 20 }),
     ]) {
       const error = await caught(call());
       expect(error.code).toBe("NOT_LOGGED_IN");
@@ -345,48 +345,26 @@ describe("createApi: writes", () => {
     expect(await autoJoin).toEqual({ matchupIds: ["t1"] });
   });
 
-  it("claims a reward and resolves with nothing", async () => {
+  it("sends a claim, holds the write slot until it settles, and resolves with nothing", async () => {
     const { frame, api } = setup();
     await connectLoggedIn(frame);
-    const claim = api.rewards.claim("r1");
-    await tick();
-    expect(frame.lastPosted("claimTournamentRewardRequest")?.body).toEqual({ rewardId: "r1" });
-    frame.answer("claimTournamentRewardRequest", "claimTournamentRewardResponse", { rewardId: "r1" });
-    expect(await claim).toBeUndefined();
-  });
-
-  it("holds the write slot for a reward claim, and its API_ERROR has a known outcome", async () => {
-    const { frame, api } = setup();
-    await connectLoggedIn(frame);
-    const claim = caught(api.rewards.claim("r1"));
-    expect((await caught(api.rewards.claim("r2"))).code).toBe("IN_PROGRESS");
-    await tick();
-    frame.answer("claimTournamentRewardRequest", "apiRequestError", { code: "API_ERROR", message: "boom" });
-    const error = await claim;
-    expect(error.code).toBe("API_ERROR");
-    expect(error.outcomeUnknown).toBe(false);
-  });
-
-  it("claims an achievement and resolves with nothing", async () => {
-    const { frame, api } = setup();
-    await connectLoggedIn(frame);
-    const claim = api.achievements.claim("ua1");
-    await tick();
-    expect(frame.lastPosted("claimAchievementRequest")?.body).toEqual({ userAchievementId: "ua1" });
-    frame.answer("claimAchievementRequest", "claimAchievementResponse", { userAchievementId: "ua1" });
-    expect(await claim).toBeUndefined();
-  });
-
-  it("holds the write slot for an achievement claim, and its API_ERROR has a known outcome", async () => {
-    const { frame, api } = setup();
-    await connectLoggedIn(frame);
-    const claim = caught(api.achievements.claim("ua1"));
-    expect((await caught(api.achievements.claim("ua2"))).code).toBe("IN_PROGRESS");
-    await tick();
-    frame.answer("claimAchievementRequest", "apiRequestError", { code: "API_ERROR", message: "boom" });
-    const error = await claim;
-    expect(error.code).toBe("API_ERROR");
-    expect(error.outcomeUnknown).toBe(false);
+    const cases: [() => Promise<void>, string, string, object][] = [
+      [() => api.rewards.claim("r1"), "claimTournamentRewardRequest", "claimTournamentRewardResponse", { rewardId: "r1" }],
+      [() => api.achievements.claim("a1"), "claimAchievementRequest", "claimAchievementResponse", { userAchievementId: "a1" }],
+    ];
+    for (const [call, requestType, responseType, body] of cases) {
+      const claim = call();
+      expect((await caught(call())).code).toBe("IN_PROGRESS");
+      await tick();
+      expect(count(frame, requestType)).toBe(1);
+      expect(frame.lastPosted(requestType)?.body).toEqual(body);
+      frame.answer(requestType, responseType, body);
+      expect(await claim).toBeUndefined();
+      const join = api.tournaments.join("t1");
+      await tick();
+      frame.answer("joinTournamentRequest", "joinTournamentResponse", { matchupId: "t1" });
+      await join;
+    }
   });
 
   it("turns joinTournamentError into a LucraError that names the fix", async () => {
@@ -401,7 +379,7 @@ describe("createApi: writes", () => {
     expect(error.outcomeUnknown).toBe(false);
   });
 
-  it("marks API_ERROR as outcome unknown on create, accept, cancel, but not on join or autoJoin", async () => {
+  it("marks API_ERROR as outcome unknown on create, accept, cancel, but not on join, autoJoin, or a claim", async () => {
     const { frame, api } = setup();
     await connectLoggedIn(frame);
     const cases: [() => Promise<unknown>, string, string, boolean][] = [
@@ -410,6 +388,8 @@ describe("createApi: writes", () => {
       [() => api.matchups.cancel("m1"), "cancelRecreationalGameRequest", "apiRequestError", true],
       [() => api.tournaments.join("t1"), "joinTournamentRequest", "joinTournamentError", false],
       [() => api.tournaments.autoJoin(), "autoJoinTournamentsRequest", "autoJoinTournamentsError", false],
+      [() => api.rewards.claim("r1"), "claimTournamentRewardRequest", "apiRequestError", false],
+      [() => api.achievements.claim("a1"), "claimAchievementRequest", "apiRequestError", false],
     ];
     for (const [call, requestType, errorType, unknown] of cases) {
       const pending = caught(call());

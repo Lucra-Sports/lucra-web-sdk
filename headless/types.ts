@@ -50,6 +50,7 @@ export type {
   LucraUserMatchup,
   LucraUserMatchupType,
   LucraUserMatchupStatus,
+  LucraUserMatchupsInput,
   LucraUserMatchupsByTypeStatusInput,
   LucraUserTournamentReward,
   LucraReward,

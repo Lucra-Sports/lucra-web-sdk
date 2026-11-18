@@ -4,6 +4,8 @@ import {
   type LucraAchievement,
   type LucraAchievementsResponse,
   type LucraAutoJoinedTournamentsBody,
+  type LucraClaimAchievementBody,
+  type LucraClaimTournamentRewardBody,
   type LucraClaimAchievementResult,
   type LucraClaimTournamentRewardResult,
   type LucraCancelRecreationalGameResult,
@@ -24,6 +26,7 @@ import {
   type LucraUserMatchupsByTypeStatusInput,
   type LucraUserMatchupsPage,
   type LucraUserTournamentReward,
+  type LucraUserTournamentRewardsInput,
   type LucraUserTournamentRewardsResponse,
 } from "../types/types.js";
 import type { Auth } from "./auth.js";
@@ -113,17 +116,16 @@ const SPECS = {
     MessageTypeToLucraClient.achievementsRequest,
     LucraClientMessageType.achievementsResponse
   ),
-  // A plain API_ERROR means the claim did not happen.
+  rewardsList: read<LucraUserTournamentRewardsResponse>(
+    MessageTypeToLucraClient.userTournamentRewardsRequest,
+    LucraClientMessageType.userTournamentRewardsResponse
+  ),
+  // Like a tournament join, a claim's API_ERROR is not treated as "unknown".
   achievementsClaim: write<LucraClaimAchievementResult>(
     MessageTypeToLucraClient.claimAchievementRequest,
     LucraClientMessageType.claimAchievementResponse,
     false
   ),
-  rewardsList: read<LucraUserTournamentRewardsResponse>(
-    MessageTypeToLucraClient.userTournamentRewardsRequest,
-    LucraClientMessageType.userTournamentRewardsResponse
-  ),
-  // A plain API_ERROR means the claim did not happen.
   rewardsClaim: write<LucraClaimTournamentRewardResult>(
     MessageTypeToLucraClient.claimTournamentRewardRequest,
     LucraClientMessageType.claimTournamentRewardResponse,
@@ -241,10 +243,9 @@ export function createApi(options: {
         send(SPECS.matchupsGetDetails, { matchupId }, false),
       searchByMetadata: (filters) =>
         send(SPECS.matchupsSearchByMetadata, filters, true).then((r) => r.matchupIds),
-      listMine: (options) =>
-        send(SPECS.matchupsListMine, { limit: options.limit }, true),
-      listMineByTypeStatus: ({ type, status, limit, offset }) =>
-        send(SPECS.matchupsListMineByTypeStatus, { type, status, limit, offset }, true),
+      listMine: (options) => send(SPECS.matchupsListMine, options, true),
+      listMineByTypeStatus: (options) =>
+        send(SPECS.matchupsListMineByTypeStatus, options, true),
       create: (input) => sendWrite(SPECS.matchupsCreate, input),
       accept: (matchupId, acceptOptions) =>
         sendWrite(
@@ -259,7 +260,10 @@ export function createApi(options: {
       list: () =>
         send(SPECS.achievementsList, null, true).then((r) => r.achievements),
       claim: (userAchievementId) =>
-        sendWrite(SPECS.achievementsClaim, { userAchievementId }).then(() => undefined),
+        sendWrite(
+          SPECS.achievementsClaim,
+          { userAchievementId } satisfies LucraClaimAchievementBody
+        ).then(() => undefined),
     },
     rewards: {
       list: (filters) =>
@@ -269,11 +273,11 @@ export function createApi(options: {
             matchupId: filters?.tournamentId,
             viewed: filters?.viewed,
             claimed: filters?.claimed,
-          },
+          } satisfies LucraUserTournamentRewardsInput,
           true
         ).then((r) => r.rewards),
       claim: (rewardId) =>
-        sendWrite(SPECS.rewardsClaim, { rewardId }).then(() => undefined),
+        sendWrite(SPECS.rewardsClaim, { rewardId } satisfies LucraClaimTournamentRewardBody).then(() => undefined),
     },
     whenWriteSettled: () => writeSettled ?? Promise.resolve(),
   };
