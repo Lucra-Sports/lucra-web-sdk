@@ -6,6 +6,7 @@
 
 - **Preview:** the type `LucraScreen` from `lucra-web-sdk/headless` names the `lucra.present` screens that show in the page: every one except `addFunds`. `lucra.present[screen]()` type checks for any `screen` of this type. See [Showing a Lucra screen](3.0_headless_client.md#showing-a-lucra-screen).
 - **Preview:** `LucraError` has two new fields. `source` is `"lucra"` when Lucra reported the error for your call, and `"sdk"` when the SDK raised it. `hint` is guidance for the developer, never shown to users, and is `null` when there is none. The type `LucraErrorSource` names the values of `source`. See [Errors](3.0_headless_client.md#errors).
+- **Preview:** every `lucra.present` screen takes `{ signal }`, an `AbortSignal`. Aborting it closes only the screen that call opened, so a route's cleanup cannot close a screen that replaced it. A dismissed screen result now carries a `reason`: `"exit"`, `"dismissed"`, `"replaced"`, `"loggedOut"`, `"destroyed"`, or `"aborted"`. New types `LucraDismissReason`, `LucraPresentOptions`, and `LucraLoginOptions`. See [Closing only your own screen](3.0_headless_client.md#closing-only-your-own-screen).
 
 ### Changed
 

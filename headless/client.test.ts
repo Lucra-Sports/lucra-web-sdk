@@ -104,7 +104,7 @@ describe("createClient", () => {
     expect(frame.overlayOpen).toBe(true);
     expect((await caught(client.tournaments.join("t1"))).code).toBe("SCREEN_OPEN");
     client.present.dismiss();
-    expect(await shown).toEqual({ status: "dismissed" });
+    expect(await shown).toEqual({ status: "dismissed", reason: "dismissed" });
   });
 
   it("passes Lucra's events to lucra.on listeners", async () => {
@@ -166,7 +166,7 @@ describe("createClient", () => {
     client.destroy();
     expect(onDestroy).toHaveBeenCalledTimes(1);
     expect((await read).code).toBe("DESTROYED");
-    expect(await shown).toEqual({ status: "dismissed" });
+    expect(await shown).toEqual({ status: "dismissed", reason: "destroyed" });
     expect(frame.destroyed).toBe(true);
     expect(frame.overlayOpen).toBe(false);
     expect((await caught(client.whenConnected())).code).toBe("DESTROYED");

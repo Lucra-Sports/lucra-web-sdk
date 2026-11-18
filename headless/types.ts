@@ -81,14 +81,35 @@ export type LucraAuthState = {
   readonly user: LucraUser | null;
 };
 
+// Options every lucra.present screen takes. Aborting `signal` closes the
+// screen that call opened, and only while that call is pending.
+export type LucraPresentOptions = { signal?: AbortSignal };
+
+export type LucraLoginOptions = LucraPresentOptions & { phoneNumber?: string };
+
+// Why a screen resolved "dismissed".
+export type LucraDismissReason =
+  // The user used Lucra's exit control.
+  | "exit"
+  // The app called lucra.present.dismiss().
+  | "dismissed"
+  // Another lucra.present call took its place.
+  | "replaced"
+  // The user logged out inside the screen.
+  | "loggedOut"
+  // The client was destroyed.
+  | "destroyed"
+  // The call's signal was aborted.
+  | "aborted";
+
 // How a Lucra screen shown by lucra.present ended.
 export type LucraPresentResult =
   | { status: "completed" }
-  | { status: "dismissed" };
+  | { status: "dismissed"; reason: LucraDismissReason };
 
 export type LucraLoginResult =
   | { status: "completed"; user: LucraUser }
-  | { status: "dismissed" };
+  | { status: "dismissed"; reason: LucraDismissReason };
 
 // "alreadyOpen": the window was open already, so this call brought it to the
 // front. The call that opened it reports the deposit.

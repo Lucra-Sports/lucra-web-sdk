@@ -168,10 +168,17 @@ Every code: [Errors](../../3.0_headless_client.md#errors).
   it.
 - **The SDK draws no close control.** A screen ends with Lucra's own exit control,
   `lucra.present.dismiss()`, another `present.*` call other than `addFunds()` replacing it, the
-  user logging out inside it, `lucra.destroy()`, or by completing. All but completing resolve
-  `{ status: "dismissed" }`. Assume any screen may lack Lucra's exit control.
-- `login({ phoneNumber })` fills in the form. `phoneNumber` must be exactly 10 digits: omit it
-  when you have none, since `""` rejects with `INVALID_ARGUMENT`.
+  user logging out inside it, `lucra.destroy()`, its own `signal` being aborted, or by
+  completing. All but completing resolve `{ status: "dismissed", reason }`, where `reason` is
+  `"exit"`, `"dismissed"`, `"replaced"`, `"loggedOut"`, `"destroyed"`, or `"aborted"`. Assume any
+  screen may lack Lucra's exit control.
+- **Tie a screen to a route or component with `signal`.** Every screen takes
+  `{ signal?: AbortSignal }`. Abort it in that route's or component's cleanup: it closes only the
+  screen that call opened, and does nothing once the call has finished or another screen
+  replaced it. `lucra.present.dismiss()` closes whatever screen shows, so it is wrong for that
+  cleanup. A signal aborted already resolves `"aborted"` at once and shows nothing.
+- `login({ phoneNumber, signal })` fills in the form. `phoneNumber` must be exactly 10 digits:
+  omit it when you have none, since `""` rejects with `INVALID_ARGUMENT`.
 - Showing the login screen restarts Lucra. Reads still waiting reject with `CONNECTION_RESET` and
   are safe to repeat. If Lucra cannot start again while any screen shows, the screen closes and
   rejects with `CONNECTION_FAILED` or `CONNECTION_TIMEOUT`.
@@ -180,7 +187,7 @@ Every code: [Errors](../../3.0_headless_client.md#errors).
   signal.
 
 **Checkpoint:** `lucra.present.profile()` fills your container, and your close button resolves it
-`{ status: "dismissed" }`. Lucra's screens run on Lucra's own site, so an automated or agent
+`{ status: "dismissed", reason: "dismissed" }`. Lucra's screens run on Lucra's own site, so an automated or agent
 driven browser cannot click or type in them. Verify through promise results and `lucra.auth`,
 and have a human run login and Add Funds.
 

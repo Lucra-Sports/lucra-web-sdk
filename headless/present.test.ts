@@ -111,7 +111,7 @@ describe("createPresent: screens", () => {
         frame.deliver("demographicComplete", null);
         expect(frame.overlayOpen).toBe(true);
         frame.deliver("exitLucra", true);
-        expect(await shown).toEqual({ status: "dismissed" });
+        expect(await shown).toEqual({ status: "dismissed", reason: "exit" });
       }
     }
   });
@@ -122,11 +122,11 @@ describe("createPresent: screens", () => {
     const a = present.kyc();
     await tick();
     frame.deliver("exitLucra", true);
-    expect(await a).toEqual({ status: "dismissed" });
+    expect(await a).toEqual({ status: "dismissed", reason: "exit" });
     const b = present.profile();
     await tick();
     present.dismiss();
-    expect(await b).toEqual({ status: "dismissed" });
+    expect(await b).toEqual({ status: "dismissed", reason: "dismissed" });
     expect(frame.overlayOpen).toBe(false);
     present.dismiss();
   });
@@ -137,13 +137,13 @@ describe("createPresent: screens", () => {
     const first = present.profile();
     await tick();
     const second = present.wallet();
-    expect(await first).toEqual({ status: "dismissed" });
+    expect(await first).toEqual({ status: "dismissed", reason: "replaced" });
     expect(activity.screenOpen).toBe(true);
     await tick();
     expect(frame.overlayOpen).toBe(true);
     expect(frame.overlaysOpened).toBe(2);
     frame.deliver("exitLucra", true);
-    expect(await second).toEqual({ status: "dismissed" });
+    expect(await second).toEqual({ status: "dismissed", reason: "exit" });
     expect(activity.screenOpen).toBe(false);
   });
 
@@ -183,7 +183,7 @@ describe("createPresent: screens", () => {
     const { frame, present } = setup();
     const shown = present.kyc();
     present.dismiss();
-    expect(await shown).toEqual({ status: "dismissed" });
+    expect(await shown).toEqual({ status: "dismissed", reason: "dismissed" });
     await connectLoggedIn(frame);
     await tick();
     expect(frame.overlaysOpened).toBe(0);
@@ -196,7 +196,7 @@ describe("createPresent: screens", () => {
     const shown = present.profile();
     await tick();
     frame.deliver("logoutComplete", null);
-    expect(await shown).toEqual({ status: "dismissed" });
+    expect(await shown).toEqual({ status: "dismissed", reason: "loggedOut" });
     expect(frame.overlayOpen).toBe(false);
   });
 
@@ -298,7 +298,7 @@ describe("createPresent: login", () => {
     const first = present.login();
     await tick();
     frame.deliver("exitLucra", true);
-    expect(await first).toEqual({ status: "dismissed" });
+    expect(await first).toEqual({ status: "dismissed", reason: "exit" });
     expect(frame.overlayOpen).toBe(false);
     // Lucra finishes loading its login page, still logged out.
     frame.deliver("initialized", { success: true });
@@ -442,13 +442,193 @@ describe("createPresent: destroy", () => {
     await tick();
     present.destroy();
     present.destroy();
-    expect(await shown).toEqual({ status: "dismissed" });
+    expect(await shown).toEqual({ status: "dismissed", reason: "destroyed" });
     expect(await funded).toEqual({ status: "dismissed" });
     expect(frame.overlayOpen).toBe(false);
     expect(frame.popups[0].closed).toBe(true);
     expect((await caught(present.kyc())).code).toBe("DESTROYED");
     expect((await caught(present.login())).code).toBe("DESTROYED");
     expect((await caught(present.addFunds())).code).toBe("DESTROYED");
+  });
+});
+
+describe("createPresent: why a screen was dismissed", () => {
+  const dismissed = (reason: string) => ({ status: "dismissed", reason });
+
+  it("exit: the user used Lucra's exit control", async () => {
+    const { frame, present } = setup();
+    await connectLoggedIn(frame);
+    const shown = present.wallet();
+    await tick();
+    frame.deliver("exitLucra", true);
+    expect(await shown).toEqual(dismissed("exit"));
+  });
+
+  it("dismissed: the app called dismiss()", async () => {
+    const { frame, present } = setup();
+    await connectLoggedIn(frame);
+    const shown = present.wallet();
+    await tick();
+    present.dismiss();
+    expect(await shown).toEqual(dismissed("dismissed"));
+  });
+
+  it("replaced: another screen took its place", async () => {
+    const { frame, present } = setup();
+    await connectLoggedIn(frame);
+    const shown = present.wallet();
+    await tick();
+    present.profile().catch(() => {});
+    expect(await shown).toEqual(dismissed("replaced"));
+  });
+
+  it("loggedOut: the user logged out inside it", async () => {
+    const { frame, present } = setup();
+    await connectLoggedIn(frame);
+    const shown = present.wallet();
+    await tick();
+    frame.deliver("logoutComplete", null);
+    expect(await shown).toEqual(dismissed("loggedOut"));
+  });
+
+  it("destroyed: the client was destroyed", async () => {
+    const { frame, present } = setup();
+    await connectLoggedIn(frame);
+    const shown = present.wallet();
+    await tick();
+    present.destroy();
+    expect(await shown).toEqual(dismissed("destroyed"));
+  });
+
+  it("aborted: the call's signal was aborted", async () => {
+    const { frame, activity, present } = setup();
+    await connectLoggedIn(frame);
+    const controller = new AbortController();
+    const shown = present.wallet({ signal: controller.signal });
+    await tick();
+    expect(frame.overlayOpen).toBe(true);
+    controller.abort();
+    expect(await shown).toEqual(dismissed("aborted"));
+    expect(frame.overlayOpen).toBe(false);
+    expect(activity.screenOpen).toBe(false);
+    expect(frame.lastPosted("navigate")?.body).toEqual({ pathname: `/app/headless?${PARENT}` });
+  });
+});
+
+describe("createPresent: signal", () => {
+  it("does not close a screen that replaced the aborted call's screen", async () => {
+    const { frame, activity, present } = setup();
+    await connectLoggedIn(frame);
+    const controller = new AbortController();
+    const first = present.profile({ signal: controller.signal });
+    await tick();
+    let secondResult: unknown = null;
+    const second = present.wallet().then((result) => (secondResult = result));
+    expect(await first).toEqual({ status: "dismissed", reason: "replaced" });
+    await tick();
+    expect(frame.overlaysOpened).toBe(2);
+    // The first screen's route unmounts and aborts. The replacement stays.
+    controller.abort();
+    await tick();
+    expect(secondResult).toBeNull();
+    expect(frame.overlayOpen).toBe(true);
+    expect(activity.screenOpen).toBe(true);
+    frame.deliver("exitLucra", true);
+    await second;
+    expect(secondResult).toEqual({ status: "dismissed", reason: "exit" });
+  });
+
+  it("ends a call still waiting to show, and never shows it", async () => {
+    const { frame, activity, present } = setup();
+    const controller = new AbortController();
+    const shown = present.kyc({ signal: controller.signal });
+    controller.abort();
+    expect(await shown).toEqual({ status: "dismissed", reason: "aborted" });
+    expect(activity.screenOpen).toBe(false);
+    await connectLoggedIn(frame);
+    await tick();
+    expect(frame.overlaysOpened).toBe(0);
+    expect(count(frame, "navigate")).toBe(0);
+  });
+
+  it("ends a call waiting for a pending write, and never shows it", async () => {
+    const { frame, api, present } = setup();
+    await connectLoggedIn(frame);
+    const join = api.tournaments.join("t1");
+    await tick();
+    const controller = new AbortController();
+    const shown = present.demographics({ signal: controller.signal });
+    await tick();
+    controller.abort();
+    expect(await shown).toEqual({ status: "dismissed", reason: "aborted" });
+    frame.answer("joinTournamentRequest", "joinTournamentResponse", { matchupId: "t1" });
+    await join;
+    await tick();
+    expect(frame.overlaysOpened).toBe(0);
+    expect(count(frame, "navigate")).toBe(0);
+  });
+
+  it("with a signal aborted already, shows, sends, and restarts nothing", async () => {
+    const { frame, activity, present } = setup();
+    await connectLoggedOut(frame);
+    const signal = AbortSignal.abort();
+    const urls = frame.urls.length;
+    const posted = frame.posted.length;
+    expect(await present.login({ signal })).toEqual({ status: "dismissed", reason: "aborted" });
+    expect(await present.kyc({ signal })).toEqual({ status: "dismissed", reason: "aborted" });
+    expect(frame.urls.length).toBe(urls);
+    expect(frame.posted.length).toBe(posted);
+    expect(frame.overlaysOpened).toBe(0);
+    expect(activity.screenOpen).toBe(false);
+  });
+
+  it("leaves a screen on show alone when the new call's signal is aborted already", async () => {
+    const { frame, present } = setup();
+    await connectLoggedIn(frame);
+    let result: unknown = null;
+    const shown = present.wallet().then((value) => (result = value));
+    await tick();
+    await present.profile({ signal: AbortSignal.abort() });
+    await tick();
+    expect(result).toBeNull();
+    expect(frame.overlayOpen).toBe(true);
+    present.dismiss();
+    await shown;
+  });
+
+  it("does nothing when aborted after the screen finished", async () => {
+    const { frame, present } = setup();
+    await connectLoggedIn(frame);
+    const controller = new AbortController();
+    const first = present.demographics({ signal: controller.signal });
+    await tick();
+    frame.deliver("demographicComplete", null);
+    expect(await first).toEqual({ status: "completed" });
+    let result: unknown = null;
+    const next = present.wallet().then((value) => (result = value));
+    await tick();
+    controller.abort();
+    await tick();
+    expect(result).toBeNull();
+    expect(frame.overlayOpen).toBe(true);
+    present.dismiss();
+    await next;
+  });
+
+  it("removes its abort listener when the screen finishes", async () => {
+    const { frame, present } = setup();
+    await connectLoggedIn(frame);
+    const controller = new AbortController();
+    const add = spyOn(controller.signal, "addEventListener");
+    const remove = spyOn(controller.signal, "removeEventListener");
+    const shown = present.wallet({ signal: controller.signal });
+    expect(add).toHaveBeenCalledTimes(1);
+    expect(remove).toHaveBeenCalledTimes(0);
+    await tick();
+    frame.deliver("exitLucra", true);
+    await shown;
+    expect(remove).toHaveBeenCalledTimes(1);
+    expect(remove.mock.calls[0][1]).toBe(add.mock.calls[0][1]);
   });
 });
 
@@ -476,7 +656,7 @@ describe("LucraScreen", () => {
       const { present } = setup();
       const shown = present[screen]();
       present.dismiss();
-      expect(await shown).toEqual({ status: "dismissed" });
+      expect(await shown).toEqual({ status: "dismissed", reason: "dismissed" });
     }
   });
 });
