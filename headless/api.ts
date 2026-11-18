@@ -4,6 +4,7 @@ import {
   type LucraAchievement,
   type LucraAchievementsResponse,
   type LucraAutoJoinedTournamentsBody,
+  type LucraClaimAchievementResult,
   type LucraClaimTournamentRewardResult,
   type LucraCancelRecreationalGameResult,
   type LucraCreateRecreationalGameInput,
@@ -100,6 +101,12 @@ const SPECS = {
     MessageTypeToLucraClient.achievementsRequest,
     LucraClientMessageType.achievementsResponse
   ),
+  // A plain API_ERROR means the claim did not happen.
+  achievementsClaim: write<LucraClaimAchievementResult>(
+    MessageTypeToLucraClient.claimAchievementRequest,
+    LucraClientMessageType.claimAchievementResponse,
+    false
+  ),
   rewardsList: read<LucraUserTournamentRewardsResponse>(
     MessageTypeToLucraClient.userTournamentRewardsRequest,
     LucraClientMessageType.userTournamentRewardsResponse
@@ -136,6 +143,7 @@ export type Api = {
   };
   achievements: {
     list(): Promise<LucraAchievement[]>;
+    claim(userAchievementId: string): Promise<void>;
   };
   rewards: {
     list(filters?: {
@@ -230,6 +238,8 @@ export function createApi(options: {
     achievements: {
       list: () =>
         send(SPECS.achievementsList, null, true).then((r) => r.achievements),
+      claim: (userAchievementId) =>
+        sendWrite(SPECS.achievementsClaim, { userAchievementId }).then(() => undefined),
     },
     rewards: {
       list: (filters) =>

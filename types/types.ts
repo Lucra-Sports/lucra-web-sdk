@@ -52,6 +52,7 @@ export enum LucraClientMessageType {
   searchMatchupsByMetadataResponse = "searchMatchupsByMetadataResponse",
   userTournamentRewardsResponse = "userTournamentRewardsResponse",
   claimTournamentRewardResponse = "claimTournamentRewardResponse",
+  claimAchievementResponse = "claimAchievementResponse",
 }
 
 export enum MessageTypeToLucraClient {
@@ -78,6 +79,7 @@ export enum MessageTypeToLucraClient {
   searchMatchupsByMetadataRequest = "searchMatchupsByMetadataRequest",
   userTournamentRewardsRequest = "userTournamentRewardsRequest",
   claimTournamentRewardRequest = "claimTournamentRewardRequest",
+  claimAchievementRequest = "claimAchievementRequest",
   sdkDiagnostic = "sdkDiagnostic",
 }
 
@@ -406,6 +408,14 @@ export type LucraAchievement = {
 
 export type LucraAchievementsResponse = {
   achievements: LucraAchievement[];
+};
+
+export type LucraClaimAchievementBody = {
+  userAchievementId: string;
+};
+
+export type LucraClaimAchievementResult = {
+  userAchievementId: string;
 };
 
 // A reward the user won in a tournament. matchupId is the tournament it was won in.

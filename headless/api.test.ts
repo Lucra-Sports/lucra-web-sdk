@@ -332,6 +332,28 @@ describe("createApi: writes", () => {
     expect(error.outcomeUnknown).toBe(false);
   });
 
+  it("claims an achievement and resolves with nothing", async () => {
+    const { frame, api } = setup();
+    await connectLoggedIn(frame);
+    const claim = api.achievements.claim("ua1");
+    await tick();
+    expect(frame.lastPosted("claimAchievementRequest")?.body).toEqual({ userAchievementId: "ua1" });
+    frame.answer("claimAchievementRequest", "claimAchievementResponse", { userAchievementId: "ua1" });
+    expect(await claim).toBeUndefined();
+  });
+
+  it("holds the write slot for an achievement claim, and its API_ERROR has a known outcome", async () => {
+    const { frame, api } = setup();
+    await connectLoggedIn(frame);
+    const claim = caught(api.achievements.claim("ua1"));
+    expect((await caught(api.achievements.claim("ua2"))).code).toBe("IN_PROGRESS");
+    await tick();
+    frame.answer("claimAchievementRequest", "apiRequestError", { code: "API_ERROR", message: "boom" });
+    const error = await claim;
+    expect(error.code).toBe("API_ERROR");
+    expect(error.outcomeUnknown).toBe(false);
+  });
+
   it("turns joinTournamentError into a LucraError that names the fix", async () => {
     const { frame, api } = setup();
     await connectLoggedIn(frame);

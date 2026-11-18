@@ -38,7 +38,8 @@ export declare enum LucraClientMessageType {
     cancelRecreationalGameResponse = "cancelRecreationalGameResponse",
     searchMatchupsByMetadataResponse = "searchMatchupsByMetadataResponse",
     userTournamentRewardsResponse = "userTournamentRewardsResponse",
-    claimTournamentRewardResponse = "claimTournamentRewardResponse"
+    claimTournamentRewardResponse = "claimTournamentRewardResponse",
+    claimAchievementResponse = "claimAchievementResponse"
 }
 export declare enum MessageTypeToLucraClient {
     achievementsRequest = "achievementsRequest",
@@ -64,6 +65,7 @@ export declare enum MessageTypeToLucraClient {
     searchMatchupsByMetadataRequest = "searchMatchupsByMetadataRequest",
     userTournamentRewardsRequest = "userTournamentRewardsRequest",
     claimTournamentRewardRequest = "claimTournamentRewardRequest",
+    claimAchievementRequest = "claimAchievementRequest",
     sdkDiagnostic = "sdkDiagnostic"
 }
 export type LucraDeepLinkResponse = {
@@ -255,6 +257,12 @@ export type LucraAchievement = {
 };
 export type LucraAchievementsResponse = {
     achievements: LucraAchievement[];
+};
+export type LucraClaimAchievementBody = {
+    userAchievementId: string;
+};
+export type LucraClaimAchievementResult = {
+    userAchievementId: string;
 };
 export type LucraUserTournamentReward = {
     rewardId: string;
