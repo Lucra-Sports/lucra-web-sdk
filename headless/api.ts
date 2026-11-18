@@ -88,11 +88,11 @@ const SPECS = {
     MessageTypeToLucraClient.searchMatchupsByMetadataRequest,
     LucraClientMessageType.searchMatchupsByMetadataResponse
   ),
-  matchupsListMine: read<LucraUserMatchups>(
+  matchupsList: read<LucraUserMatchups>(
     MessageTypeToLucraClient.userMatchupsRequest,
     LucraClientMessageType.userMatchupsResponse
   ),
-  matchupsListMineByTypeStatus: read<LucraUserMatchupsPage>(
+  matchupsListByTypeStatus: read<LucraUserMatchupsPage>(
     MessageTypeToLucraClient.userMatchupsByTypeStatusRequest,
     LucraClientMessageType.userMatchupsByTypeStatusResponse
   ),
@@ -148,8 +148,8 @@ export type Api = {
     get(matchupId: string): Promise<LucraMatchup>;
     getDetails(matchupId: string): Promise<LucraMatchupDetails>;
     searchByMetadata(filters: LucraSearchMatchupsByMetadataInput): Promise<string[]>;
-    listMine(options: LucraUserMatchupsInput): Promise<LucraUserMatchups>;
-    listMineByTypeStatus(
+    list(options: LucraUserMatchupsInput): Promise<LucraUserMatchups>;
+    listByTypeStatus(
       options: LucraUserMatchupsByTypeStatusInput
     ): Promise<LucraUserMatchupsPage>;
     create(input: LucraCreateRecreationalGameInput): Promise<LucraRecreationalGameResult>;
@@ -243,9 +243,9 @@ export function createApi(options: {
         send(SPECS.matchupsGetDetails, { matchupId }, false),
       searchByMetadata: (filters) =>
         send(SPECS.matchupsSearchByMetadata, filters, true).then((r) => r.matchupIds),
-      listMine: (options) => send(SPECS.matchupsListMine, options, true),
-      listMineByTypeStatus: (options) =>
-        send(SPECS.matchupsListMineByTypeStatus, options, true),
+      list: (options) => send(SPECS.matchupsList, options, true),
+      listByTypeStatus: (options) =>
+        send(SPECS.matchupsListByTypeStatus, options, true),
       create: (input) => sendWrite(SPECS.matchupsCreate, input),
       accept: (matchupId, acceptOptions) =>
         sendWrite(

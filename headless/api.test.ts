@@ -95,8 +95,8 @@ describe("createApi: reads", () => {
       () => api.achievements.list(),
       () => api.matchups.searchByMetadata({}),
       () => api.rewards.list(),
-      () => api.matchups.listMine({ limit: 5 }),
-      () => api.matchups.listMineByTypeStatus({ type: "GAMES", status: "RESULTS", limit: 10, offset: 20 }),
+      () => api.matchups.list({ limit: 5 }),
+      () => api.matchups.listByTypeStatus({ type: "GAMES", status: "RESULTS", limit: 10, offset: 20 }),
     ]) {
       const error = await caught(call());
       expect(error.code).toBe("NOT_LOGGED_IN");
@@ -211,7 +211,7 @@ describe("createApi: reads", () => {
   it("lists the user's matchups and returns the answer as is", async () => {
     const { frame, api } = setup();
     await connectLoggedIn(frame);
-    const mine = api.matchups.listMine({ limit: 5 });
+    const mine = api.matchups.list({ limit: 5 });
     await tick();
     expect(frame.lastPosted("userMatchupsRequest")?.body).toEqual({ limit: 5 });
     const answer = {
@@ -231,7 +231,7 @@ describe("createApi: reads", () => {
     const { frame, api } = setup();
     await connectLoggedIn(frame);
     const options = { type: "GAMES" as const, status: "RESULTS" as const, limit: 10, offset: 20 };
-    const page = api.matchups.listMineByTypeStatus(options);
+    const page = api.matchups.listByTypeStatus(options);
     await tick();
     expect(frame.lastPosted("userMatchupsByTypeStatusRequest")?.body).toEqual(options);
     const answer = { type: "GAMES", status: "RESULTS", total_matchups: 21, matchups: [{ id: "m1" }] };

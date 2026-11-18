@@ -19,8 +19,8 @@ export type Api = {
         get(matchupId: string): Promise<LucraMatchup>;
         getDetails(matchupId: string): Promise<LucraMatchupDetails>;
         searchByMetadata(filters: LucraSearchMatchupsByMetadataInput): Promise<string[]>;
-        listMine(options: LucraUserMatchupsInput): Promise<LucraUserMatchups>;
-        listMineByTypeStatus(options: LucraUserMatchupsByTypeStatusInput): Promise<LucraUserMatchupsPage>;
+        list(options: LucraUserMatchupsInput): Promise<LucraUserMatchups>;
+        listByTypeStatus(options: LucraUserMatchupsByTypeStatusInput): Promise<LucraUserMatchupsPage>;
         create(input: LucraCreateRecreationalGameInput): Promise<LucraRecreationalGameResult>;
         accept(matchupId: string, options?: {
             groupId?: string;
