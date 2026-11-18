@@ -34,6 +34,8 @@ export type LucraAddFundsResult = {
     message: string;
 } | {
     status: "dismissed";
+} | {
+    status: "alreadyOpen";
 };
 export type LucraMatchupWatchHandlers = {
     onUpdate: (details: LucraMatchupDetails) => void;

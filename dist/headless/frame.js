@@ -1,4 +1,3 @@
-import { createPopup } from "../popup.js";
 import { LUCRA_POPUP_MESSAGE_TYPE, } from "../types/types.js";
 // True when there is a page to work with. False on a server.
 export function hasDom() {
@@ -32,6 +31,64 @@ const OVERLAY_CSS = "position:fixed;inset:0;z-index:2147483647;display:flex;flex
 const CONTAINED_CSS = "display:block;width:100%;height:100%;";
 // Block, so an inline frame's baseline gap cannot overflow the container.
 const IFRAME_CSS = "display:block;flex:1 1 auto;width:100%;height:100%;border:0;";
+// The same window name and size the existing client's popup uses.
+const POPUP_NAME = "lucrasports:deposit:popup";
+const POPUP_WIDTH = 430;
+const POPUP_HEIGHT = 800;
+const POPUP_POLL_MS = 500;
+// Opens `url` in a centered popup window. The same as the existing client's
+// popup, plus focus(), which needs the window itself.
+export function openPopupWindow(url, pollMs = POPUP_POLL_MS) {
+    const left = window.screenX + (window.innerWidth - POPUP_WIDTH) / 2;
+    const top = window.screenY + (window.innerHeight - POPUP_HEIGHT) / 2;
+    const win = window.open(url, POPUP_NAME, `left=${left},top=${top},width=${POPUP_WIDTH},height=${POPUP_HEIGHT},resizable,scrollbars=yes,status=1`);
+    // The browser blocks a popup that does not come from a click.
+    if (!win)
+        throw new Error("The browser blocked the popup");
+    const callbacks = new Set();
+    let closed = false;
+    let result;
+    // Covers the user closing the window, and Lucra closing it after a deposit.
+    const timer = setInterval(() => {
+        if (win.closed)
+            popup.close();
+    }, pollMs);
+    const popup = {
+        close() {
+            if (closed)
+                return;
+            closed = true;
+            clearInterval(timer);
+            try {
+                win.close();
+            }
+            catch {
+                // Already gone.
+            }
+            for (const callback of callbacks)
+                callback(result);
+            callbacks.clear();
+        },
+        onClose(callback) {
+            callbacks.add(callback);
+        },
+        resolve(value) {
+            result = value;
+            popup.close();
+        },
+        focus() {
+            if (closed)
+                return;
+            try {
+                win.focus();
+            }
+            catch {
+                // Some browsers refuse. The window stays open either way.
+            }
+        },
+    };
+    return popup;
+}
 // With a container, the frame lives and shows there. Without one, it lives in
 // the body and shows full screen.
 export function createDomFrame(origin, container) {
@@ -152,7 +209,7 @@ export function createDomFrame(origin, container) {
             return { close };
         },
         openPopup(url) {
-            return createPopup(url);
+            return openPopupWindow(url);
         },
         destroy() {
             destroyed = true;

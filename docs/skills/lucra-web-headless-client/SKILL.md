@@ -156,7 +156,7 @@ Every code: [Errors](../../3.0_headless_client.md#errors).
 | `present.demographics()` | The form closes. That does not promise the user filled it in: try your call again to find out |
 | `present.kyc()` | The identity check closes. Same caveat |
 | `present.locationGrant()` | The user shares their location |
-| `present.addFunds()` | The deposit goes through. It can also resolve `"failed"`. See [Add Funds](#add-funds) |
+| `present.addFunds()` | The deposit goes through. It can also resolve `"failed"`, `"dismissed"`, or `"alreadyOpen"`. See [Add Funds](#add-funds) |
 | `present.withdraw()`, `present.profile()`, `present.wallet()` | Never. They resolve `"dismissed"` when closed |
 
 - **Where it shows.** Without `container`, a screen covers the whole page. With `container`, it
@@ -190,8 +190,9 @@ and have a human run login and Add Funds.
   first in a click handler rejects with `POPUP_BLOCKED`.
 - It opens its own window. It resolves `{ status: "completed", message }`,
   `{ status: "failed", message }`, or `{ status: "dismissed" }` when closed without finishing.
-  Calling it again while the window is open returns the same result. `dismiss()` does not close
-  it.
+- Calling it again while the window is open brings the window to the front and resolves
+  `{ status: "alreadyOpen" }` at once. Only the first call reports the deposit, so show a
+  success message from that call alone. `dismiss()` does not close the window.
 - `message` is text from Lucra: show it as text, never as HTML. Read the new balance from
   `lucra.auth`.
 

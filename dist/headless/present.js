@@ -6,7 +6,7 @@ export function createPresent(options) {
     const { session, auth, frame, urls, activity, whenWriteSettled } = options;
     // The overlay screen on show, if any. Only one at a time.
     let current = null;
-    // The Add Funds window, while it is open, and the result it will give.
+    // The Add Funds window, while it is open.
     let popup = null;
     let destroyed = false;
     const navigate = (path) => session.post(MessageTypeToLucraClient.navigate, {
@@ -99,7 +99,7 @@ export function createPresent(options) {
         const result = data;
         if ((result?.toastType === "success" || result?.toastType === "error") &&
             typeof result.message === "string") {
-            popup?.handle.resolve({ toastType: result.toastType, message: result.message });
+            popup?.resolve({ toastType: result.toastType, message: result.message });
         }
     });
     return {
@@ -156,10 +156,13 @@ export function createPresent(options) {
             if (auth.getState().status === "loggedOut") {
                 return Promise.reject(new LucraError(LucraErrorCode.NOT_LOGGED_IN));
             }
-            // The window is already open: one deposit, one result. Closing it and
-            // opening another right away can hand back the window that is closing.
-            if (popup)
-                return popup.result;
+            // The window is already open. Bring it forward instead of opening another:
+            // closing it and opening another right away can hand back the window that
+            // is closing. The first call alone reports the deposit.
+            if (popup) {
+                popup.focus();
+                return Promise.resolve({ status: "alreadyOpen" });
+            }
             let handle;
             try {
                 handle = frame.openPopup(buildUrl(urls, "app/add-funds"));
@@ -169,7 +172,7 @@ export function createPresent(options) {
             }
             const result = new Promise((resolve) => {
                 handle.onClose((closed) => {
-                    if (popup?.handle === handle)
+                    if (popup === handle)
                         popup = null;
                     if (!closed)
                         resolve({ status: "dismissed" });
@@ -181,7 +184,7 @@ export function createPresent(options) {
                     }
                 });
             });
-            popup = { handle, result };
+            popup = handle;
             return result;
         },
         demographics: () => page("app/demographicform", LucraClientMessageType.demographicComplete),
@@ -198,7 +201,7 @@ export function createPresent(options) {
                 return;
             destroyed = true;
             current?.dismiss();
-            popup?.handle.close();
+            popup?.close();
             unsubscribePopup();
         },
     };

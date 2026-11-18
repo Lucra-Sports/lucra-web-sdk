@@ -90,10 +90,13 @@ export type LucraLoginResult =
   | { status: "completed"; user: LucraUser }
   | { status: "dismissed" };
 
+// "alreadyOpen": the window was open already, so this call brought it to the
+// front. The call that opened it reports the deposit.
 export type LucraAddFundsResult =
   | { status: "completed"; message: string }
   | { status: "failed"; message: string }
-  | { status: "dismissed" };
+  | { status: "dismissed" }
+  | { status: "alreadyOpen" };
 
 export type LucraMatchupWatchHandlers = {
   // Called with the current details first, then on every change.

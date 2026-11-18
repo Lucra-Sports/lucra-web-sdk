@@ -10,6 +10,7 @@
 ### Changed
 
 - **Preview:** every default `LucraError` message is now plain text that is safe to show a user. What the developer needs, such as which config value to check or that `addFunds()` must run in a click handler, moved to `hint`. This includes the detail for `INVALID_CONFIG`, `INVALID_ARGUMENT`, a replaced watch's `CANCELLED`, and a login Lucra never confirmed. An error Lucra reported keeps Lucra's own message.
+- **Preview:** while the Add Funds window is open, another `lucra.present.addFunds()` brings that window to the front and resolves `{ status: "alreadyOpen" }` at once. It used to share the first call's result, so one deposit could show two success messages. The first call still resolves when the window closes. See [Add Funds](3.0_headless_client.md#add-funds).
 
 ### Fixed
 

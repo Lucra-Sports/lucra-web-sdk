@@ -1,4 +1,3 @@
-import type { LucraPopupHandle } from "../popup.js";
 import {
   LUCRA_POPUP_MESSAGE_TYPE,
   LucraClientMessageType,
@@ -7,7 +6,7 @@ import {
 import type { Activity } from "./api.js";
 import type { Auth } from "./auth.js";
 import { LucraError, LucraErrorCode, isLucraError } from "./errors.js";
-import type { Frame, Overlay } from "./frame.js";
+import type { Frame, Overlay, Popup } from "./frame.js";
 import type { Session } from "./session.js";
 import type {
   LucraAddFundsResult,
@@ -61,9 +60,8 @@ export function createPresent(options: {
   const { session, auth, frame, urls, activity, whenWriteSettled } = options;
   // The overlay screen on show, if any. Only one at a time.
   let current: { dismiss: () => void } | null = null;
-  // The Add Funds window, while it is open, and the result it will give.
-  let popup: { handle: LucraPopupHandle; result: Promise<LucraAddFundsResult> } | null =
-    null;
+  // The Add Funds window, while it is open.
+  let popup: Popup | null = null;
   let destroyed = false;
 
   const navigate = (path: string) =>
@@ -173,7 +171,7 @@ export function createPresent(options: {
       (result?.toastType === "success" || result?.toastType === "error") &&
       typeof result.message === "string"
     ) {
-      popup?.handle.resolve({ toastType: result.toastType, message: result.message });
+      popup?.resolve({ toastType: result.toastType, message: result.message });
     }
   });
 
@@ -235,10 +233,14 @@ export function createPresent(options: {
       if (auth.getState().status === "loggedOut") {
         return Promise.reject(new LucraError(LucraErrorCode.NOT_LOGGED_IN));
       }
-      // The window is already open: one deposit, one result. Closing it and
-      // opening another right away can hand back the window that is closing.
-      if (popup) return popup.result;
-      let handle: LucraPopupHandle;
+      // The window is already open. Bring it forward instead of opening another:
+      // closing it and opening another right away can hand back the window that
+      // is closing. The first call alone reports the deposit.
+      if (popup) {
+        popup.focus();
+        return Promise.resolve({ status: "alreadyOpen" });
+      }
+      let handle: Popup;
       try {
         handle = frame.openPopup(buildUrl(urls, "app/add-funds"));
       } catch (cause) {
@@ -248,7 +250,7 @@ export function createPresent(options: {
       }
       const result = new Promise<LucraAddFundsResult>((resolve) => {
         handle.onClose((closed) => {
-          if (popup?.handle === handle) popup = null;
+          if (popup === handle) popup = null;
           if (!closed) resolve({ status: "dismissed" });
           else if (closed.toastType === "success") {
             resolve({ status: "completed", message: closed.message });
@@ -257,7 +259,7 @@ export function createPresent(options: {
           }
         });
       });
-      popup = { handle, result };
+      popup = handle;
       return result;
     },
 
@@ -276,7 +278,7 @@ export function createPresent(options: {
       if (destroyed) return;
       destroyed = true;
       current?.dismiss();
-      popup?.handle.close();
+      popup?.close();
       unsubscribePopup();
     },
   };

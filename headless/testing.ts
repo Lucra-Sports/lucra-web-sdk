@@ -1,10 +1,11 @@
-import type { LucraPopupHandle } from "../popup.js";
 import type { LucraPopupResult } from "../types/types.js";
-import type { Frame, InboundMessage, OutboundMessage, Overlay } from "./frame.js";
+import type { Frame, InboundMessage, OutboundMessage, Overlay, Popup } from "./frame.js";
 
 export type FakePopup = {
   url: string;
   closed: boolean;
+  // How many times the window was brought to the front.
+  focused: number;
   // The user closed the popup window by hand.
   userClose(): void;
 };
@@ -78,11 +79,12 @@ export function createFakeFrame(): FakeFrame {
       const record: FakePopup = {
         url,
         closed: false,
+        focused: 0,
         userClose() {
           handle.close();
         },
       };
-      const handle: LucraPopupHandle = {
+      const handle: Popup = {
         close() {
           if (record.closed) return;
           record.closed = true;
@@ -95,6 +97,9 @@ export function createFakeFrame(): FakeFrame {
         resolve(value) {
           result = value;
           handle.close();
+        },
+        focus() {
+          if (!record.closed) record.focused += 1;
         },
       };
       frame.popups.push(record);

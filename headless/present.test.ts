@@ -381,18 +381,26 @@ describe("createPresent: addFunds", () => {
     expect(await funded).toEqual({ status: "dismissed" });
   });
 
-  it("gives a second call the same result while the window is open", async () => {
+  it("answers a second call alreadyOpen at once and brings the window forward", async () => {
     const { frame, present } = setup();
     await connectLoggedIn(frame);
-    const first = present.addFunds();
-    const second = present.addFunds();
-    expect(second).toBe(first);
+    let firstResult: unknown = null;
+    const first = present.addFunds().then((result) => (firstResult = result));
+    expect(frame.popups[0].focused).toBe(0);
+    expect(await present.addFunds()).toEqual({ status: "alreadyOpen" });
     expect(frame.popups.length).toBe(1);
+    expect(frame.popups[0].focused).toBe(1);
+    expect(frame.popups[0].closed).toBe(false);
+    // The first call is still waiting for the window.
+    await tick();
+    expect(firstResult).toBeNull();
     frame.deliver("LucraPopupMessage", { toastType: "success", message: "ok" });
-    expect(await second).toEqual({ status: "completed", message: "ok" });
-    // Once it has ended, a new call opens a new window.
+    await first;
+    expect(firstResult).toEqual({ status: "completed", message: "ok" });
+    // Once it has closed, a new call opens a new window.
     present.addFunds().catch(() => {});
     expect(frame.popups.length).toBe(2);
+    expect(frame.popups[0].focused).toBe(1);
   });
 
   it("rejects with POPUP_BLOCKED when the browser blocks it", async () => {
