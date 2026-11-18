@@ -85,17 +85,23 @@ export function createClient(config, deps) {
 let live = null;
 export function createLucraClient(config) {
     if (!config || !config.apiKey || !config.tenantId || !config.env) {
-        throw new LucraError(LucraErrorCode.INVALID_CONFIG, "apiKey, tenantId, and env are required");
+        throw new LucraError(LucraErrorCode.INVALID_CONFIG, undefined, {
+            hint: "apiKey, tenantId, and env are required.",
+        });
     }
     const { container } = config;
     if (container !== undefined) {
         // 1 is an element node. Unlike instanceof, this also works for an element
         // from another window, such as a same origin iframe.
         if (container?.nodeType !== 1) {
-            throw new LucraError(LucraErrorCode.INVALID_CONFIG, "container must be an HTML element");
+            throw new LucraError(LucraErrorCode.INVALID_CONFIG, undefined, {
+                hint: "container must be an HTML element.",
+            });
         }
         if (container.isConnected !== true) {
-            throw new LucraError(LucraErrorCode.INVALID_CONFIG, "container must be in the page");
+            throw new LucraError(LucraErrorCode.INVALID_CONFIG, undefined, {
+                hint: "container must be in the page.",
+            });
         }
     }
     // Throws INVALID_CONFIG before anything is added to the page.
@@ -113,7 +119,9 @@ export function createLucraClient(config) {
         // second import does not start a second Lucra session.
         if (live.key === key && live.container === container)
             return live.client;
-        throw new LucraError(LucraErrorCode.INVALID_CONFIG, "A Lucra client already exists with a different configuration. Call destroy() on it first.");
+        throw new LucraError(LucraErrorCode.INVALID_CONFIG, undefined, {
+            hint: "A Lucra client already exists with a different configuration. Call destroy() on it first.",
+        });
     }
     const supported = hasDom();
     const client = createClient(config, {

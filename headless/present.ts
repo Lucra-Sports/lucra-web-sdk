@@ -182,10 +182,9 @@ export function createPresent(options: {
       const phoneNumber = loginOptions?.phoneNumber;
       if (phoneNumber !== undefined && !PHONE_NUMBER.test(phoneNumber)) {
         return Promise.reject(
-          new LucraError(
-            LucraErrorCode.INVALID_ARGUMENT,
-            "phoneNumber must be exactly 10 digits"
-          )
+          new LucraError(LucraErrorCode.INVALID_ARGUMENT, undefined, {
+            hint: "phoneNumber must be exactly 10 digits. Omit it when you have none.",
+          })
         );
       }
       return present<LucraLoginResult>({

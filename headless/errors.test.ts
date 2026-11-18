@@ -9,9 +9,11 @@ describe("LucraError", () => {
     expect(error).toBeInstanceOf(LucraError);
     expect(error.name).toBe("LucraError");
     expect(error.code).toBe("TIMEOUT");
-    expect(error.message).toBe("Lucra did not answer in time");
+    expect(error.message).toBe("This is taking longer than expected");
     expect(error.remediation).toBeNull();
     expect(error.outcomeUnknown).toBe(false);
+    expect(error.source).toBe("sdk");
+    expect(error.hint).toContain("15 seconds");
   });
 
   it("uses the given message, outcomeUnknown, and cause", () => {
@@ -23,7 +25,82 @@ describe("LucraError", () => {
   });
 
   it("falls back to the default message for an empty one", () => {
-    expect(new LucraError("NOT_FOUND", "").message).toBe("Not found");
+    expect(new LucraError("NOT_FOUND", "").message).toBe("This could not be found");
+  });
+
+  it("is raised by the SDK unless it was made from Lucra's answer", () => {
+    for (const code of Object.values(LucraErrorCode)) {
+      expect(new LucraError(code).source).toBe("sdk");
+    }
+  });
+
+  it("uses a given hint over the default one", () => {
+    expect(new LucraError("INVALID_CONFIG", undefined, { hint: "h" }).hint).toBe("h");
+    expect(new LucraError("INVALID_CONFIG").hint).toContain("config");
+  });
+
+  it("gives these hints, and none for codes only Lucra reports", () => {
+    const hints: [LucraErrorCode, string][] = [
+      ["NOT_LOGGED_IN", "lucra.present.login()"],
+      ["IN_PROGRESS", "Another write is pending"],
+      ["TIMEOUT", "outcomeUnknown"],
+      ["CONNECTION_FAILED", "apiKey, tenantId, and env"],
+      ["CONNECTION_TIMEOUT", "frame-src"],
+      ["CONNECTION_RESET", "Lucra restarted"],
+      ["DESTROYED", "lucra.destroy()"],
+      ["POPUP_BLOCKED", "click handler"],
+      ["SCREEN_OPEN", "lucra.present screen"],
+      ["LOGOUT_FAILED", "logout"],
+      ["INVALID_ARGUMENT", "argument"],
+      ["INVALID_CONFIG", "config"],
+      ["UNSUPPORTED_ENVIRONMENT", "browser"],
+    ];
+    for (const [code, text] of hints) {
+      expect(new LucraError(code).hint).toContain(text);
+    }
+    for (const code of [
+      "UNVERIFIED",
+      "INSUFFICIENT_FUNDS",
+      "DEMOGRAPHIC_INFORMATION_MISSING",
+      "LOCATION_ERROR",
+      "LOCATION_NEEDED",
+      "NOT_ALLOWED",
+      "INVALID_AT_STAKE",
+      "INVALID_REWARD_TYPE",
+      "INVALID_PLAY_STYLE",
+      "API_ERROR",
+      "NOT_FOUND",
+      "CANCELLED",
+    ] as const) {
+      expect(new LucraError(code).hint).toBeNull();
+    }
+  });
+
+  it("has a default message for every code that is safe to show a user", () => {
+    // Words that address a developer. A default message must never use them.
+    const banned = [
+      /apiKey/i,
+      /tenantId/i,
+      /\benv\b/i,
+      /click handler/i,
+      /\bwrites?\b/i,
+      /destroy/i,
+      /config/i,
+      /argument/i,
+      /request/i,
+      /\bcall\b/i,
+      /lucra\./i,
+      /\(\)/,
+      /the user/i,
+      /\bSDK\b/,
+    ];
+    for (const code of Object.values(LucraErrorCode)) {
+      const message = new LucraError(code).message;
+      expect(message.length).toBeGreaterThan(0);
+      for (const word of banned) {
+        if (word.test(message)) throw new Error(`${code}: "${message}" matches ${word}`);
+      }
+    }
   });
 
   it("names the screen that fixes each fixable code", () => {
@@ -77,6 +154,33 @@ describe("fromApiError", () => {
     expect(error.outcomeUnknown).toBe(false);
   });
 
+  it("marks every error it makes as from Lucra, with no hint", () => {
+    const errors = [
+      fromApiError({ code: "INSUFFICIENT_FUNDS", message: "m" }, write),
+      fromApiError({ code: "API_ERROR", message: "Recreational game matchup not found" }, write),
+      fromApiError(
+        { code: "NOT_ALLOWED", message: "Another createRecreationalGame request is already in progress" },
+        write
+      ),
+      fromApiError({ code: "API_ERROR" }, write),
+      fromApiError(null, { kind: "read" }),
+    ];
+    expect(errors.map((error) => error.code)).toEqual([
+      "INSUFFICIENT_FUNDS",
+      "NOT_FOUND",
+      "IN_PROGRESS",
+      "API_ERROR",
+      "API_ERROR",
+    ]);
+    for (const error of errors) {
+      expect(error.source).toBe("lucra");
+      expect(error.hint).toBeNull();
+    }
+    // Lucra's own text, exactly as it sent it.
+    expect(errors[1].message).toBe("Recreational game matchup not found");
+    expect(errors[2].message).toBe("Another createRecreationalGame request is already in progress");
+  });
+
   it("turns the not found message into NOT_FOUND", () => {
     const error = fromApiError(
       { code: "API_ERROR", message: "Recreational game matchup not found" },
@@ -116,7 +220,7 @@ describe("fromApiError", () => {
     expect(unknown.code).toBe("API_ERROR");
     expect(unknown.message).toBe("x");
     expect(fromApiError(undefined, { kind: "read" }).code).toBe("API_ERROR");
-    expect(fromApiError(null, { kind: "read" }).message).toBe("The request could not be completed");
+    expect(fromApiError(null, { kind: "read" }).message).toBe("Something went wrong");
   });
 
   it("never passes an SDK only code through from Lucra", () => {

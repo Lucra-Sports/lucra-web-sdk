@@ -128,6 +128,12 @@ Writes are what the guide calls changes
 
 Check with `isLucraError(error)`.
 
+- **`message` is safe to show the user.** `source` says who raised the error: `"lucra"` when
+  Lucra reported it for the call, and `message` is then Lucra's own text, or `"sdk"` when the SDK
+  raised it (timeouts, connection problems, `NOT_LOGGED_IN`, `IN_PROGRESS`, `SCREEN_OPEN`, and
+  so on). `hint` is guidance for the developer: log it, never show it. It is always `null` for
+  `source: "lucra"`.
+
 - **`remediation`** names the screen to show. Try the call again once if it resolves
   `"completed"`, and send a second failure to your own UI: for `demographics()` and `kyc()`,
   `"completed"` only means the screen closed. `"addFunds"` needs a click, so show your own Add
@@ -243,12 +249,13 @@ their calls are `LucraClient` calls.
 | --- | --- | --- |
 | `INVALID_CONFIG` thrown by `createLucraClient` | A config it refuses. See [section 3](#3-setup) | Fix the config, or `destroy()` the existing client first |
 | `CONNECTION_FAILED` | Lucra refused the config | Check `apiKey`, `tenantId`, and `env` together |
+| `INVALID_CONFIG` or `INVALID_ARGUMENT` with a generic `message` | The detail is for you, so it is in `hint` | Read `error.hint` |
 | `CONNECTION_TIMEOUT` | Lucra did not start within 30 seconds. Usually a `Content-Security-Policy` that does not allow your Lucra address under `frame-src`, or a Lucra address that does not load | Allow `https://<tenantId>.<env>.lucrasports.com` under `frame-src`, or `https://<tenantId>.lucrasports.com` in production, with `tenantId` in lowercase. Only that call gave up: the client keeps waiting |
 | `lucra.auth` stays `"loading"` | The client never connected, or Lucra reported a user it never confirmed. In the second case calls that need a user reject with `TIMEOUT` | `await lucra.whenConnected()` to get the connection error |
 | `IN_PROGRESS` | Another write is pending | Wait for it. If your app had none pending, Lucra is still running an earlier one: read back before retrying |
 | `SCREEN_OPEN` | A write while a screen shows or is opening | Await the screen's result first |
 | `POPUP_BLOCKED` | `addFunds()` ran outside the click | Call it first in the click handler, with no `await` before it |
-| `TIMEOUT` | Lucra did not answer, or did not confirm a login, within 15 seconds | Check `outcomeUnknown`: when `true`, read back before retrying. A read is safe to repeat. The message `"Lucra did not finish signing the user in"` means Lucra reported a user it never confirmed, and nothing was sent |
+| `TIMEOUT` | Lucra did not answer, or did not confirm a login, within 15 seconds | Check `outcomeUnknown`: when `true`, read back before retrying. A read is safe to repeat. A `hint` that says Lucra did not finish signing them in means Lucra reported a user it never confirmed, and nothing was sent |
 | `CONNECTION_RESET` | Lucra restarted while the call waited, for example for `present.login()` | Repeat a read. Read back after a write |
 | `UNSUPPORTED_ENVIRONMENT` | Created with no browser, for example during server rendering | Create it in browser code |
 | `onError` called with `CANCELLED` | A watch on another matchup replaced this one | Watch one matchup at a time |

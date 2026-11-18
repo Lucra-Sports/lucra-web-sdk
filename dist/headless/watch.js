@@ -130,7 +130,9 @@ export function createWatch(options) {
                 // Subscribing replaces the old subscription inside Lucra too.
                 subscribe(target);
                 if (previous) {
-                    fail(previous, new LucraError(LucraErrorCode.CANCELLED, "Replaced by a watch on another matchup"));
+                    fail(previous, new LucraError(LucraErrorCode.CANCELLED, undefined, {
+                        hint: "A watch on another matchup replaced this one.",
+                    }));
                 }
             }
             return {

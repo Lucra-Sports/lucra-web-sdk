@@ -30,7 +30,10 @@ type PendingLogout = {
   timer: ReturnType<typeof setTimeout> | null;
 };
 
-const NOT_READY_MESSAGE = "Lucra did not finish signing the user in";
+const notReady = () =>
+  new LucraError(LucraErrorCode.TIMEOUT, undefined, {
+    hint: "Lucra reported a logged in user but did not finish signing them in. Nothing was sent.",
+  });
 
 export function createAuth(options: {
   session: Session;
@@ -132,7 +135,7 @@ export function createAuth(options: {
         readyTimer = setTimeout(() => {
           readyTimer = null;
           stalled = true;
-          settleWaiters(new LucraError(LucraErrorCode.TIMEOUT, NOT_READY_MESSAGE));
+          settleWaiters(notReady());
         }, timeouts.authReadyMs);
       },
       (error: unknown) => {
@@ -199,7 +202,7 @@ export function createAuth(options: {
       return Promise.reject(new LucraError(LucraErrorCode.NOT_LOGGED_IN));
     }
     if (stalled) {
-      return Promise.reject(new LucraError(LucraErrorCode.TIMEOUT, NOT_READY_MESSAGE));
+      return Promise.reject(notReady());
     }
     return new Promise<void>((resolve, reject) => {
       waiters.add({ resolve, reject });

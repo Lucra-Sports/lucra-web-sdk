@@ -5,6 +5,11 @@
 ### Added
 
 - **Preview:** the type `LucraScreen` from `lucra-web-sdk/headless` names the `lucra.present` screens that show in the page: every one except `addFunds`. `lucra.present[screen]()` type checks for any `screen` of this type. See [Showing a Lucra screen](3.0_headless_client.md#showing-a-lucra-screen).
+- **Preview:** `LucraError` has two new fields. `source` is `"lucra"` when Lucra reported the error for your call, and `"sdk"` when the SDK raised it. `hint` is guidance for the developer, never shown to users, and is `null` when there is none. The type `LucraErrorSource` names the values of `source`. See [Errors](3.0_headless_client.md#errors).
+
+### Changed
+
+- **Preview:** every default `LucraError` message is now plain text that is safe to show a user. What the developer needs, such as which config value to check or that `addFunds()` must run in a click handler, moved to `hint`. This includes the detail for `INVALID_CONFIG`, `INVALID_ARGUMENT`, a replaced watch's `CANCELLED`, and a login Lucra never confirmed. An error Lucra reported keeps Lucra's own message.
 
 ### Fixed
 

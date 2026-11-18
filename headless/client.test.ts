@@ -366,7 +366,8 @@ describe("createLucraClient", () => {
       ] as const) {
         const error = thrown(() => createLucraClient({ ...config, container } as never));
         expect(error.code).toBe("INVALID_CONFIG");
-        expect(error.message).toContain(message);
+        // The detail is for the developer, so it is in the hint, not the message.
+        expect(error.hint).toContain(message);
       }
       expect(added).toEqual([]);
       // Nothing was remembered, so a good config still makes a client.
