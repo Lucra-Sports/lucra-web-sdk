@@ -593,7 +593,8 @@ describe("createPresent: signal", () => {
     let result: unknown = null;
     const shown = present.wallet().then((value) => (result = value));
     await tick();
-    for (const signal of [{}, "stop", 1, { aborted: false }]) {
+    const noAborted = { addEventListener() {}, removeEventListener() {} };
+    for (const signal of [{}, "stop", 1, { aborted: false }, noAborted, new EventTarget()]) {
       const error = await caught(present.kyc({ signal } as never));
       expect(error.code).toBe("INVALID_ARGUMENT");
       expect(error.hint).toBe("signal must be an AbortSignal.");
@@ -900,6 +901,63 @@ describe("createPresent: a listener that acts as a screen shows", () => {
     expect(present.getState()).toEqual({ screen: null });
     await reconnect(frame);
     expect(count(frame, "enableExitLucra")).toBe(2);
+  });
+
+  it("a screen started while the one on show closes is replaced too, and only the newest shows", async () => {
+    const { frame, activity, api, present } = setup();
+    await connectLoggedIn(frame);
+    const wallet = present.wallet();
+    await tick();
+    let armed = false;
+    let profile: Promise<unknown> | null = null;
+    present.subscribe((state) => {
+      if (armed && state.screen === null && !profile) profile = present.profile();
+    });
+    armed = true;
+    let kycResult: unknown = null;
+    const kyc = present.kyc().then((result) => (kycResult = result));
+    expect(await wallet).toEqual({ status: "dismissed", reason: "replaced" });
+    let profileResult: unknown = null;
+    profile!.then((result) => (profileResult = result));
+    await tick();
+    expect(profileResult).toEqual({ status: "dismissed", reason: "replaced" });
+    expect(present.getState()).toEqual({ screen: "kyc" });
+    expect(frame.overlayOpen).toBe(true);
+    // The wallet and kyc overlays. The profile call never opened one.
+    expect(frame.overlaysOpened).toBe(2);
+    expect(activity.screenOpen).toBe(true);
+    frame.deliver("exitLucra", true);
+    await kyc;
+    expect(kycResult).toEqual({ status: "dismissed", reason: "exit" });
+    expect(present.getState()).toEqual({ screen: null });
+    expect(activity.screenOpen).toBe(false);
+    const join = api.tournaments.join("t1");
+    await tick();
+    frame.answer("joinTournamentRequest", "joinTournamentResponse", { matchupId: "t1" });
+    await join;
+  });
+
+  it("an abort while the screen on show closes ends the call, and nothing is sent or shown", async () => {
+    const { frame, activity, present } = setup();
+    await connectLoggedIn(frame);
+    const wallet = present.wallet();
+    await tick();
+    const controller = new AbortController();
+    let armed = false;
+    present.subscribe((state) => {
+      if (armed && state.screen === null) controller.abort();
+    });
+    armed = true;
+    let kycResult: unknown = null;
+    const kyc = present.kyc({ signal: controller.signal }).then((result) => (kycResult = result));
+    expect(await wallet).toEqual({ status: "dismissed", reason: "replaced" });
+    await tick();
+    expect(kycResult).toEqual({ status: "dismissed", reason: "aborted" });
+    expect(frame.overlaysOpened).toBe(1);
+    expect(navigatedTo(frame, kycPath)).toBe(false);
+    expect(present.getState()).toEqual({ screen: null });
+    expect(activity.screenOpen).toBe(false);
+    await kyc;
   });
 
   it("a later listener is only ever handed the current state", async () => {

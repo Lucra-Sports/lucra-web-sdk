@@ -28,7 +28,8 @@ export function createPresent(options) {
         // marked open. Not instanceof: the signal can come from another window.
         if (signal != null &&
             (typeof signal.addEventListener !== "function" ||
-                typeof signal.removeEventListener !== "function")) {
+                typeof signal.removeEventListener !== "function" ||
+                typeof signal.aborted !== "boolean")) {
             return Promise.reject(new LucraError(LucraErrorCode.INVALID_ARGUMENT, undefined, {
                 hint: "signal must be an AbortSignal.",
             }));
@@ -37,8 +38,10 @@ export function createPresent(options) {
         if (signal?.aborted) {
             return Promise.resolve({ status: "dismissed", reason: "aborted" });
         }
-        // A new screen replaces the one on show.
-        current?.dismiss("replaced");
+        // A new screen replaces the one on show. A loop, because a state listener
+        // told the old screen closed may start another screen.
+        while (current)
+            current.dismiss("replaced");
         // Set before the first await, so a write started right after is refused.
         activity.screenOpen = true;
         return new Promise((resolve, reject) => {
@@ -77,6 +80,10 @@ export function createPresent(options) {
                 const onAbort = () => handle.dismiss("aborted");
                 signal.addEventListener("abort", onAbort);
                 cleanups.push(() => signal.removeEventListener("abort", onAbort));
+                // A state listener may have aborted it while the old screen closed,
+                // before the listener above was added.
+                if (signal.aborted)
+                    handle.dismiss("aborted");
             }
             (async () => {
                 await session.whenConnected();
