@@ -18,6 +18,8 @@ const SPECS = {
     matchupsCancel: write(MessageTypeToLucraClient.cancelRecreationalGameRequest, LucraClientMessageType.cancelRecreationalGameResponse, true),
     achievementsList: read(MessageTypeToLucraClient.achievementsRequest, LucraClientMessageType.achievementsResponse),
     rewardsList: read(MessageTypeToLucraClient.userTournamentRewardsRequest, LucraClientMessageType.userTournamentRewardsResponse),
+    // A plain API_ERROR means the claim did not happen.
+    rewardsClaim: write(MessageTypeToLucraClient.claimTournamentRewardRequest, LucraClientMessageType.claimTournamentRewardResponse, false),
 };
 export function createApi(options) {
     const { session, auth, activity } = options;
@@ -77,6 +79,7 @@ export function createApi(options) {
                 viewed: filters?.viewed,
                 claimed: filters?.claimed,
             }, true).then((r) => r.rewards),
+            claim: (rewardId) => sendWrite(SPECS.rewardsClaim, { rewardId }).then(() => undefined),
         },
         whenWriteSettled: () => writeSettled ?? Promise.resolve(),
     };

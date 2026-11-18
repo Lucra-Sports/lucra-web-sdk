@@ -6,6 +6,7 @@
 
 - **Preview:** `lucra.matchups.searchByMetadata(filters)` on the headless client resolves with the ids of the logged in user's matchups that match the filters. The filters (`gameId`, `locationId`, `matchupId`, `matchupMetadata`) are all optional and typed as `LucraSearchMatchupsByMetadataInput`, exported from `lucra-web-sdk/headless`. See [Reading data](3.0_headless_client.md#reading-data).
 - **Preview:** `lucra.rewards.list(filters)` on the headless client resolves with the rewards the user won in tournaments, typed as `LucraUserTournamentReward`, exported from `lucra-web-sdk/headless`. The filters (`tournamentId`, `viewed`, `claimed`) are all optional. Fetching rewards marks the unviewed ones as viewed. See [Reading data](3.0_headless_client.md#reading-data).
+- **Preview:** `lucra.rewards.claim(rewardId)` on the headless client claims a reward from `lucra.rewards.list()`. It is a change, so it runs one at a time with the others. A plain `API_ERROR` means the reward was not claimed. See [Changing things](3.0_headless_client.md#changing-things).
 - **Preview:** the calls above are new. Where Lucra does not answer one yet, it rejects with `TIMEOUT`.
 
 ## [v1.16.0]

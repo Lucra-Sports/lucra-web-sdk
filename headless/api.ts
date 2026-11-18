@@ -4,6 +4,7 @@ import {
   type LucraAchievement,
   type LucraAchievementsResponse,
   type LucraAutoJoinedTournamentsBody,
+  type LucraClaimTournamentRewardResult,
   type LucraCancelRecreationalGameResult,
   type LucraCreateRecreationalGameInput,
   type LucraJoinTournamentResponse,
@@ -103,6 +104,12 @@ const SPECS = {
     MessageTypeToLucraClient.userTournamentRewardsRequest,
     LucraClientMessageType.userTournamentRewardsResponse
   ),
+  // A plain API_ERROR means the claim did not happen.
+  rewardsClaim: write<LucraClaimTournamentRewardResult>(
+    MessageTypeToLucraClient.claimTournamentRewardRequest,
+    LucraClientMessageType.claimTournamentRewardResponse,
+    false
+  ),
 };
 
 export type Api = {
@@ -136,6 +143,7 @@ export type Api = {
       viewed?: boolean;
       claimed?: boolean;
     }): Promise<LucraUserTournamentReward[]>;
+    claim(rewardId: string): Promise<void>;
   };
   // Resolves when no write is pending. Never rejects.
   whenWriteSettled(): Promise<void>;
@@ -234,6 +242,8 @@ export function createApi(options: {
           },
           true
         ).then((r) => r.rewards),
+      claim: (rewardId) =>
+        sendWrite(SPECS.rewardsClaim, { rewardId }).then(() => undefined),
     },
     whenWriteSettled: () => writeSettled ?? Promise.resolve(),
   };

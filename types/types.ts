@@ -51,6 +51,7 @@ export enum LucraClientMessageType {
   cancelRecreationalGameResponse = "cancelRecreationalGameResponse",
   searchMatchupsByMetadataResponse = "searchMatchupsByMetadataResponse",
   userTournamentRewardsResponse = "userTournamentRewardsResponse",
+  claimTournamentRewardResponse = "claimTournamentRewardResponse",
 }
 
 export enum MessageTypeToLucraClient {
@@ -76,6 +77,7 @@ export enum MessageTypeToLucraClient {
   cancelRecreationalGameRequest = "cancelRecreationalGameRequest",
   searchMatchupsByMetadataRequest = "searchMatchupsByMetadataRequest",
   userTournamentRewardsRequest = "userTournamentRewardsRequest",
+  claimTournamentRewardRequest = "claimTournamentRewardRequest",
   sdkDiagnostic = "sdkDiagnostic",
 }
 
@@ -434,6 +436,14 @@ export type LucraUserTournamentRewardsInput = {
 
 export type LucraUserTournamentRewardsResponse = {
   rewards: LucraUserTournamentReward[];
+};
+
+export type LucraClaimTournamentRewardBody = {
+  rewardId: string;
+};
+
+export type LucraClaimTournamentRewardResult = {
+  rewardId: string;
 };
 
 // ---------------------------------------------------------------------------

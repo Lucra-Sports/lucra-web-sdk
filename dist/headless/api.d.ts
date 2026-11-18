@@ -34,6 +34,7 @@ export type Api = {
             viewed?: boolean;
             claimed?: boolean;
         }): Promise<LucraUserTournamentReward[]>;
+        claim(rewardId: string): Promise<void>;
     };
     whenWriteSettled(): Promise<void>;
 };

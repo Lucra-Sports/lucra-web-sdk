@@ -116,7 +116,8 @@ the status is already `"loggedOut"`.
 
 Writes are what the guide calls changes
 ([Changing things](../../3.0_headless_client.md#changing-things)): `tournaments.join()`,
-`tournaments.autoJoin()`, `matchups.create()`, `matchups.accept()`, and `matchups.cancel()`.
+`tournaments.autoJoin()`, `matchups.create()`, `matchups.accept()`, `matchups.cancel()`, and
+`rewards.claim()`.
 
 - **One at a time, of any kind.** While one is pending, another rejects with `IN_PROGRESS`.
   Disable the button while a call is pending.
