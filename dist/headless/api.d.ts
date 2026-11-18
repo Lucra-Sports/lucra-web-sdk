@@ -46,4 +46,5 @@ export declare function createApi(options: {
     session: Session;
     auth: Auth;
     activity: Activity;
+    requestMs: number;
 }): Api;

@@ -32,7 +32,7 @@ import {
   type LucraUserTournamentRewardsResponse,
 } from "../types/types.js";
 import type { Auth } from "./auth.js";
-import { LucraError, LucraErrorCode } from "./errors.js";
+import { LucraError, LucraErrorCode, isLucraError } from "./errors.js";
 import type { RequestSpec } from "./requests.js";
 import type { Session } from "./session.js";
 
@@ -188,19 +188,51 @@ export function createApi(options: {
   session: Session;
   auth: Auth;
   activity: Activity;
+  // How long a call waits for its answer, a resent read included.
+  requestMs: number;
 }): Api {
-  const { session, auth, activity } = options;
+  const { session, auth, activity, requestMs } = options;
   // The one write slot. Set while a write is pending, whatever its kind.
   let writeSettled: Promise<void> | null = null;
+
+  const ready = async (needsLogin: boolean) => {
+    await session.whenConnected();
+    if (needsLogin) await auth.whenLoggedIn();
+  };
 
   const send = async <TResponse>(
     spec: RequestSpec<TResponse>,
     body: unknown,
     needsLogin: boolean
   ): Promise<TResponse> => {
-    await session.whenConnected();
-    if (needsLogin) await auth.whenLoggedIn();
-    return session.request(spec, body);
+    await ready(needsLogin);
+    const deadline = Date.now() + requestMs;
+    try {
+      return await session.request(spec, body);
+    } catch (error) {
+      if (
+        spec.kind !== "read" ||
+        !isLucraError(error) ||
+        error.code !== LucraErrorCode.CONNECTION_RESET
+      ) {
+        throw error;
+      }
+    }
+    // Lucra restarted, so the read was lost. Send it once more, with a new
+    // request id, in what is left of the time it had. A second restart rejects.
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const outOfTime = new Promise<never>((_, reject) => {
+      timer = setTimeout(
+        () => reject(new LucraError(LucraErrorCode.TIMEOUT)),
+        deadline - Date.now()
+      );
+    });
+    try {
+      await Promise.race([ready(needsLogin), outOfTime]);
+    } finally {
+      clearTimeout(timer);
+    }
+    return session.request(spec, body, deadline - Date.now());
   };
 
   const sendWrite = <TResponse>(

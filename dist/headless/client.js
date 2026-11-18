@@ -29,7 +29,7 @@ export function createClient(config, deps) {
     });
     const auth = createAuth({ session, urls, timeouts });
     const activity = { screenOpen: false };
-    const api = createApi({ session, auth, activity });
+    const api = createApi({ session, auth, activity, requestMs: timeouts.requestMs });
     const watch = createWatch({ session });
     const present = createPresent({
         session,

@@ -21,7 +21,7 @@ function setup(overrides: Partial<Timeouts> = {}) {
   const session = createSession({ frame, url: buildUrl(urls, HOME_PATH), timeouts });
   const auth = createAuth({ session, urls, timeouts });
   const activity: Activity = { screenOpen: false };
-  const api = createApi({ session, auth, activity });
+  const api = createApi({ session, auth, activity, requestMs: timeouts.requestMs });
   const present = createPresent({
     session,
     auth,
@@ -337,14 +337,21 @@ describe("createPresent: login", () => {
     expect(activity.screenOpen).toBe(false);
   });
 
-  it("rejects pending reads with CONNECTION_RESET when login restarts Lucra", async () => {
+  it("sends a pending read again once login has restarted Lucra", async () => {
     const { frame, api, present } = setup();
     await connectLoggedOut(frame);
-    const list = caught(api.tournaments.list());
+    const list = api.tournaments.list();
     await tick();
     present.login().catch(() => {});
     await tick();
-    expect((await list).code).toBe("CONNECTION_RESET");
+    expect(frame.urls.length).toBe(2);
+    expect(count(frame, "tournamentsRequest")).toBe(1);
+    await connectLoggedOut(frame);
+    expect(count(frame, "tournamentsRequest")).toBe(2);
+    frame.answer("tournamentsRequest", "tournamentsResponse", {
+      tournaments: [{ matchupId: "t1" }],
+    });
+    expect(await list).toEqual([{ matchupId: "t1" }]);
   });
 });
 

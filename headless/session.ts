@@ -38,8 +38,13 @@ export type Session = {
   whenConnected(): Promise<void>;
   // Runs every time Lucra starts, including after it restarts.
   onConnected(listener: () => void): () => void;
-  // Sends a request now. Callers wait for the connection first.
-  request<TResponse>(spec: RequestSpec<TResponse>, body?: unknown): Promise<TResponse>;
+  // Sends a request now. Callers wait for the connection first. `timeoutMs`
+  // replaces timeouts.requestMs for this one request.
+  request<TResponse>(
+    spec: RequestSpec<TResponse>,
+    body?: unknown,
+    timeoutMs?: number
+  ): Promise<TResponse>;
   // Sends a message that has no answer.
   post(type: MessageTypeToLucraClient, body: unknown): void;
   // Listens for a message from Lucra by its wire type. Answers to requests are
@@ -168,11 +173,11 @@ export function createSession(options: {
       return connected.on("connected", listener);
     },
 
-    request(spec, body) {
+    request(spec, body, timeoutMs) {
       if (status === "destroyed") {
         return Promise.reject(new LucraError(LucraErrorCode.DESTROYED));
       }
-      return requests.send(spec, body);
+      return requests.send(spec, body, timeoutMs);
     },
 
     post(type, body) {

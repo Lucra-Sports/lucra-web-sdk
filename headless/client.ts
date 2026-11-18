@@ -77,7 +77,7 @@ export function createClient(
   });
   const auth = createAuth({ session, urls, timeouts });
   const activity: Activity = { screenOpen: false };
-  const api = createApi({ session, auth, activity });
+  const api = createApi({ session, auth, activity, requestMs: timeouts.requestMs });
   const watch = createWatch({ session });
   const present = createPresent({
     session,

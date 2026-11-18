@@ -25,7 +25,12 @@ export type RequestSpec<TResponse> = {
 };
 
 export type Requests = {
-  send<TResponse>(spec: RequestSpec<TResponse>, body?: unknown): Promise<TResponse>;
+  // `timeoutMs` replaces the usual wait for this one request.
+  send<TResponse>(
+    spec: RequestSpec<TResponse>,
+    body?: unknown,
+    timeoutMs?: number
+  ): Promise<TResponse>;
   // Settles the pending request this message answers. Returns true when the
   // message was an answer to one, so the caller does not also treat it as an event.
   handle(message: InboundMessage): boolean;
@@ -38,6 +43,7 @@ type Pending = {
   resolve: (data: unknown) => void;
   reject: (error: LucraError) => void;
   timer: ReturnType<typeof setTimeout>;
+  timeoutMs: number;
   sentAt: number;
 };
 
@@ -67,12 +73,12 @@ export function createRequests(options: {
     return entry;
   };
 
-  const startTimer = (requestId: string) =>
+  const startTimer = (requestId: string, timeoutMs: number) =>
     setTimeout(() => {
       const entry = take(requestId);
       if (!entry) return;
       try {
-        options.onTimeout?.(entry.spec.type, options.timeoutMs);
+        options.onTimeout?.(entry.spec.type, entry.timeoutMs);
       } catch {
         // Reporting is best effort. The request must still reject.
       }
@@ -81,17 +87,22 @@ export function createRequests(options: {
           outcomeUnknown: entry.spec.kind === "write",
         })
       );
-    }, options.timeoutMs);
+    }, timeoutMs);
 
   return {
-    send<TResponse>(spec: RequestSpec<TResponse>, body?: unknown) {
+    send<TResponse>(
+      spec: RequestSpec<TResponse>,
+      body?: unknown,
+      timeoutMs = options.timeoutMs
+    ) {
       const requestId = String(++lastRequestId);
       return new Promise<TResponse>((resolve, reject) => {
         pending.set(requestId, {
           spec: spec as RequestSpec<unknown>,
           resolve: resolve as (data: unknown) => void,
           reject,
-          timer: startTimer(requestId),
+          timer: startTimer(requestId, timeoutMs),
+          timeoutMs,
           sentAt: Date.now(),
         });
         try {
@@ -136,7 +147,7 @@ export function createRequests(options: {
           Date.now() - entry.sentAt < entry.spec.maxTimeoutMs
         ) {
           clearTimeout(entry.timer);
-          entry.timer = startTimer(message.requestId);
+          entry.timer = startTimer(message.requestId, entry.timeoutMs);
         }
         return true;
       }

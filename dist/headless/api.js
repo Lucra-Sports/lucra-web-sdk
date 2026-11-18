@@ -1,5 +1,5 @@
 import { LucraClientMessageType, MessageTypeToLucraClient, } from "../types/types.js";
-import { LucraError, LucraErrorCode } from "./errors.js";
+import { LucraError, LucraErrorCode, isLucraError } from "./errors.js";
 const read = (type, responseType) => ({ type, responseType, kind: "read" });
 const write = (type, responseType, unknownOnApiError) => ({ type, responseType, kind: "write", unknownOnApiError });
 const SPECS = {
@@ -28,14 +28,40 @@ const SPECS = {
     rewardsClaim: write(MessageTypeToLucraClient.claimTournamentRewardRequest, LucraClientMessageType.claimTournamentRewardResponse, true),
 };
 export function createApi(options) {
-    const { session, auth, activity } = options;
+    const { session, auth, activity, requestMs } = options;
     // The one write slot. Set while a write is pending, whatever its kind.
     let writeSettled = null;
-    const send = async (spec, body, needsLogin) => {
+    const ready = async (needsLogin) => {
         await session.whenConnected();
         if (needsLogin)
             await auth.whenLoggedIn();
-        return session.request(spec, body);
+    };
+    const send = async (spec, body, needsLogin) => {
+        await ready(needsLogin);
+        const deadline = Date.now() + requestMs;
+        try {
+            return await session.request(spec, body);
+        }
+        catch (error) {
+            if (spec.kind !== "read" ||
+                !isLucraError(error) ||
+                error.code !== LucraErrorCode.CONNECTION_RESET) {
+                throw error;
+            }
+        }
+        // Lucra restarted, so the read was lost. Send it once more, with a new
+        // request id, in what is left of the time it had. A second restart rejects.
+        let timer;
+        const outOfTime = new Promise((_, reject) => {
+            timer = setTimeout(() => reject(new LucraError(LucraErrorCode.TIMEOUT)), deadline - Date.now());
+        });
+        try {
+            await Promise.race([ready(needsLogin), outOfTime]);
+        }
+        finally {
+            clearTimeout(timer);
+        }
+        return session.request(spec, body, deadline - Date.now());
     };
     const sendWrite = (spec, body) => {
         // These three checks run before the first await, so a double click is

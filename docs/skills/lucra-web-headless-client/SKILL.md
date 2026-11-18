@@ -146,6 +146,9 @@ Check with `isLucraError(error)`.
   it and are safe to repeat. One caveat: `rewards.list()` marks unviewed rewards as viewed, so a
   repeat with `viewed: false` may not return them again. `achievements.markViewed()` changes
   state but is not a write: it is safe to repeat and never sets it.
+- **A read waiting when Lucra restarts is sent again once by the SDK**, within the same 15
+  seconds. Do not repeat it yourself. So `CONNECTION_RESET` mostly means a write: read back
+  before you try again. A read gets it only when a second restart interrupts it.
 
 Every code: [Errors](../../3.0_headless_client.md#errors).
 
@@ -188,8 +191,9 @@ Every code: [Errors](../../3.0_headless_client.md#errors).
 - `login({ phoneNumber, signal })` fills in the form. `phoneNumber` must be exactly 10 digits:
   omit it when you have none, since `""` rejects with `INVALID_ARGUMENT`. That error's `message`,
   "The phone number must be 10 digits", is safe to show next to a number the user typed.
-- Showing the login screen restarts Lucra. Reads still waiting reject with `CONNECTION_RESET` and
-  are safe to repeat. If Lucra cannot start again while any screen shows, the screen closes and
+- Showing the login screen restarts Lucra. The SDK sends reads still waiting again once Lucra is
+  back. Writes still waiting reject with `CONNECTION_RESET`, with `outcomeUnknown: true` when
+  they were sent. If Lucra cannot start again while any screen shows, the screen closes and
   rejects with `CONNECTION_FAILED` or `CONNECTION_TIMEOUT`.
 - **Events:** `lucra.on(event, listener)` reports what the user did inside a Lucra screen, for
   example `matchupCreated`. It never fires for your own calls: the resolved promise is your
@@ -279,7 +283,7 @@ their calls are `LucraClient` calls.
 | `SCREEN_OPEN` | A write while a screen shows or is opening | Await the screen's result first |
 | `POPUP_BLOCKED` | `addFunds()` ran outside the click | Call it first in the click handler, with no `await` before it |
 | `TIMEOUT` | Lucra did not answer, or did not confirm a login, within 15 seconds | Check `outcomeUnknown`: when `true`, read back before retrying. A read is safe to repeat. A `hint` that says Lucra did not finish signing them in means Lucra reported a user it never confirmed, and nothing was sent |
-| `CONNECTION_RESET` | Lucra restarted while the call waited, for example for `present.login()` | Repeat a read. Read back after a write |
+| `CONNECTION_RESET` | Lucra restarted while the call waited, for example for `present.login()` | The SDK already sent a waiting read again once, so this is a write, or a read a second restart interrupted. Read back after a write |
 | `UNSUPPORTED_ENVIRONMENT` | Created with no browser, for example during server rendering | Create it in browser code |
 | `onError` called with `CANCELLED` | A watch on another matchup replaced this one | Watch one matchup at a time |
 | The user is stuck on a full screen Lucra screen | That screen has no exit control, and full screen covers your page | Show screens in a `container` with your own close button that calls `lucra.present.dismiss()` |

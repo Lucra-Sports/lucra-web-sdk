@@ -14,7 +14,7 @@ export type Session = {
     status(): SessionStatus;
     whenConnected(): Promise<void>;
     onConnected(listener: () => void): () => void;
-    request<TResponse>(spec: RequestSpec<TResponse>, body?: unknown): Promise<TResponse>;
+    request<TResponse>(spec: RequestSpec<TResponse>, body?: unknown, timeoutMs?: number): Promise<TResponse>;
     post(type: MessageTypeToLucraClient, body: unknown): void;
     on(type: string, listener: (data: unknown) => void): () => void;
     restart(url: string): void;

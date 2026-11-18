@@ -110,11 +110,11 @@ export function createSession(options) {
         onConnected(listener) {
             return connected.on("connected", listener);
         },
-        request(spec, body) {
+        request(spec, body, timeoutMs) {
             if (status === "destroyed") {
                 return Promise.reject(new LucraError(LucraErrorCode.DESTROYED));
             }
-            return requests.send(spec, body);
+            return requests.send(spec, body, timeoutMs);
         },
         post(type, body) {
             if (status === "destroyed")
