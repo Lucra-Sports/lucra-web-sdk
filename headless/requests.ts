@@ -147,7 +147,8 @@ export function createRequests(options: {
           Date.now() - entry.sentAt < entry.spec.maxTimeoutMs
         ) {
           clearTimeout(entry.timer);
-          // A resent request would restart with only what it had left.
+          // Restarts with this send's own wait, which for a resent read is only
+          // what it had left. Only the login check gets interim answers, and it is never resent.
           entry.timer = startTimer(message.requestId, entry.timeoutMs);
         }
         return true;

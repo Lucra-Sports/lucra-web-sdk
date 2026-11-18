@@ -630,20 +630,11 @@ describe("createApi: reads across a restart", () => {
     expect(count(frame, "tournamentsRequest")).toBe(2);
     expect(elapsed).toBeGreaterThanOrEqual(290);
     expect(elapsed).toBeLessThan(440);
-  });
-
-  it("reports the configured timeout when a resent read times out", async () => {
-    const { frame, api } = setup({ requestMs: 100 });
-    await connectLoggedIn(frame);
-    const read = caught(api.tournaments.list());
-    await sleep(40);
-    frame.deliver("initialized", { success: true });
-    expect((await read).code).toBe("TIMEOUT");
-    expect(count(frame, "tournamentsRequest")).toBe(2);
+    // The timeout reported is the configured one, not what was left.
     expect(frame.lastPosted("sdkDiagnostic")?.body).toMatchObject({
       kind: "requestTimeout",
       requestType: "tournamentsRequest",
-      timeoutMs: 100,
+      timeoutMs: 300,
     });
   });
 
