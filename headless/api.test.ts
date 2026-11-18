@@ -93,6 +93,7 @@ describe("createApi: reads", () => {
       () => api.tournaments.get("t1"),
       () => api.tournaments.leaderboard("t1"),
       () => api.achievements.list(),
+      () => api.achievements.markViewed("a1"),
       () => api.matchups.searchByMetadata({}),
       () => api.rewards.list(),
       () => api.matchups.list({ limit: 5 }),
@@ -105,6 +106,7 @@ describe("createApi: reads", () => {
     expect(count(frame, "tournamentRequest")).toBe(0);
     expect(count(frame, "tournamentLeaderboardRequest")).toBe(0);
     expect(count(frame, "achievementsRequest")).toBe(0);
+    expect(count(frame, "markAchievementViewedRequest")).toBe(0);
     expect(count(frame, "searchMatchupsByMetadataRequest")).toBe(0);
     expect(count(frame, "userTournamentRewardsRequest")).toBe(0);
     expect(count(frame, "userMatchupsRequest")).toBe(0);
@@ -181,6 +183,35 @@ describe("createApi: reads", () => {
       matchupIds: ["m1", "m2"],
     });
     expect(await search).toEqual(["m1", "m2"]);
+  });
+
+  it("marks an achievement viewed and resolves with nothing", async () => {
+    const { frame, api } = setup();
+    await connectLoggedIn(frame);
+    const mark = api.achievements.markViewed("a1");
+    await tick();
+    expect(frame.lastPosted("markAchievementViewedRequest")?.body).toEqual({ userAchievementId: "a1" });
+    frame.answer("markAchievementViewedRequest", "markAchievementViewedResponse", { userAchievementId: "a1" });
+    expect(await mark).toBeUndefined();
+  });
+
+  it("does not treat markViewed as a write", async () => {
+    const { frame, api } = setup();
+    await connectLoggedIn(frame);
+    const first = api.achievements.markViewed("a1");
+    const claim = api.achievements.claim("a1");
+    await tick();
+    expect(count(frame, "claimAchievementRequest")).toBe(1);
+    const second = api.achievements.markViewed("a2");
+    await tick();
+    expect(count(frame, "markAchievementViewedRequest")).toBe(2);
+    const [a, b] = frame.posted.filter((message) => message.type === "markAchievementViewedRequest");
+    frame.deliver("markAchievementViewedResponse", { userAchievementId: "a1" }, a.requestId);
+    frame.deliver("markAchievementViewedResponse", { userAchievementId: "a2" }, b.requestId);
+    frame.answer("claimAchievementRequest", "claimAchievementResponse", { userAchievementId: "a1" });
+    expect(await first).toBeUndefined();
+    expect(await second).toBeUndefined();
+    expect(await claim).toBeUndefined();
   });
 
   it("lists rewards, sending tournamentId as matchupId", async () => {
@@ -428,6 +459,14 @@ describe("createApi: writes", () => {
     expect(error.code).toBe("TIMEOUT");
     expect(error.outcomeUnknown).toBe(true);
     expect(frame.lastPosted("sdkDiagnostic")).toBeDefined();
+  });
+
+  it("times out markViewed with a known outcome", async () => {
+    const { frame, api } = setup({ requestMs: 20 });
+    await connectLoggedIn(frame);
+    const error = await caught(api.achievements.markViewed("a1"));
+    expect(error.code).toBe("TIMEOUT");
+    expect(error.outcomeUnknown).toBe(false);
   });
 
   it("rejects pending calls with CONNECTION_RESET when Lucra restarts", async () => {

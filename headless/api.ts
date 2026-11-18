@@ -11,6 +11,8 @@ import {
   type LucraCancelRecreationalGameResult,
   type LucraCreateRecreationalGameInput,
   type LucraJoinTournamentResponse,
+  type LucraMarkAchievementViewedBody,
+  type LucraMarkAchievementViewedResult,
   type LucraMatchup,
   type LucraMatchupDetails,
   type LucraRecreationalGameResult,
@@ -116,6 +118,12 @@ const SPECS = {
     MessageTypeToLucraClient.achievementsRequest,
     LucraClientMessageType.achievementsResponse
   ),
+  // Sent as a read: it is safe to repeat, and a host may mark many at once, so it
+  // must not wait for or block a write.
+  achievementsMarkViewed: read<LucraMarkAchievementViewedResult>(
+    MessageTypeToLucraClient.markAchievementViewedRequest,
+    LucraClientMessageType.markAchievementViewedResponse
+  ),
   rewardsList: read<LucraUserTournamentRewardsResponse>(
     MessageTypeToLucraClient.userTournamentRewardsRequest,
     LucraClientMessageType.userTournamentRewardsResponse
@@ -162,6 +170,7 @@ export type Api = {
   achievements: {
     list(): Promise<LucraAchievement[]>;
     claim(userAchievementId: string): Promise<void>;
+    markViewed(userAchievementId: string): Promise<void>;
   };
   rewards: {
     list(filters?: {
@@ -263,6 +272,12 @@ export function createApi(options: {
         sendWrite(
           SPECS.achievementsClaim,
           { userAchievementId } satisfies LucraClaimAchievementBody
+        ).then(() => undefined),
+      markViewed: (userAchievementId) =>
+        send(
+          SPECS.achievementsMarkViewed,
+          { userAchievementId } satisfies LucraMarkAchievementViewedBody,
+          true
         ).then(() => undefined),
     },
     rewards: {

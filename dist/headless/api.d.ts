@@ -30,6 +30,7 @@ export type Api = {
     achievements: {
         list(): Promise<LucraAchievement[]>;
         claim(userAchievementId: string): Promise<void>;
+        markViewed(userAchievementId: string): Promise<void>;
     };
     rewards: {
         list(filters?: {

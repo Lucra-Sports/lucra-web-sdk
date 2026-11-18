@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## [v1.18.0]
+
+### Added
+
+- **Preview:** `lucra.achievements.markViewed(userAchievementId)` on the headless client marks an earned achievement viewed, and `LucraAchievement` now declares `viewedAt`. It is safe to repeat and is not one of the one at a time changes. See [Reading data](3.0_headless_client.md#reading-data).
+
+### Changed
+
+- Docs: [Reading data](3.0_headless_client.md#reading-data) now says that `limit` must be 1 to 50 in `lucra.matchups.list()` and `lucra.matchups.listByTypeStatus()`, and that `offset` must be 0 or more in `lucra.matchups.listByTypeStatus()`.
+
 ## [v1.17.0]
 
 ### Added
