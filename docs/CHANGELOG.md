@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## [v1.18.0]
+
+### Changed
+
+- Docs: [Reading data](3.0_headless_client.md#reading-data) now says that `limit` must be 1 to 50 and `offset` 0 or more in `lucra.matchups.list()` and `lucra.matchups.listByTypeStatus()`.
+
 ## [v1.17.0]
 
 ### Added
