@@ -134,8 +134,9 @@ Check with `isLucraError(error)`.
   Funds button instead of calling it from a `catch`.
 - **`outcomeUnknown: true` means read back before retrying.** It is set on some failures of a
   write already sent to Lucra, such as a `TIMEOUT` or a `CONNECTION_RESET`. Branch on the flag,
-  not on `code`. Never retry it automatically: read the matchup, or ask the user. A second
-  create makes a second matchup with a second buy in. Reads never set it and are safe to repeat.
+  not on `code`. Never retry it automatically: read the matchup (or `claimedAt` after a claim),
+  or ask the user. A second create makes a second matchup with a second buy in. Reads never set
+  it and are safe to repeat.
 
 Every code: [Errors](../../3.0_headless_client.md#errors).
 

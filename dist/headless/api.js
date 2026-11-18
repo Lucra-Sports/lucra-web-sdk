@@ -20,9 +20,9 @@ const SPECS = {
     matchupsCancel: write(MessageTypeToLucraClient.cancelRecreationalGameRequest, LucraClientMessageType.cancelRecreationalGameResponse, true),
     achievementsList: read(MessageTypeToLucraClient.achievementsRequest, LucraClientMessageType.achievementsResponse),
     rewardsList: read(MessageTypeToLucraClient.userTournamentRewardsRequest, LucraClientMessageType.userTournamentRewardsResponse),
-    // Like a tournament join, a claim's API_ERROR is not treated as "unknown".
-    achievementsClaim: write(MessageTypeToLucraClient.claimAchievementRequest, LucraClientMessageType.claimAchievementResponse, false),
-    rewardsClaim: write(MessageTypeToLucraClient.claimTournamentRewardRequest, LucraClientMessageType.claimTournamentRewardResponse, false),
+    // For these two a plain API_ERROR may mean the claim still went through.
+    achievementsClaim: write(MessageTypeToLucraClient.claimAchievementRequest, LucraClientMessageType.claimAchievementResponse, true),
+    rewardsClaim: write(MessageTypeToLucraClient.claimTournamentRewardRequest, LucraClientMessageType.claimTournamentRewardResponse, true),
 };
 export function createApi(options) {
     const { session, auth, activity } = options;

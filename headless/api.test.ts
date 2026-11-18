@@ -379,7 +379,7 @@ describe("createApi: writes", () => {
     expect(error.outcomeUnknown).toBe(false);
   });
 
-  it("marks API_ERROR as outcome unknown on create, accept, cancel, but not on join, autoJoin, or a claim", async () => {
+  it("marks API_ERROR as outcome unknown on create, accept, cancel, and the claims, but not on join or autoJoin", async () => {
     const { frame, api } = setup();
     await connectLoggedIn(frame);
     const cases: [() => Promise<unknown>, string, string, boolean][] = [
@@ -388,8 +388,8 @@ describe("createApi: writes", () => {
       [() => api.matchups.cancel("m1"), "cancelRecreationalGameRequest", "apiRequestError", true],
       [() => api.tournaments.join("t1"), "joinTournamentRequest", "joinTournamentError", false],
       [() => api.tournaments.autoJoin(), "autoJoinTournamentsRequest", "autoJoinTournamentsError", false],
-      [() => api.rewards.claim("r1"), "claimTournamentRewardRequest", "apiRequestError", false],
-      [() => api.achievements.claim("a1"), "claimAchievementRequest", "apiRequestError", false],
+      [() => api.rewards.claim("r1"), "claimTournamentRewardRequest", "apiRequestError", true],
+      [() => api.achievements.claim("a1"), "claimAchievementRequest", "apiRequestError", true],
     ];
     for (const [call, requestType, errorType, unknown] of cases) {
       const pending = caught(call());

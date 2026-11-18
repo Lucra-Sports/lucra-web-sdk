@@ -120,16 +120,16 @@ const SPECS = {
     MessageTypeToLucraClient.userTournamentRewardsRequest,
     LucraClientMessageType.userTournamentRewardsResponse
   ),
-  // Like a tournament join, a claim's API_ERROR is not treated as "unknown".
+  // For these two a plain API_ERROR may mean the claim still went through.
   achievementsClaim: write<LucraClaimAchievementResult>(
     MessageTypeToLucraClient.claimAchievementRequest,
     LucraClientMessageType.claimAchievementResponse,
-    false
+    true
   ),
   rewardsClaim: write<LucraClaimTournamentRewardResult>(
     MessageTypeToLucraClient.claimTournamentRewardRequest,
     LucraClientMessageType.claimTournamentRewardResponse,
-    false
+    true
   ),
 };
 
