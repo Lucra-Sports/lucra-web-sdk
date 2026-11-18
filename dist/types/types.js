@@ -43,6 +43,7 @@ export var LucraClientMessageType;
     LucraClientMessageType["acceptRecreationalGameResponse"] = "acceptRecreationalGameResponse";
     LucraClientMessageType["cancelRecreationalGameResponse"] = "cancelRecreationalGameResponse";
     LucraClientMessageType["searchMatchupsByMetadataResponse"] = "searchMatchupsByMetadataResponse";
+    LucraClientMessageType["userTournamentRewardsResponse"] = "userTournamentRewardsResponse";
 })(LucraClientMessageType || (LucraClientMessageType = {}));
 export var MessageTypeToLucraClient;
 (function (MessageTypeToLucraClient) {
@@ -67,6 +68,7 @@ export var MessageTypeToLucraClient;
     MessageTypeToLucraClient["acceptRecreationalGameRequest"] = "acceptRecreationalGameRequest";
     MessageTypeToLucraClient["cancelRecreationalGameRequest"] = "cancelRecreationalGameRequest";
     MessageTypeToLucraClient["searchMatchupsByMetadataRequest"] = "searchMatchupsByMetadataRequest";
+    MessageTypeToLucraClient["userTournamentRewardsRequest"] = "userTournamentRewardsRequest";
     MessageTypeToLucraClient["sdkDiagnostic"] = "sdkDiagnostic";
 })(MessageTypeToLucraClient || (MessageTypeToLucraClient = {}));
 // Message the Lucra web app posts to the opener when a deposit finishes in a

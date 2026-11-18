@@ -17,6 +17,8 @@ import {
   type LucraTournamentLeaderboardResponse,
   type LucraTournamentResponse,
   type LucraTournamentsResponse,
+  type LucraUserTournamentReward,
+  type LucraUserTournamentRewardsResponse,
 } from "../types/types.js";
 import type { Auth } from "./auth.js";
 import { LucraError, LucraErrorCode } from "./errors.js";
@@ -97,6 +99,10 @@ const SPECS = {
     MessageTypeToLucraClient.achievementsRequest,
     LucraClientMessageType.achievementsResponse
   ),
+  rewardsList: read<LucraUserTournamentRewardsResponse>(
+    MessageTypeToLucraClient.userTournamentRewardsRequest,
+    LucraClientMessageType.userTournamentRewardsResponse
+  ),
 };
 
 export type Api = {
@@ -123,6 +129,13 @@ export type Api = {
   };
   achievements: {
     list(): Promise<LucraAchievement[]>;
+  };
+  rewards: {
+    list(filters?: {
+      tournamentId?: string;
+      viewed?: boolean;
+      claimed?: boolean;
+    }): Promise<LucraUserTournamentReward[]>;
   };
   // Resolves when no write is pending. Never rejects.
   whenWriteSettled(): Promise<void>;
@@ -209,6 +222,18 @@ export function createApi(options: {
     achievements: {
       list: () =>
         send(SPECS.achievementsList, null, true).then((r) => r.achievements),
+    },
+    rewards: {
+      list: (filters) =>
+        send(
+          SPECS.rewardsList,
+          {
+            matchupId: filters?.tournamentId,
+            viewed: filters?.viewed,
+            claimed: filters?.claimed,
+          },
+          true
+        ).then((r) => r.rewards),
     },
     whenWriteSettled: () => writeSettled ?? Promise.resolve(),
   };

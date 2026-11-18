@@ -50,6 +50,7 @@ export enum LucraClientMessageType {
   acceptRecreationalGameResponse = "acceptRecreationalGameResponse",
   cancelRecreationalGameResponse = "cancelRecreationalGameResponse",
   searchMatchupsByMetadataResponse = "searchMatchupsByMetadataResponse",
+  userTournamentRewardsResponse = "userTournamentRewardsResponse",
 }
 
 export enum MessageTypeToLucraClient {
@@ -74,6 +75,7 @@ export enum MessageTypeToLucraClient {
   acceptRecreationalGameRequest = "acceptRecreationalGameRequest",
   cancelRecreationalGameRequest = "cancelRecreationalGameRequest",
   searchMatchupsByMetadataRequest = "searchMatchupsByMetadataRequest",
+  userTournamentRewardsRequest = "userTournamentRewardsRequest",
   sdkDiagnostic = "sdkDiagnostic",
 }
 
@@ -402,6 +404,36 @@ export type LucraAchievement = {
 
 export type LucraAchievementsResponse = {
   achievements: LucraAchievement[];
+};
+
+// A reward the user won in a tournament. matchupId is the tournament it was won in.
+export type LucraUserTournamentReward = {
+  rewardId: string;
+  matchupId: string;
+  matchupTitle: string;
+  // 0 when the user did not place.
+  place: number;
+  viewedAt?: string | null;
+  claimedAt?: string | null;
+  reward: {
+    type: string;
+    title: string;
+    disclaimer?: string | null;
+    iconUrl?: string | null;
+    bannerIconUrl?: string | null;
+    config: unknown;
+  };
+};
+
+// Wire body of userTournamentRewardsRequest. matchupId is the tournament id.
+export type LucraUserTournamentRewardsInput = {
+  matchupId?: string;
+  viewed?: boolean;
+  claimed?: boolean;
+};
+
+export type LucraUserTournamentRewardsResponse = {
+  rewards: LucraUserTournamentReward[];
 };
 
 // ---------------------------------------------------------------------------

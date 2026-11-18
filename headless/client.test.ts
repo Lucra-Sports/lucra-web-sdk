@@ -63,12 +63,13 @@ describe("createClient", () => {
   it("exposes exactly the public surface", () => {
     const { client } = setup();
     expect(Object.keys(client).sort()).toEqual(
-      ["achievements", "auth", "destroy", "matchups", "on", "present", "tournaments", "whenConnected"]
+      ["achievements", "auth", "destroy", "matchups", "on", "present", "rewards", "tournaments", "whenConnected"]
     );
     expect(Object.keys(client.auth).sort()).toEqual(["getState", "isLoggedIn", "logout", "subscribe"]);
     expect(Object.keys(client.tournaments).sort()).toEqual(["autoJoin", "get", "join", "leaderboard", "list"]);
     expect(Object.keys(client.matchups).sort()).toEqual(["accept", "cancel", "create", "get", "getDetails", "searchByMetadata", "watch"]);
     expect(Object.keys(client.achievements)).toEqual(["list"]);
+    expect(Object.keys(client.rewards)).toEqual(["list"]);
     expect(Object.keys(client.present).sort()).toEqual(
       ["addFunds", "demographics", "dismiss", "kyc", "locationGrant", "login", "profile", "wallet", "withdraw"]
     );

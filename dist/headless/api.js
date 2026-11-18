@@ -17,6 +17,7 @@ const SPECS = {
     matchupsAccept: write(MessageTypeToLucraClient.acceptRecreationalGameRequest, LucraClientMessageType.acceptRecreationalGameResponse, true),
     matchupsCancel: write(MessageTypeToLucraClient.cancelRecreationalGameRequest, LucraClientMessageType.cancelRecreationalGameResponse, true),
     achievementsList: read(MessageTypeToLucraClient.achievementsRequest, LucraClientMessageType.achievementsResponse),
+    rewardsList: read(MessageTypeToLucraClient.userTournamentRewardsRequest, LucraClientMessageType.userTournamentRewardsResponse),
 };
 export function createApi(options) {
     const { session, auth, activity } = options;
@@ -69,6 +70,13 @@ export function createApi(options) {
         },
         achievements: {
             list: () => send(SPECS.achievementsList, null, true).then((r) => r.achievements),
+        },
+        rewards: {
+            list: (filters) => send(SPECS.rewardsList, {
+                matchupId: filters?.tournamentId,
+                viewed: filters?.viewed,
+                claimed: filters?.claimed,
+            }, true).then((r) => r.rewards),
         },
         whenWriteSettled: () => writeSettled ?? Promise.resolve(),
     };

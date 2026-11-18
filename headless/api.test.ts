@@ -94,6 +94,7 @@ describe("createApi: reads", () => {
       () => api.tournaments.leaderboard("t1"),
       () => api.achievements.list(),
       () => api.matchups.searchByMetadata({}),
+      () => api.rewards.list(),
     ]) {
       const error = await caught(call());
       expect(error.code).toBe("NOT_LOGGED_IN");
@@ -103,6 +104,7 @@ describe("createApi: reads", () => {
     expect(count(frame, "tournamentLeaderboardRequest")).toBe(0);
     expect(count(frame, "achievementsRequest")).toBe(0);
     expect(count(frame, "searchMatchupsByMetadataRequest")).toBe(0);
+    expect(count(frame, "userTournamentRewardsRequest")).toBe(0);
   });
 
   it("holds a read that needs login until loginSuccess, not just a yes", async () => {
@@ -175,6 +177,31 @@ describe("createApi: reads", () => {
       matchupIds: ["m1", "m2"],
     });
     expect(await search).toEqual(["m1", "m2"]);
+  });
+
+  it("lists rewards, sending tournamentId as matchupId", async () => {
+    const { frame, api } = setup();
+    await connectLoggedIn(frame);
+    const filtered = api.rewards.list({ tournamentId: "t1", viewed: false, claimed: true });
+    await tick();
+    expect(frame.lastPosted("userTournamentRewardsRequest")?.body).toEqual({
+      matchupId: "t1",
+      viewed: false,
+      claimed: true,
+    });
+    frame.answer("userTournamentRewardsRequest", "userTournamentRewardsResponse", {
+      rewards: [{ rewardId: "r1" }],
+    });
+    expect<unknown>(await filtered).toEqual([{ rewardId: "r1" }]);
+    const all = api.rewards.list();
+    await tick();
+    expect(frame.lastPosted("userTournamentRewardsRequest")?.body).toEqual({
+      matchupId: undefined,
+      viewed: undefined,
+      claimed: undefined,
+    });
+    frame.answer("userTournamentRewardsRequest", "userTournamentRewardsResponse", { rewards: [] });
+    expect(await all).toEqual([]);
   });
 
   it("rejects with CONNECTION_FAILED when Lucra refuses the config", async () => {

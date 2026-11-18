@@ -1,4 +1,4 @@
-import { type LucraAchievement, type LucraAutoJoinedTournamentsBody, type LucraCancelRecreationalGameResult, type LucraCreateRecreationalGameInput, type LucraJoinTournamentResponse, type LucraMatchup, type LucraMatchupDetails, type LucraRecreationalGameResult, type LucraSearchMatchupsByMetadataInput, type LucraTournament, type LucraTournamentDetail } from "../types/types.js";
+import { type LucraAchievement, type LucraAutoJoinedTournamentsBody, type LucraCancelRecreationalGameResult, type LucraCreateRecreationalGameInput, type LucraJoinTournamentResponse, type LucraMatchup, type LucraMatchupDetails, type LucraRecreationalGameResult, type LucraSearchMatchupsByMetadataInput, type LucraTournament, type LucraTournamentDetail, type LucraUserTournamentReward } from "../types/types.js";
 import type { Auth } from "./auth.js";
 import type { Session } from "./session.js";
 export type Activity = {
@@ -27,6 +27,13 @@ export type Api = {
     };
     achievements: {
         list(): Promise<LucraAchievement[]>;
+    };
+    rewards: {
+        list(filters?: {
+            tournamentId?: string;
+            viewed?: boolean;
+            claimed?: boolean;
+        }): Promise<LucraUserTournamentReward[]>;
     };
     whenWriteSettled(): Promise<void>;
 };
