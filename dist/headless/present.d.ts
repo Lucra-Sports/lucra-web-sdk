@@ -18,6 +18,7 @@ export type Present = {
     dismiss(): void;
     destroy(): void;
 };
+export type LucraScreen = Exclude<keyof Present, "addFunds" | "dismiss" | "destroy">;
 export declare function createPresent(options: {
     session: Session;
     auth: Auth;

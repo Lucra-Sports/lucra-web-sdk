@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, spyOn } from "bun:test";
 import { createApi, type Activity } from "./api.ts";
 import { createAuth } from "./auth.ts";
 import { LucraError } from "./errors.ts";
-import { createPresent } from "./present.ts";
+import { createPresent, type LucraScreen } from "./present.ts";
 import { DEFAULT_TIMEOUTS, createSession, type Timeouts } from "./session.ts";
 import { createFakeFrame, type FakeFrame } from "./testing.ts";
 import { HOME_PATH, buildUrl } from "./url.ts";
@@ -441,5 +441,34 @@ describe("createPresent: destroy", () => {
     expect((await caught(present.kyc())).code).toBe("DESTROYED");
     expect((await caught(present.login())).code).toBe("DESTROYED");
     expect((await caught(present.addFunds())).code).toBe("DESTROYED");
+  });
+});
+
+describe("LucraScreen", () => {
+  // A Record, so a screen missing here or a name that is not one fails to compile.
+  const SCREENS: Record<LucraScreen, true> = {
+    login: true,
+    demographics: true,
+    kyc: true,
+    locationGrant: true,
+    withdraw: true,
+    profile: true,
+    wallet: true,
+  };
+
+  it("names every present call that shows in the page", () => {
+    const { present } = setup();
+    const notScreens = ["addFunds", "dismiss", "destroy"];
+    const screens = Object.keys(present).filter((key) => !notScreens.includes(key));
+    expect(Object.keys(SCREENS).sort()).toEqual(screens.sort());
+  });
+
+  it("calls each screen through present[screen]()", async () => {
+    for (const screen of Object.keys(SCREENS) as LucraScreen[]) {
+      const { present } = setup();
+      const shown = present[screen]();
+      present.dismiss();
+      expect(await shown).toEqual({ status: "dismissed" });
+    }
   });
 });

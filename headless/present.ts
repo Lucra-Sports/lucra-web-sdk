@@ -30,6 +30,9 @@ export type Present = {
   destroy(): void;
 };
 
+// The lucra.present screens that show in the page. Add Funds opens its own window.
+export type LucraScreen = Exclude<keyof Present, "addFunds" | "dismiss" | "destroy">;
+
 type Dismissed = { status: "dismissed" };
 
 type Screen<TResult> = {

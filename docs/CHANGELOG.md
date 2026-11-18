@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## [v1.19.0]
+
+### Added
+
+- **Preview:** the type `LucraScreen` from `lucra-web-sdk/headless` names the `lucra.present` screens that show in the page: every one except `addFunds`. `lucra.present[screen]()` type checks for any `screen` of this type. See [Showing a Lucra screen](3.0_headless_client.md#showing-a-lucra-screen).
+
 ## [v1.18.0]
 
 ### Added
