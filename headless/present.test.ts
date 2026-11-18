@@ -1,10 +1,11 @@
-import { describe, it, expect, beforeEach, afterEach, spyOn } from "bun:test";
+import { describe, it, expect, beforeEach, afterEach, mock, spyOn } from "bun:test";
 import { createApi, type Activity } from "./api.ts";
 import { createAuth } from "./auth.ts";
 import { LucraError } from "./errors.ts";
 import { createPresent, type LucraScreen } from "./present.ts";
 import { DEFAULT_TIMEOUTS, createSession, type Timeouts } from "./session.ts";
 import { createFakeFrame, type FakeFrame } from "./testing.ts";
+import type { LucraDismissReason } from "./types.ts";
 import { HOME_PATH, buildUrl } from "./url.ts";
 
 const urls = {
@@ -453,7 +454,7 @@ describe("createPresent: destroy", () => {
 });
 
 describe("createPresent: why a screen was dismissed", () => {
-  const dismissed = (reason: string) => ({ status: "dismissed", reason });
+  const dismissed = (reason: LucraDismissReason) => ({ status: "dismissed" as const, reason });
 
   it("exit: the user used Lucra's exit control", async () => {
     const { frame, present } = setup();
@@ -632,6 +633,186 @@ describe("createPresent: signal", () => {
   });
 });
 
+describe("createPresent: state", () => {
+  const screenOf = (present: { getState(): { screen: unknown } }) => present.getState().screen;
+
+  it("is null at first, and stays null while a screen waits to show", async () => {
+    const { frame, present } = setup();
+    expect(present.getState()).toEqual({ screen: null });
+    const shown = present.profile();
+    expect(screenOf(present)).toBeNull();
+    frame.deliver("initialized", { success: true });
+    await tick();
+    // Connected, but still waiting to hear who is logged in.
+    expect(screenOf(present)).toBeNull();
+    frame.answer("isLoggedInRequest", "isLoggedInResponse", { isLoggedIn: true });
+    frame.deliver("loginSuccess", USER);
+    await tick();
+    expect(frame.overlayOpen).toBe(true);
+    expect(screenOf(present)).toBe("profile");
+    present.dismiss();
+    await shown;
+    expect(screenOf(present)).toBeNull();
+  });
+
+  it("stays null while a screen waits for a pending write", async () => {
+    const { frame, api, present } = setup();
+    await connectLoggedIn(frame);
+    const join = api.tournaments.join("t1");
+    await tick();
+    const shown = present.kyc();
+    await tick();
+    expect(screenOf(present)).toBeNull();
+    frame.answer("joinTournamentRequest", "joinTournamentResponse", { matchupId: "t1" });
+    await join;
+    await tick();
+    expect(screenOf(present)).toBe("kyc");
+    present.dismiss();
+    await shown;
+  });
+
+  it("names each screen while it shows", async () => {
+    for (const screen of ["demographics", "kyc", "locationGrant", "withdraw", "profile", "wallet"] as const) {
+      const { frame, present } = setup();
+      await connectLoggedIn(frame);
+      const shown = present[screen]();
+      await tick();
+      expect(screenOf(present)).toBe(screen);
+      present.dismiss();
+      await shown;
+    }
+    const { frame, present } = setup();
+    await connectLoggedOut(frame);
+    const login = present.login();
+    await tick();
+    expect(screenOf(present)).toBe("login");
+    frame.deliver("loginSuccess", USER);
+    await login;
+    expect(screenOf(present)).toBeNull();
+  });
+
+  it("goes back to null on exit, dismiss, abort, a logout inside, and destroy", async () => {
+    const closers: [string, (frame: FakeFrame, present: ReturnType<typeof setup>["present"], abort: () => void) => void][] = [
+      ["exit", (frame) => frame.deliver("exitLucra", true)],
+      ["dismiss", (_frame, present) => present.dismiss()],
+      ["abort", (_frame, _present, abort) => abort()],
+      ["loggedOut", (frame) => frame.deliver("logoutComplete", null)],
+      ["destroy", (_frame, present) => present.destroy()],
+    ];
+    for (const [, close] of closers) {
+      const { frame, present } = setup();
+      await connectLoggedIn(frame);
+      const controller = new AbortController();
+      const shown = present.wallet({ signal: controller.signal });
+      await tick();
+      expect(screenOf(present)).toBe("wallet");
+      close(frame, present, () => controller.abort());
+      await shown;
+      expect(present.getState()).toEqual({ screen: null });
+    }
+  });
+
+  it("never reports Add Funds", async () => {
+    const { frame, present } = setup();
+    await connectLoggedIn(frame);
+    const changes: unknown[] = [];
+    present.subscribe((state) => changes.push(state.screen));
+    present.addFunds().catch(() => {});
+    expect(frame.popups.length).toBe(1);
+    expect(changes).toEqual([null]);
+  });
+
+  it("hides the first screen, then shows the one that replaced it", async () => {
+    const { frame, present } = setup();
+    await connectLoggedIn(frame);
+    const changes: unknown[] = [];
+    present.subscribe((state) => changes.push(state.screen));
+    const first = present.profile();
+    await tick();
+    const second = present.wallet();
+    // The first screen hides as soon as it is replaced. The second shows once
+    // its own waits are over.
+    expect(changes).toEqual([null, "profile", null]);
+    expect(await first).toEqual({ status: "dismissed", reason: "replaced" });
+    // With nothing to wait for, the second shows within the same task.
+    for (let i = 0; i < 10; i += 1) await Promise.resolve();
+    expect(changes).toEqual([null, "profile", null, "wallet"]);
+    frame.deliver("exitLucra", true);
+    await second;
+    expect(changes).toEqual([null, "profile", null, "wallet", null]);
+  });
+
+  it("calls a listener now, then once per change, and not after unsubscribe", async () => {
+    const { frame, present } = setup();
+    await connectLoggedIn(frame);
+    const listener = mock((_state: unknown) => {});
+    const stop = present.subscribe(listener);
+    expect(listener).toHaveBeenCalledTimes(1);
+    expect(listener).toHaveBeenLastCalledWith({ screen: null });
+    const shown = present.wallet();
+    await tick();
+    expect(listener).toHaveBeenCalledTimes(2);
+    expect(listener).toHaveBeenLastCalledWith({ screen: "wallet" });
+    // Lucra restarting does not change what is on show.
+    frame.deliver("initialized", { success: true });
+    expect(listener).toHaveBeenCalledTimes(2);
+    stop();
+    present.dismiss();
+    await shown;
+    expect(listener).toHaveBeenCalledTimes(2);
+    expect(present.getState()).toEqual({ screen: null });
+  });
+
+  it("returns the same object until the state changes", async () => {
+    const { frame, present } = setup();
+    await connectLoggedIn(frame);
+    const before = present.getState();
+    expect(present.getState()).toBe(before);
+    const shown = present.wallet();
+    expect(present.getState()).toBe(before);
+    await tick();
+    const during = present.getState();
+    expect(during).not.toBe(before);
+    expect(present.getState()).toBe(during);
+    present.dismiss();
+    await shown;
+    expect(present.getState()).not.toBe(during);
+  });
+
+  it("keeps a listener that throws from stopping the others", async () => {
+    const { frame, present } = setup();
+    await connectLoggedIn(frame);
+    const error = spyOn(console, "error").mockImplementation(() => {});
+    present.subscribe(() => {
+      throw new Error("boom");
+    });
+    const other = mock((_state: unknown) => {});
+    present.subscribe(other);
+    const shown = present.wallet();
+    await tick();
+    expect(other).toHaveBeenLastCalledWith({ screen: "wallet" });
+    present.dismiss();
+    await shown;
+    error.mockRestore();
+  });
+
+  it("reports null to listeners on destroy, then stops calling them", async () => {
+    const { frame, present } = setup();
+    await connectLoggedIn(frame);
+    const listener = mock((_state: unknown) => {});
+    present.subscribe(listener);
+    const shown = present.wallet();
+    await tick();
+    present.destroy();
+    await shown;
+    expect(listener).toHaveBeenLastCalledWith({ screen: null });
+    const calls = listener.mock.calls.length;
+    present.subscribe(listener);
+    expect(listener).toHaveBeenCalledTimes(calls + 1);
+    expect(present.getState()).toEqual({ screen: null });
+  });
+});
+
 describe("LucraScreen", () => {
   // A Record, so a screen missing here or a name that is not one fails to compile.
   const SCREENS: Record<LucraScreen, true> = {
@@ -646,7 +827,7 @@ describe("LucraScreen", () => {
 
   it("names every present call that shows in the page", () => {
     const { present } = setup();
-    const notScreens = ["addFunds", "dismiss", "destroy"];
+    const notScreens = ["addFunds", "dismiss", "getState", "subscribe", "destroy"];
     const screens = Object.keys(present).filter((key) => !notScreens.includes(key));
     expect(Object.keys(SCREENS).sort()).toEqual(screens.sort());
   });

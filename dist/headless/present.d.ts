@@ -14,9 +14,14 @@ export type Present = {
     profile(options?: LucraPresentOptions): Promise<LucraPresentResult>;
     wallet(options?: LucraPresentOptions): Promise<LucraPresentResult>;
     dismiss(): void;
+    getState(): LucraPresentState;
+    subscribe(listener: (state: LucraPresentState) => void): () => void;
     destroy(): void;
 };
-export type LucraScreen = Exclude<keyof Present, "addFunds" | "dismiss" | "destroy">;
+export type LucraScreen = Exclude<keyof Present, "addFunds" | "dismiss" | "getState" | "subscribe" | "destroy">;
+export type LucraPresentState = {
+    readonly screen: LucraScreen | null;
+};
 export declare function createPresent(options: {
     session: Session;
     auth: Auth;

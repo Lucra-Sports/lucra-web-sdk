@@ -114,6 +114,8 @@ export function createClient(
       profile: present.profile,
       wallet: present.wallet,
       dismiss: present.dismiss,
+      getState: present.getState,
+      subscribe: present.subscribe,
     },
     on: events.on,
     whenConnected: session.whenConnected,

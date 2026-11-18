@@ -166,6 +166,12 @@ Every code: [Errors](../../3.0_headless_client.md#errors).
   the client and stay there: removed, calls time out and an open screen keeps waiting; moved,
   Lucra reloads and an open screen is not shown again. Call `lucra.destroy()` before you remove
   it.
+- **Show your own wrapper from state, not by wrapping calls.** `lucra.present.getState()` returns
+  `{ screen }`, the `LucraScreen` on show or `null`, and `lucra.present.subscribe(listener)`
+  calls the listener now and on every change. They behave like `lucra.auth.getState()` and
+  `subscribe()`. `screen` is set only while a screen is on show: not while it waits to connect,
+  for a login, or for a write, and never for Add Funds. A replacement goes to `null` and then to
+  the new screen, in the same task when nothing has to wait. Do not count open screens.
 - **The SDK draws no close control.** A screen ends with Lucra's own exit control,
   `lucra.present.dismiss()`, another `present.*` call other than `addFunds()` replacing it, the
   user logging out inside it, `lucra.destroy()`, its own `signal` being aborted, or by
@@ -241,6 +247,12 @@ their calls are `LucraClient` calls.
   `useSyncExternalStore(subscribeAuth, getAuth, getAuth)`, where the third argument serves server
   rendering and hydration. Keep the wrappers: `subscribe` and `getState` are typed as methods,
   so the `@typescript-eslint/unbound-method` lint rule flags passing them bare.
+- **Read the screen on show the same way**, with module scope wrappers around
+  `lucra.present.subscribe` and `lucra.present.getState`. Show your wrapper while `screen` is not
+  `null`.
+- **Tie a screen to a component with `signal`**: create an `AbortController` in the effect that
+  calls `lucra.present.*`, and abort it in the cleanup. Never call `lucra.present.dismiss()` from
+  a cleanup: it closes whatever screen shows, even one opened since.
 - **Where to create the client.** Without a container, at module scope. With one, once the
   element is in the page, for example in a `useLayoutEffect` that reads `ref.current`. Never
   during render. Keep the client in a ref, and in that effect's cleanup call `destroy()` and set

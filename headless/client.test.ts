@@ -71,7 +71,7 @@ describe("createClient", () => {
     expect(Object.keys(client.achievements).sort()).toEqual(["claim", "list", "markViewed"]);
     expect(Object.keys(client.rewards).sort()).toEqual(["claim", "list"]);
     expect(Object.keys(client.present).sort()).toEqual(
-      ["addFunds", "demographics", "dismiss", "kyc", "locationGrant", "login", "profile", "wallet", "withdraw"]
+      ["addFunds", "demographics", "dismiss", "getState", "kyc", "locationGrant", "login", "profile", "subscribe", "wallet", "withdraw"]
     );
   });
 

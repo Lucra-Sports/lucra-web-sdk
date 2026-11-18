@@ -1,5 +1,6 @@
 import { LUCRA_POPUP_MESSAGE_TYPE, LucraClientMessageType, MessageTypeToLucraClient, } from "../types/types.js";
 import { LucraError, LucraErrorCode, isLucraError } from "./errors.js";
+import { createEmitter } from "./events.js";
 import { HOME_PATH, buildUrl, navigateTarget } from "./url.js";
 const PHONE_NUMBER = /^[0-9]{10}$/;
 export function createPresent(options) {
@@ -9,6 +10,17 @@ export function createPresent(options) {
     // The Add Funds window, while it is open.
     let popup = null;
     let destroyed = false;
+    let state = { screen: null };
+    const changes = createEmitter();
+    // The call whose screen is on show. Only it can take the state back to null.
+    let shown = null;
+    const setShown = (owner, screen) => {
+        shown = owner;
+        if (state.screen === screen)
+            return;
+        state = { screen };
+        changes.emit("change", state);
+    };
     const navigate = (path) => session.post(MessageTypeToLucraClient.navigate, {
         pathname: navigateTarget(urls, path),
     });
@@ -39,6 +51,8 @@ export function createPresent(options) {
                 }
                 if (overlay) {
                     overlay.close();
+                    if (shown === handle)
+                        setShown(null, null);
                     if (screen.goHomeAfter && session.status() === "connected") {
                         navigate(HOME_PATH);
                     }
@@ -74,6 +88,7 @@ export function createPresent(options) {
                 if (done)
                     return;
                 overlay = frame.openOverlay();
+                setShown(handle, screen.name);
                 // The SDK draws no exit. The user leaves with Lucra's own control.
                 cleanups.push(session.on(LucraClientMessageType.exitLucra, () => handle.dismiss("exit")));
                 if (screen.needsLogin) {
@@ -101,7 +116,8 @@ export function createPresent(options) {
             })().catch((error) => finish({ error }));
         });
     };
-    const page = (path, completeOn) => (pageOptions) => present({
+    const page = (name, path, completeOn) => (pageOptions) => present({
+        name,
         needsLogin: true,
         show: () => navigate(path),
         completeOn,
@@ -124,6 +140,7 @@ export function createPresent(options) {
                 }));
             }
             return present({
+                name: "login",
                 needsLogin: false,
                 // Already logged in: there is nothing to show.
                 skip: async () => {
@@ -200,22 +217,35 @@ export function createPresent(options) {
             popup = handle;
             return result;
         },
-        demographics: page("app/demographicform", LucraClientMessageType.demographicComplete),
-        kyc: page("app/kyc", LucraClientMessageType.kycComplete),
-        locationGrant: page("app/location-grant", LucraClientMessageType.locationGranted),
-        withdraw: page("app/withdraw-funds"),
-        profile: page("app/profile"),
-        wallet: page("app/wallet"),
+        demographics: page("demographics", "app/demographicform", LucraClientMessageType.demographicComplete),
+        kyc: page("kyc", "app/kyc", LucraClientMessageType.kycComplete),
+        locationGrant: page("locationGrant", "app/location-grant", LucraClientMessageType.locationGranted),
+        withdraw: page("withdraw", "app/withdraw-funds"),
+        profile: page("profile", "app/profile"),
+        wallet: page("wallet", "app/wallet"),
         dismiss() {
             current?.dismiss("dismissed");
+        },
+        getState: () => state,
+        subscribe(listener) {
+            const unsubscribe = changes.on("change", listener);
+            try {
+                listener(state);
+            }
+            catch (e) {
+                console.error("Lucra present listener threw an error", e);
+            }
+            return unsubscribe;
         },
         destroy() {
             if (destroyed)
                 return;
             destroyed = true;
+            // Closing the screen on show takes the state back to null first.
             current?.dismiss("destroyed");
             popup?.close();
             unsubscribePopup();
+            changes.clear();
         },
     };
 }
