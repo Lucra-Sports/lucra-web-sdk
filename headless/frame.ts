@@ -1,9 +1,5 @@
-import type { LucraPopupHandle } from "../popup.js";
-import {
-  LUCRA_POPUP_MESSAGE_TYPE,
-  type LucraPopupResult,
-  type MessageTypeToLucraClient,
-} from "../types/types.js";
+import { openPopupWindow, trackPopup, type LucraPopupHandle } from "../popup.js";
+import { LUCRA_POPUP_MESSAGE_TYPE, type MessageTypeToLucraClient } from "../types/types.js";
 
 // A message the SDK sends to the Lucra app.
 export type OutboundMessage = {
@@ -21,8 +17,9 @@ export type InboundMessage = {
 
 export type Overlay = { close(): void };
 
-// An open popup window. `focus` brings it in front of the page.
-export type Popup = LucraPopupHandle & { focus(): void };
+// An open popup window. `focus` brings it in front of the page and returns
+// true. When the window is already closed, it closes the handle and returns false.
+export type Popup = LucraPopupHandle & { focus(): boolean };
 
 // Everything the client needs from the page. This file implements it with the
 // DOM. Tests use the fake in testing.ts. No other file may touch the DOM.
@@ -79,65 +76,6 @@ const OVERLAY_CSS =
 const CONTAINED_CSS = "display:block;width:100%;height:100%;";
 // Block, so an inline frame's baseline gap cannot overflow the container.
 const IFRAME_CSS = "display:block;flex:1 1 auto;width:100%;height:100%;border:0;";
-// The same window name and size the existing client's popup uses.
-const POPUP_NAME = "lucrasports:deposit:popup";
-const POPUP_WIDTH = 430;
-const POPUP_HEIGHT = 800;
-const POPUP_POLL_MS = 500;
-
-// Opens `url` in a centered popup window. The same as the existing client's
-// popup, plus focus(), which needs the window itself.
-export function openPopupWindow(url: string, pollMs = POPUP_POLL_MS): Popup {
-  const left = window.screenX + (window.innerWidth - POPUP_WIDTH) / 2;
-  const top = window.screenY + (window.innerHeight - POPUP_HEIGHT) / 2;
-  const win = window.open(
-    url,
-    POPUP_NAME,
-    `left=${left},top=${top},width=${POPUP_WIDTH},height=${POPUP_HEIGHT},resizable,scrollbars=yes,status=1`
-  );
-  // The browser blocks a popup that does not come from a click.
-  if (!win) throw new Error("The browser blocked the popup");
-
-  const callbacks = new Set<(result?: LucraPopupResult) => void>();
-  let closed = false;
-  let result: LucraPopupResult | undefined;
-  // Covers the user closing the window, and Lucra closing it after a deposit.
-  const timer = setInterval(() => {
-    if (win.closed) popup.close();
-  }, pollMs);
-
-  const popup: Popup = {
-    close() {
-      if (closed) return;
-      closed = true;
-      clearInterval(timer);
-      try {
-        win.close();
-      } catch {
-        // Already gone.
-      }
-      for (const callback of callbacks) callback(result);
-      callbacks.clear();
-    },
-    onClose(callback) {
-      callbacks.add(callback);
-    },
-    resolve(value) {
-      result = value;
-      popup.close();
-    },
-    focus() {
-      if (closed) return;
-      try {
-        win.focus();
-      } catch {
-        // Some browsers refuse. The window stays open either way.
-      }
-    },
-  };
-  return popup;
-}
-
 // With a container, the frame lives and shows there. Without one, it lives in
 // the body and shows full screen.
 export function createDomFrame(origin: string, container?: HTMLElement): Frame {
@@ -257,7 +195,24 @@ export function createDomFrame(origin: string, container?: HTMLElement): Frame {
     },
 
     openPopup(url) {
-      return openPopupWindow(url);
+      const win = openPopupWindow(url);
+      const popup = trackPopup(win);
+      return {
+        ...popup,
+        focus() {
+          // The user may have closed it since the last poll.
+          if (win.closed) {
+            popup.close();
+            return false;
+          }
+          try {
+            win.focus();
+          } catch {
+            // Some browsers refuse. The window stays open either way.
+          }
+          return true;
+        },
+      };
     },
 
     destroy() {

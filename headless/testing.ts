@@ -6,6 +6,8 @@ export type FakePopup = {
   closed: boolean;
   // How many times the window was brought to the front.
   focused: number;
+  // The user closed the window, and the poll has not noticed yet.
+  windowClosed: boolean;
   // The user closed the popup window by hand.
   userClose(): void;
 };
@@ -80,6 +82,7 @@ export function createFakeFrame(): FakeFrame {
         url,
         closed: false,
         focused: 0,
+        windowClosed: false,
         userClose() {
           handle.close();
         },
@@ -99,7 +102,12 @@ export function createFakeFrame(): FakeFrame {
           handle.close();
         },
         focus() {
-          if (!record.closed) record.focused += 1;
+          if (record.closed || record.windowClosed) {
+            handle.close();
+            return false;
+          }
+          record.focused += 1;
+          return true;
         },
       };
       frame.popups.push(record);

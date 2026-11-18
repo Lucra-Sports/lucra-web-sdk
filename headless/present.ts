@@ -81,11 +81,8 @@ export function createPresent(options: {
   let destroyed = false;
   let state: LucraPresentState = { screen: null };
   const changes = createEmitter<{ change: LucraPresentState }>();
-  // The call whose screen is on show. Only it can take the state back to null.
-  let shown: object | null = null;
 
-  const setShown = (owner: object | null, screen: LucraScreen | null) => {
-    shown = owner;
+  const setScreen = (screen: LucraScreen | null) => {
     if (state.screen === screen) return;
     state = { screen };
     changes.emit("change", state);
@@ -101,6 +98,19 @@ export function createPresent(options: {
     signal: AbortSignal | undefined
   ): Promise<TResult | Dismissed> => {
     if (destroyed) return Promise.reject(new LucraError(LucraErrorCode.DESTROYED));
+    // Checked before anything changes, so a bad value cannot leave a screen
+    // marked open. Not instanceof: the signal can come from another window.
+    if (
+      signal != null &&
+      (typeof signal.addEventListener !== "function" ||
+        typeof signal.removeEventListener !== "function")
+    ) {
+      return Promise.reject(
+        new LucraError(LucraErrorCode.INVALID_ARGUMENT, undefined, {
+          hint: "signal must be an AbortSignal.",
+        })
+      );
+    }
     // Aborted already: show nothing, and leave any screen on show alone.
     if (signal?.aborted) {
       return Promise.resolve({ status: "dismissed", reason: "aborted" });
@@ -127,7 +137,7 @@ export function createPresent(options: {
         }
         if (overlay) {
           overlay.close();
-          if (shown === handle) setShown(null, null);
+          setScreen(null);
           if (screen.goHomeAfter && session.status() === "connected") {
             navigate(HOME_PATH);
           }
@@ -164,7 +174,9 @@ export function createPresent(options: {
         if (done) return;
 
         overlay = frame.openOverlay();
-        setShown(handle, screen.name);
+        setScreen(screen.name);
+        // A listener told about the screen may have closed it already.
+        if (done) return;
         // The SDK draws no exit. The user leaves with Lucra's own control.
         cleanups.push(
           session.on(LucraClientMessageType.exitLucra, () => handle.dismiss("exit"))
@@ -234,7 +246,7 @@ export function createPresent(options: {
       const phoneNumber = loginOptions?.phoneNumber;
       if (phoneNumber !== undefined && !PHONE_NUMBER.test(phoneNumber)) {
         return Promise.reject(
-          new LucraError(LucraErrorCode.INVALID_ARGUMENT, undefined, {
+          new LucraError(LucraErrorCode.INVALID_ARGUMENT, "The phone number must be 10 digits", {
             hint: "phoneNumber must be exactly 10 digits. Omit it when you have none.",
           })
         );
@@ -290,11 +302,10 @@ export function createPresent(options: {
       }
       // The window is already open. Bring it forward instead of opening another:
       // closing it and opening another right away can hand back the window that
-      // is closing. The first call alone reports the deposit.
-      if (popup) {
-        popup.focus();
-        return Promise.resolve({ status: "alreadyOpen" });
-      }
+      // is closing. The first call alone reports the deposit. A window the user
+      // closed since the last poll is not open: focus() closes its handle, which
+      // ends the first call, and a new window opens below.
+      if (popup?.focus()) return Promise.resolve({ status: "alreadyOpen" });
       let handle: Popup;
       try {
         handle = frame.openPopup(buildUrl(urls, "app/add-funds"));
@@ -340,7 +351,9 @@ export function createPresent(options: {
     getState: () => state,
 
     subscribe(listener) {
-      const unsubscribe = changes.on("change", listener);
+      // Always the current state: a listener can change it while others are
+      // still being told about the change before.
+      const unsubscribe = changes.on("change", () => listener(state));
       try {
         listener(state);
       } catch (e) {

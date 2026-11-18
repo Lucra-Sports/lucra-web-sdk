@@ -1,6 +1,6 @@
 import { createApi } from "./api.js";
 import { createAuth } from "./auth.js";
-import { LucraError, LucraErrorCode } from "./errors.js";
+import { LucraError, LucraErrorCode, isLucraError } from "./errors.js";
 import { createEmitter } from "./events.js";
 import { createDomFrame, createNullFrame, hasDom, pageOrigin, } from "./frame.js";
 import { createPresent } from "./present.js";
@@ -86,6 +86,19 @@ export function createClient(config, deps) {
 // The one live client on this page, and the config it was made with.
 let live = null;
 export function createLucraClient(config) {
+    try {
+        return createLiveClient(config);
+    }
+    catch (error) {
+        // `message` is written for users, so an uncaught error would say nothing
+        // useful in the console. The hint says why. Hints hold no config values.
+        if (isLucraError(error) && error.hint) {
+            console.error(`Lucra ${error.code}: ${error.hint}`);
+        }
+        throw error;
+    }
+}
+function createLiveClient(config) {
     if (!config || !config.apiKey || !config.tenantId || !config.env) {
         throw new LucraError(LucraErrorCode.INVALID_CONFIG, undefined, {
             hint: "apiKey, tenantId, and env are required.",

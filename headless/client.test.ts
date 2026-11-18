@@ -197,6 +197,35 @@ describe("createClient", () => {
 });
 
 describe("createLucraClient", () => {
+  // createLucraClient logs why it threw. Kept quiet here, and checked below.
+  let error: ReturnType<typeof spyOn>;
+  beforeEach(() => {
+    error = spyOn(console, "error").mockImplementation(() => {});
+  });
+  afterEach(() => {
+    error.mockRestore();
+  });
+
+  it("logs the code and the hint once when it throws, then throws the same error", () => {
+    let thrownError: unknown = null;
+    try {
+      createLucraClient({ ...config, apiKey: "" });
+    } catch (e) {
+      thrownError = e;
+    }
+    expect(thrownError).toBeInstanceOf(LucraError);
+    expect((thrownError as LucraError).message).toBe("Something went wrong");
+    expect(error).toHaveBeenCalledTimes(1);
+    expect(error).toHaveBeenCalledWith(
+      "Lucra INVALID_CONFIG: apiKey, tenantId, and env are required."
+    );
+  });
+
+  it("logs nothing when it makes a client", () => {
+    createLucraClient(config).destroy();
+    expect(error).toHaveBeenCalledTimes(0);
+  });
+
   it("throws INVALID_CONFIG when apiKey, tenantId, or env is missing", () => {
     for (const bad of [
       { ...config, apiKey: "" },

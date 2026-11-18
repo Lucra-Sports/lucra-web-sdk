@@ -179,7 +179,9 @@ export function createAuth(options) {
     return {
         getState: () => state,
         subscribe(listener) {
-            const unsubscribe = changes.on("change", listener);
+            // Always the current state: a listener can change it while others are
+            // still being told about the change before.
+            const unsubscribe = changes.on("change", () => listener(state));
             try {
                 listener(state);
             }

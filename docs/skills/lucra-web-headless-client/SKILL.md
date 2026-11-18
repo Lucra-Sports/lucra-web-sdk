@@ -128,10 +128,11 @@ Writes are what the guide calls changes
 
 Check with `isLucraError(error)`.
 
-- **`message` is safe to show the user.** `source` says who raised the error: `"lucra"` when
-  Lucra reported it for the call, and `message` is then Lucra's own text, or `"sdk"` when the SDK
-  raised it (timeouts, connection problems, `NOT_LOGGED_IN`, `IN_PROGRESS`, `SCREEN_OPEN`, and
-  so on). `hint` is guidance for the developer: log it, never show it. It is always `null` for
+- **`message` is for the user.** `source` says who raised the error: `"sdk"` when the SDK raised
+  it (timeouts, connection problems, `NOT_LOGGED_IN`, `IN_PROGRESS`, `SCREEN_OPEN`, and so on),
+  and its `message` is written for end users; `"lucra"` when Lucra reported it for the call, and
+  `message` is then Lucra's own text. `API_ERROR` is a catch-all, so its text can be technical.
+  `hint` is guidance for the developer: log it, never show it. It is always `null` for
   `source: "lucra"`.
 
 - **`remediation`** names the screen to show. Try the call again once if it resolves
@@ -182,9 +183,11 @@ Every code: [Errors](../../3.0_headless_client.md#errors).
   `{ signal?: AbortSignal }`. Abort it in that route's or component's cleanup: it closes only the
   screen that call opened, and does nothing once the call has finished or another screen
   replaced it. `lucra.present.dismiss()` closes whatever screen shows, so it is wrong for that
-  cleanup. A signal aborted already resolves `"aborted"` at once and shows nothing.
+  cleanup. A signal aborted already resolves `"aborted"` at once and shows nothing. A value
+  that is not an `AbortSignal` rejects with `INVALID_ARGUMENT` and leaves any screen alone.
 - `login({ phoneNumber, signal })` fills in the form. `phoneNumber` must be exactly 10 digits:
-  omit it when you have none, since `""` rejects with `INVALID_ARGUMENT`.
+  omit it when you have none, since `""` rejects with `INVALID_ARGUMENT`. That error's `message`,
+  "The phone number must be 10 digits", is safe to show next to a number the user typed.
 - Showing the login screen restarts Lucra. Reads still waiting reject with `CONNECTION_RESET` and
   are safe to repeat. If Lucra cannot start again while any screen shows, the screen closes and
   rejects with `CONNECTION_FAILED` or `CONNECTION_TIMEOUT`.
@@ -193,9 +196,9 @@ Every code: [Errors](../../3.0_headless_client.md#errors).
   signal.
 
 **Checkpoint:** `lucra.present.profile()` fills your container, and your close button resolves it
-`{ status: "dismissed", reason: "dismissed" }`. Lucra's screens run on Lucra's own site, so an automated or agent
-driven browser cannot click or type in them. Verify through promise results and `lucra.auth`,
-and have a human run login and Add Funds.
+`{ status: "dismissed", reason: "dismissed" }`. Lucra's screens run on Lucra's own site, so an
+automated or agent driven browser cannot click or type in them. Verify through promise results
+and `lucra.auth`, and have a human run login and Add Funds.
 
 ### Add Funds
 
@@ -203,9 +206,11 @@ and have a human run login and Add Funds.
   first in a click handler rejects with `POPUP_BLOCKED`.
 - It opens its own window. It resolves `{ status: "completed", message }`,
   `{ status: "failed", message }`, or `{ status: "dismissed" }` when closed without finishing.
-- Calling it again while the window is open brings the window to the front and resolves
-  `{ status: "alreadyOpen" }` at once. Only the first call reports the deposit, so show a
-  success message from that call alone. `dismiss()` does not close the window.
+- Calling it again while the window is open tries to bring the window to the front (browsers
+  may ignore it) and resolves `{ status: "alreadyOpen" }` at once. Only the first call reports
+  the deposit, so show a success message from that call alone. If the user just closed the
+  window, the first call resolves `"dismissed"` and a new window opens. `dismiss()` does not
+  close the window.
 - `message` is text from Lucra: show it as text, never as HTML. Read the new balance from
   `lucra.auth`.
 
@@ -251,8 +256,7 @@ their calls are `LucraClient` calls.
   `lucra.present.subscribe` and `lucra.present.getState`. Show your wrapper while `screen` is not
   `null`.
 - **Tie a screen to a component with `signal`**: create an `AbortController` in the effect that
-  calls `lucra.present.*`, and abort it in the cleanup. Never call `lucra.present.dismiss()` from
-  a cleanup: it closes whatever screen shows, even one opened since.
+  calls `lucra.present.*`, and abort it in the cleanup.
 - **Where to create the client.** Without a container, at module scope. With one, once the
   element is in the page, for example in a `useLayoutEffect` that reads `ref.current`. Never
   during render. Keep the client in a ref, and in that effect's cleanup call `destroy()` and set
@@ -267,9 +271,8 @@ their calls are `LucraClient` calls.
 
 | Code or symptom | Cause | Fix |
 | --- | --- | --- |
-| `INVALID_CONFIG` thrown by `createLucraClient` | A config it refuses. See [section 3](#3-setup) | Fix the config, or `destroy()` the existing client first |
+| `INVALID_CONFIG` thrown by `createLucraClient`, or `INVALID_ARGUMENT` | A config or argument it refuses. See [section 3](#3-setup). `message` is usually generic | Read `error.hint`, which `createLucraClient` also logs to the console. Fix the config or argument, or `destroy()` the existing client first |
 | `CONNECTION_FAILED` | Lucra refused the config | Check `apiKey`, `tenantId`, and `env` together |
-| `INVALID_CONFIG` or `INVALID_ARGUMENT` with a generic `message` | The detail is for you, so it is in `hint` | Read `error.hint` |
 | `CONNECTION_TIMEOUT` | Lucra did not start within 30 seconds. Usually a `Content-Security-Policy` that does not allow your Lucra address under `frame-src`, or a Lucra address that does not load | Allow `https://<tenantId>.<env>.lucrasports.com` under `frame-src`, or `https://<tenantId>.lucrasports.com` in production, with `tenantId` in lowercase. Only that call gave up: the client keeps waiting |
 | `lucra.auth` stays `"loading"` | The client never connected, or Lucra reported a user it never confirmed. In the second case calls that need a user reject with `TIMEOUT` | `await lucra.whenConnected()` to get the connection error |
 | `IN_PROGRESS` | Another write is pending | Wait for it. If your app had none pending, Lucra is still running an earlier one: read back before retrying |

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, mock } from "bun:test";
 import { MessageTypeToLucraClient } from "../types/types.ts";
-import { createDomFrame, createNullFrame, hasDom, openPopupWindow, pageOrigin } from "./frame.ts";
+import { createDomFrame, createNullFrame, hasDom, pageOrigin } from "./frame.ts";
 
 const ORIGIN = "https://t.sandbox.lucrasports.com";
 const URL_1 = `${ORIGIN}/app/headless?apiKey=k`;
@@ -378,46 +378,46 @@ describe("createDomFrame: destroy", () => {
   });
 });
 
-describe("openPopupWindow", () => {
+describe("createDomFrame: openPopup", () => {
   const fakeWindow = () => ({ closed: false, close: mock(() => {}), focus: mock(() => {}) });
   const page = () =>
     (globalThis as unknown as { window: Record<string, unknown> }).window;
 
-  it("opens a named, centered window and brings it forward on focus()", () => {
+  it("opens the Add Funds window and brings it forward on focus()", () => {
     const win = fakeWindow();
     const open = mock((..._args: unknown[]) => win);
     Object.assign(page(), { open, screenX: 0, screenY: 0, innerWidth: 1430, innerHeight: 1800 });
-    const popup = openPopupWindow(URL_1);
+    const popup = createDomFrame(ORIGIN).openPopup(URL_1);
     expect(open).toHaveBeenCalledTimes(1);
     expect(open.mock.calls[0][0]).toBe(URL_1);
     expect(open.mock.calls[0][1]).toBe("lucrasports:deposit:popup");
     expect(String(open.mock.calls[0][2])).toContain("left=500,top=500,width=430,height=800");
-    popup.focus();
+    expect(popup.focus()).toBe(true);
     expect(win.focus).toHaveBeenCalledTimes(1);
     const onClose = mock((_result?: unknown) => {});
     popup.onClose(onClose);
     popup.resolve({ toastType: "success", message: "ok" });
     expect(win.close).toHaveBeenCalledTimes(1);
     expect(onClose).toHaveBeenCalledWith({ toastType: "success", message: "ok" });
-    // Closed: focus and close do nothing more.
-    popup.focus();
-    popup.close();
-    expect(win.focus).toHaveBeenCalledTimes(1);
+  });
+
+  it("closes the handle instead of focusing a window the user already closed", () => {
+    const win = fakeWindow();
+    Object.assign(page(), { open: () => win, screenX: 0, screenY: 0, innerWidth: 0, innerHeight: 0 });
+    const popup = createDomFrame(ORIGIN).openPopup(URL_1);
+    const onClose = mock((_result?: unknown) => {});
+    popup.onClose(onClose);
+    // Closed by the user before the next poll.
+    win.closed = true;
+    expect(popup.focus()).toBe(false);
+    expect(win.focus).toHaveBeenCalledTimes(0);
     expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onClose).toHaveBeenCalledWith(undefined);
   });
 
   it("throws when the browser blocks it", () => {
     Object.assign(page(), { open: () => null, screenX: 0, screenY: 0, innerWidth: 0, innerHeight: 0 });
-    expect(() => openPopupWindow(URL_1)).toThrow();
-  });
-
-  it("reports a window the user closed, with no result", async () => {
-    const win = fakeWindow();
-    Object.assign(page(), { open: () => win, screenX: 0, screenY: 0, innerWidth: 0, innerHeight: 0 });
-    const popup = openPopupWindow(URL_1, 1);
-    const closed = new Promise((resolve) => popup.onClose(resolve));
-    win.closed = true;
-    expect(await closed).toBeUndefined();
+    expect(() => createDomFrame(ORIGIN).openPopup(URL_1)).toThrow();
   });
 });
 

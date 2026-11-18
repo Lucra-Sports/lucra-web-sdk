@@ -1,6 +1,6 @@
 import { LucraApiErrorCode } from "../types/types.js";
 // Every failure the headless client reports is a LucraError. `code` says what
-// happened. `message` is safe to show the user, and `hint` is for the developer.
+// happened. `message` is for the user, and `hint` is for the developer.
 // `source` says whether Lucra reported it or the SDK raised it. `remediation`
 // names the lucra.present method that fixes it, or null. `outcomeUnknown` is
 // true only when a write may have completed anyway.

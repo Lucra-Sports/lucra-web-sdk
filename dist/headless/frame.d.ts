@@ -1,4 +1,4 @@
-import type { LucraPopupHandle } from "../popup.js";
+import { type LucraPopupHandle } from "../popup.js";
 import { type MessageTypeToLucraClient } from "../types/types.js";
 export type OutboundMessage = {
     type: MessageTypeToLucraClient;
@@ -14,7 +14,7 @@ export type Overlay = {
     close(): void;
 };
 export type Popup = LucraPopupHandle & {
-    focus(): void;
+    focus(): boolean;
 };
 export type Frame = {
     mount(url: string): void;
@@ -28,5 +28,4 @@ export type Frame = {
 export declare function hasDom(): boolean;
 export declare function pageOrigin(): string;
 export declare function createNullFrame(): Frame;
-export declare function openPopupWindow(url: string, pollMs?: number): Popup;
 export declare function createDomFrame(origin: string, container?: HTMLElement): Frame;
