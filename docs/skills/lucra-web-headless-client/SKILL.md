@@ -104,7 +104,7 @@ login.
 
 | Works logged out | Needs a logged in user |
 | --- | --- |
-| `tournaments.list()`, `matchups.get()`, `matchups.getDetails()`, `matchups.watch()`, `present.login()` | `tournaments.get()`, `tournaments.leaderboard()`, `matchups.searchByMetadata()`, `matchups.list()`, `matchups.listByTypeStatus()`, `achievements.list()`, `rewards.list()`, every write, every other `present.*` screen |
+| `tournaments.list()`, `matchups.get()`, `matchups.getDetails()`, `matchups.watch()`, `present.login()` | `tournaments.get()`, `tournaments.leaderboard()`, `matchups.searchByMetadata()`, `matchups.list()`, `matchups.listByTypeStatus()`, `achievements.list()`, `achievements.markViewed()`, `rewards.list()`, every write, every other `present.*` screen |
 
 `present.addFunds()` cannot wait out `"loading"`, so it rejects with `NOT_LOGGED_IN` only when
 the status is already `"loggedOut"`.
@@ -137,7 +137,8 @@ Check with `isLucraError(error)`.
   not on `code`. Never retry it automatically: read the matchup (or `claimedAt` after a claim),
   or ask the user. A second create makes a second matchup with a second buy in. Reads never set
   it and are safe to repeat. One caveat: `rewards.list()` marks unviewed rewards as viewed, so a
-  repeat with `viewed: false` may not return them again.
+  repeat with `viewed: false` may not return them again. `achievements.markViewed()` changes
+  state but is not a write: it is safe to repeat and never sets it.
 
 Every code: [Errors](../../3.0_headless_client.md#errors).
 

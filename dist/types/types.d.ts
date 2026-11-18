@@ -40,6 +40,7 @@ export declare enum LucraClientMessageType {
     userTournamentRewardsResponse = "userTournamentRewardsResponse",
     claimTournamentRewardResponse = "claimTournamentRewardResponse",
     claimAchievementResponse = "claimAchievementResponse",
+    markAchievementViewedResponse = "markAchievementViewedResponse",
     userMatchupsResponse = "userMatchupsResponse",
     userMatchupsByTypeStatusResponse = "userMatchupsByTypeStatusResponse"
 }
@@ -68,6 +69,7 @@ export declare enum MessageTypeToLucraClient {
     userTournamentRewardsRequest = "userTournamentRewardsRequest",
     claimTournamentRewardRequest = "claimTournamentRewardRequest",
     claimAchievementRequest = "claimAchievementRequest",
+    markAchievementViewedRequest = "markAchievementViewedRequest",
     userMatchupsRequest = "userMatchupsRequest",
     userMatchupsByTypeStatusRequest = "userMatchupsByTypeStatusRequest",
     sdkDiagnostic = "sdkDiagnostic"
@@ -240,6 +242,7 @@ export type LucraAchievement = {
     isEarned: boolean;
     earnedAt?: string | null;
     claimedAt?: string | null;
+    viewedAt?: string | null;
     currentProgress: number;
     currentValue: number;
     targetValue: number;
@@ -266,6 +269,10 @@ export type LucraClaimAchievementBody = {
     userAchievementId: string;
 };
 export type LucraClaimAchievementResult = LucraClaimAchievementBody;
+export type LucraMarkAchievementViewedBody = {
+    userAchievementId: string;
+};
+export type LucraMarkAchievementViewedResult = LucraMarkAchievementViewedBody;
 export type LucraUserTournamentReward = {
     rewardId: string;
     matchupId: string;

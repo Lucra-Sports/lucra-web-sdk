@@ -19,6 +19,9 @@ const SPECS = {
     matchupsAccept: write(MessageTypeToLucraClient.acceptRecreationalGameRequest, LucraClientMessageType.acceptRecreationalGameResponse, true),
     matchupsCancel: write(MessageTypeToLucraClient.cancelRecreationalGameRequest, LucraClientMessageType.cancelRecreationalGameResponse, true),
     achievementsList: read(MessageTypeToLucraClient.achievementsRequest, LucraClientMessageType.achievementsResponse),
+    // Sent as a read: it is safe to repeat, and a host may mark many at once, so it
+    // must not wait for or block a write.
+    achievementsMarkViewed: read(MessageTypeToLucraClient.markAchievementViewedRequest, LucraClientMessageType.markAchievementViewedResponse),
     rewardsList: read(MessageTypeToLucraClient.userTournamentRewardsRequest, LucraClientMessageType.userTournamentRewardsResponse),
     // For these two a plain API_ERROR may mean the claim still went through.
     achievementsClaim: write(MessageTypeToLucraClient.claimAchievementRequest, LucraClientMessageType.claimAchievementResponse, true),
@@ -78,6 +81,7 @@ export function createApi(options) {
         achievements: {
             list: () => send(SPECS.achievementsList, null, true).then((r) => r.achievements),
             claim: (userAchievementId) => sendWrite(SPECS.achievementsClaim, { userAchievementId }).then(() => undefined),
+            markViewed: (userAchievementId) => send(SPECS.achievementsMarkViewed, { userAchievementId }, true).then(() => undefined),
         },
         rewards: {
             list: (filters) => send(SPECS.rewardsList, {
