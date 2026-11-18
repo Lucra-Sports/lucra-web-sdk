@@ -11,11 +11,18 @@ const SPECS = {
     tournamentsAutoJoin: write(MessageTypeToLucraClient.autoJoinTournamentsRequest, LucraClientMessageType.autoJoinedTournaments, false),
     matchupsGet: read(MessageTypeToLucraClient.matchupRequest, LucraClientMessageType.matchupResponse),
     matchupsGetDetails: read(MessageTypeToLucraClient.matchupDetailsRequest, LucraClientMessageType.matchupDetailsResponse),
+    matchupsSearchByMetadata: read(MessageTypeToLucraClient.searchMatchupsByMetadataRequest, LucraClientMessageType.searchMatchupsByMetadataResponse),
+    matchupsList: read(MessageTypeToLucraClient.userMatchupsRequest, LucraClientMessageType.userMatchupsResponse),
+    matchupsListByTypeStatus: read(MessageTypeToLucraClient.userMatchupsByTypeStatusRequest, LucraClientMessageType.userMatchupsByTypeStatusResponse),
     // For these three a plain API_ERROR may mean the write still went through.
     matchupsCreate: write(MessageTypeToLucraClient.createRecreationalGameRequest, LucraClientMessageType.createRecreationalGameResponse, true),
     matchupsAccept: write(MessageTypeToLucraClient.acceptRecreationalGameRequest, LucraClientMessageType.acceptRecreationalGameResponse, true),
     matchupsCancel: write(MessageTypeToLucraClient.cancelRecreationalGameRequest, LucraClientMessageType.cancelRecreationalGameResponse, true),
     achievementsList: read(MessageTypeToLucraClient.achievementsRequest, LucraClientMessageType.achievementsResponse),
+    rewardsList: read(MessageTypeToLucraClient.userTournamentRewardsRequest, LucraClientMessageType.userTournamentRewardsResponse),
+    // For these two a plain API_ERROR may mean the claim still went through.
+    achievementsClaim: write(MessageTypeToLucraClient.claimAchievementRequest, LucraClientMessageType.claimAchievementResponse, true),
+    rewardsClaim: write(MessageTypeToLucraClient.claimTournamentRewardRequest, LucraClientMessageType.claimTournamentRewardResponse, true),
 };
 export function createApi(options) {
     const { session, auth, activity } = options;
@@ -59,6 +66,9 @@ export function createApi(options) {
         matchups: {
             get: (matchupId) => send(SPECS.matchupsGet, { matchupId }, false),
             getDetails: (matchupId) => send(SPECS.matchupsGetDetails, { matchupId }, false),
+            searchByMetadata: (filters) => send(SPECS.matchupsSearchByMetadata, filters, true).then((r) => r.matchupIds),
+            list: (options) => send(SPECS.matchupsList, options, true),
+            listByTypeStatus: (options) => send(SPECS.matchupsListByTypeStatus, options, true),
             create: (input) => sendWrite(SPECS.matchupsCreate, input),
             accept: (matchupId, acceptOptions) => sendWrite(SPECS.matchupsAccept, acceptOptions?.groupId !== undefined
                 ? { matchupId, playStyle: "GROUP_VS_GROUP", teamId: acceptOptions.groupId }
@@ -67,6 +77,15 @@ export function createApi(options) {
         },
         achievements: {
             list: () => send(SPECS.achievementsList, null, true).then((r) => r.achievements),
+            claim: (userAchievementId) => sendWrite(SPECS.achievementsClaim, { userAchievementId }).then(() => undefined),
+        },
+        rewards: {
+            list: (filters) => send(SPECS.rewardsList, {
+                matchupId: filters?.tournamentId,
+                viewed: filters?.viewed,
+                claimed: filters?.claimed,
+            }, true).then((r) => r.rewards),
+            claim: (rewardId) => sendWrite(SPECS.rewardsClaim, { rewardId }).then(() => undefined),
         },
         whenWriteSettled: () => writeSettled ?? Promise.resolve(),
     };

@@ -93,6 +93,10 @@ describe("createApi: reads", () => {
       () => api.tournaments.get("t1"),
       () => api.tournaments.leaderboard("t1"),
       () => api.achievements.list(),
+      () => api.matchups.searchByMetadata({}),
+      () => api.rewards.list(),
+      () => api.matchups.list({ limit: 5 }),
+      () => api.matchups.listByTypeStatus({ type: "GAMES", status: "RESULTS", limit: 10, offset: 20 }),
     ]) {
       const error = await caught(call());
       expect(error.code).toBe("NOT_LOGGED_IN");
@@ -101,6 +105,10 @@ describe("createApi: reads", () => {
     expect(count(frame, "tournamentRequest")).toBe(0);
     expect(count(frame, "tournamentLeaderboardRequest")).toBe(0);
     expect(count(frame, "achievementsRequest")).toBe(0);
+    expect(count(frame, "searchMatchupsByMetadataRequest")).toBe(0);
+    expect(count(frame, "userTournamentRewardsRequest")).toBe(0);
+    expect(count(frame, "userMatchupsRequest")).toBe(0);
+    expect(count(frame, "userMatchupsByTypeStatusRequest")).toBe(0);
   });
 
   it("holds a read that needs login until loginSuccess, not just a yes", async () => {
@@ -155,6 +163,80 @@ describe("createApi: reads", () => {
     expect<unknown>(await second).toEqual({ id: "m2" });
     frame.answer("joinTournamentRequest", "joinTournamentResponse", { matchupId: "t1" });
     await join;
+  });
+
+  it("searches matchups by metadata and returns the ids", async () => {
+    const { frame, api } = setup();
+    await connectLoggedIn(frame);
+    const filters = {
+      gameId: "g1",
+      locationId: "l1",
+      matchupId: "m1",
+      matchupMetadata: { table: 4 },
+    };
+    const search = api.matchups.searchByMetadata(filters);
+    await tick();
+    expect(frame.lastPosted("searchMatchupsByMetadataRequest")?.body).toEqual(filters);
+    frame.answer("searchMatchupsByMetadataRequest", "searchMatchupsByMetadataResponse", {
+      matchupIds: ["m1", "m2"],
+    });
+    expect(await search).toEqual(["m1", "m2"]);
+  });
+
+  it("lists rewards, sending tournamentId as matchupId", async () => {
+    const { frame, api } = setup();
+    await connectLoggedIn(frame);
+    const filtered = api.rewards.list({ tournamentId: "t1", viewed: false, claimed: true });
+    await tick();
+    expect(frame.lastPosted("userTournamentRewardsRequest")?.body).toEqual({
+      matchupId: "t1",
+      viewed: false,
+      claimed: true,
+    });
+    frame.answer("userTournamentRewardsRequest", "userTournamentRewardsResponse", {
+      rewards: [{ rewardId: "r1" }],
+    });
+    expect<unknown>(await filtered).toEqual([{ rewardId: "r1" }]);
+    const all = api.rewards.list();
+    await tick();
+    expect(frame.lastPosted("userTournamentRewardsRequest")?.body).toEqual({
+      matchupId: undefined,
+      viewed: undefined,
+      claimed: undefined,
+    });
+    frame.answer("userTournamentRewardsRequest", "userTournamentRewardsResponse", { rewards: [] });
+    expect(await all).toEqual([]);
+  });
+
+  it("lists the user's matchups and returns the answer as is", async () => {
+    const { frame, api } = setup();
+    await connectLoggedIn(frame);
+    const mine = api.matchups.list({ limit: 5 });
+    await tick();
+    expect(frame.lastPosted("userMatchupsRequest")?.body).toEqual({ limit: 5 });
+    const answer = {
+      matchup_types: [{ type: "GAMES", label: "Games" }],
+      total_matchups_played: 2,
+      total_matchups_won: 1,
+      total_money_won: 10,
+      user_matchups_by_type_status: [
+        { type: "GAMES", status: "RESULTS", matchups: [{ id: "m1", name: "Test game" }] },
+      ],
+    };
+    frame.answer("userMatchupsRequest", "userMatchupsResponse", answer);
+    expect<unknown>(await mine).toEqual(answer);
+  });
+
+  it("lists one page of the user's matchups and returns the answer as is", async () => {
+    const { frame, api } = setup();
+    await connectLoggedIn(frame);
+    const options = { type: "GAMES" as const, status: "RESULTS" as const, limit: 10, offset: 20 };
+    const page = api.matchups.listByTypeStatus(options);
+    await tick();
+    expect(frame.lastPosted("userMatchupsByTypeStatusRequest")?.body).toEqual(options);
+    const answer = { type: "GAMES", status: "RESULTS", total_matchups: 21, matchups: [{ id: "m1" }] };
+    frame.answer("userMatchupsByTypeStatusRequest", "userMatchupsByTypeStatusResponse", answer);
+    expect<unknown>(await page).toEqual(answer);
   });
 
   it("rejects with CONNECTION_FAILED when Lucra refuses the config", async () => {
@@ -263,6 +345,28 @@ describe("createApi: writes", () => {
     expect(await autoJoin).toEqual({ matchupIds: ["t1"] });
   });
 
+  it("sends a claim, holds the write slot until it settles, and resolves with nothing", async () => {
+    const { frame, api } = setup();
+    await connectLoggedIn(frame);
+    const cases: [() => Promise<void>, string, string, object][] = [
+      [() => api.rewards.claim("r1"), "claimTournamentRewardRequest", "claimTournamentRewardResponse", { rewardId: "r1" }],
+      [() => api.achievements.claim("a1"), "claimAchievementRequest", "claimAchievementResponse", { userAchievementId: "a1" }],
+    ];
+    for (const [call, requestType, responseType, body] of cases) {
+      const claim = call();
+      expect((await caught(call())).code).toBe("IN_PROGRESS");
+      await tick();
+      expect(count(frame, requestType)).toBe(1);
+      expect(frame.lastPosted(requestType)?.body).toEqual(body);
+      frame.answer(requestType, responseType, body);
+      expect(await claim).toBeUndefined();
+      const join = api.tournaments.join("t1");
+      await tick();
+      frame.answer("joinTournamentRequest", "joinTournamentResponse", { matchupId: "t1" });
+      await join;
+    }
+  });
+
   it("turns joinTournamentError into a LucraError that names the fix", async () => {
     const { frame, api } = setup();
     await connectLoggedIn(frame);
@@ -275,7 +379,7 @@ describe("createApi: writes", () => {
     expect(error.outcomeUnknown).toBe(false);
   });
 
-  it("marks API_ERROR as outcome unknown on create, accept, cancel, but not on join or autoJoin", async () => {
+  it("marks API_ERROR as outcome unknown on create, accept, cancel, and the claims, but not on join or autoJoin", async () => {
     const { frame, api } = setup();
     await connectLoggedIn(frame);
     const cases: [() => Promise<unknown>, string, string, boolean][] = [
@@ -284,6 +388,8 @@ describe("createApi: writes", () => {
       [() => api.matchups.cancel("m1"), "cancelRecreationalGameRequest", "apiRequestError", true],
       [() => api.tournaments.join("t1"), "joinTournamentRequest", "joinTournamentError", false],
       [() => api.tournaments.autoJoin(), "autoJoinTournamentsRequest", "autoJoinTournamentsError", false],
+      [() => api.rewards.claim("r1"), "claimTournamentRewardRequest", "apiRequestError", true],
+      [() => api.achievements.claim("a1"), "claimAchievementRequest", "apiRequestError", true],
     ];
     for (const [call, requestType, errorType, unknown] of cases) {
       const pending = caught(call());

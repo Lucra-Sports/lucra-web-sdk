@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## [v1.17.0]
+
+### Added
+
+- **Preview:** six new calls on the headless client. Where Lucra does not answer one yet, it rejects with `TIMEOUT`. See [Reading data](3.0_headless_client.md#reading-data) and [Changing things](3.0_headless_client.md#changing-things).
+  - `lucra.matchups.searchByMetadata(filters)`: the ids of the user's matchups that match `gameId`, `locationId`, `matchupId`, and `matchupMetadata`.
+  - `lucra.matchups.list({ limit })` and `lucra.matchups.listByTypeStatus({ type, status, limit, offset })`: the user's matchups, grouped by type and status or one page at a time.
+  - `lucra.rewards.list(filters)`: the rewards the user won in tournaments. Lucra marks unviewed rewards as viewed when it returns them.
+  - `lucra.rewards.claim(rewardId)` and `lucra.achievements.claim(userAchievementId)`: claim a tournament reward or an earned achievement. They run one at a time with the other changes.
+  - New types from `lucra-web-sdk/headless`: `LucraSearchMatchupsByMetadataInput`, `LucraUserMatchups`, `LucraUserMatchupsGroup`, `LucraUserMatchupsPage`, `LucraUserMatchup`, `LucraUserMatchupType`, `LucraUserMatchupStatus`, `LucraUserMatchupsInput`, `LucraUserMatchupsByTypeStatusInput`, and `LucraUserTournamentReward`.
+
 ## [v1.16.0]
 
 ### Breaking

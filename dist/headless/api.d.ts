@@ -1,4 +1,4 @@
-import { type LucraAchievement, type LucraAutoJoinedTournamentsBody, type LucraCancelRecreationalGameResult, type LucraCreateRecreationalGameInput, type LucraJoinTournamentResponse, type LucraMatchup, type LucraMatchupDetails, type LucraRecreationalGameResult, type LucraTournament, type LucraTournamentDetail } from "../types/types.js";
+import { type LucraAchievement, type LucraAutoJoinedTournamentsBody, type LucraCancelRecreationalGameResult, type LucraCreateRecreationalGameInput, type LucraJoinTournamentResponse, type LucraMatchup, type LucraMatchupDetails, type LucraRecreationalGameResult, type LucraSearchMatchupsByMetadataInput, type LucraTournament, type LucraTournamentDetail, type LucraUserMatchups, type LucraUserMatchupsInput, type LucraUserMatchupsByTypeStatusInput, type LucraUserMatchupsPage, type LucraUserTournamentReward } from "../types/types.js";
 import type { Auth } from "./auth.js";
 import type { Session } from "./session.js";
 export type Activity = {
@@ -18,6 +18,9 @@ export type Api = {
     matchups: {
         get(matchupId: string): Promise<LucraMatchup>;
         getDetails(matchupId: string): Promise<LucraMatchupDetails>;
+        searchByMetadata(filters: LucraSearchMatchupsByMetadataInput): Promise<string[]>;
+        list(options: LucraUserMatchupsInput): Promise<LucraUserMatchups>;
+        listByTypeStatus(options: LucraUserMatchupsByTypeStatusInput): Promise<LucraUserMatchupsPage>;
         create(input: LucraCreateRecreationalGameInput): Promise<LucraRecreationalGameResult>;
         accept(matchupId: string, options?: {
             groupId?: string;
@@ -26,6 +29,15 @@ export type Api = {
     };
     achievements: {
         list(): Promise<LucraAchievement[]>;
+        claim(userAchievementId: string): Promise<void>;
+    };
+    rewards: {
+        list(filters?: {
+            tournamentId?: string;
+            viewed?: boolean;
+            claimed?: boolean;
+        }): Promise<LucraUserTournamentReward[]>;
+        claim(rewardId: string): Promise<void>;
     };
     whenWriteSettled(): Promise<void>;
 };

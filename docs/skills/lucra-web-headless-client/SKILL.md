@@ -104,7 +104,7 @@ login.
 
 | Works logged out | Needs a logged in user |
 | --- | --- |
-| `tournaments.list()`, `matchups.get()`, `matchups.getDetails()`, `matchups.watch()`, `present.login()` | `tournaments.get()`, `tournaments.leaderboard()`, `achievements.list()`, every write, every other `present.*` screen |
+| `tournaments.list()`, `matchups.get()`, `matchups.getDetails()`, `matchups.watch()`, `present.login()` | `tournaments.get()`, `tournaments.leaderboard()`, `matchups.searchByMetadata()`, `matchups.list()`, `matchups.listByTypeStatus()`, `achievements.list()`, `rewards.list()`, every write, every other `present.*` screen |
 
 `present.addFunds()` cannot wait out `"loading"`, so it rejects with `NOT_LOGGED_IN` only when
 the status is already `"loggedOut"`.
@@ -116,7 +116,8 @@ the status is already `"loggedOut"`.
 
 Writes are what the guide calls changes
 ([Changing things](../../3.0_headless_client.md#changing-things)): `tournaments.join()`,
-`tournaments.autoJoin()`, `matchups.create()`, `matchups.accept()`, and `matchups.cancel()`.
+`tournaments.autoJoin()`, `matchups.create()`, `matchups.accept()`, `matchups.cancel()`,
+`rewards.claim()`, and `achievements.claim()`.
 
 - **One at a time, of any kind.** While one is pending, another rejects with `IN_PROGRESS`.
   Disable the button while a call is pending.
@@ -133,8 +134,10 @@ Check with `isLucraError(error)`.
   Funds button instead of calling it from a `catch`.
 - **`outcomeUnknown: true` means read back before retrying.** It is set on some failures of a
   write already sent to Lucra, such as a `TIMEOUT` or a `CONNECTION_RESET`. Branch on the flag,
-  not on `code`. Never retry it automatically: read the matchup, or ask the user. A second
-  create makes a second matchup with a second buy in. Reads never set it and are safe to repeat.
+  not on `code`. Never retry it automatically: read the matchup (or `claimedAt` after a claim),
+  or ask the user. A second create makes a second matchup with a second buy in. Reads never set
+  it and are safe to repeat. One caveat: `rewards.list()` marks unviewed rewards as viewed, so a
+  repeat with `viewed: false` may not return them again.
 
 Every code: [Errors](../../3.0_headless_client.md#errors).
 

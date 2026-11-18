@@ -4,17 +4,30 @@ import {
   type LucraAchievement,
   type LucraAchievementsResponse,
   type LucraAutoJoinedTournamentsBody,
+  type LucraClaimAchievementBody,
+  type LucraClaimTournamentRewardBody,
+  type LucraClaimAchievementResult,
+  type LucraClaimTournamentRewardResult,
   type LucraCancelRecreationalGameResult,
   type LucraCreateRecreationalGameInput,
   type LucraJoinTournamentResponse,
   type LucraMatchup,
   type LucraMatchupDetails,
   type LucraRecreationalGameResult,
+  type LucraSearchMatchupsByMetadataInput,
+  type LucraSearchMatchupsByMetadataResponse,
   type LucraTournament,
   type LucraTournamentDetail,
   type LucraTournamentLeaderboardResponse,
   type LucraTournamentResponse,
   type LucraTournamentsResponse,
+  type LucraUserMatchups,
+  type LucraUserMatchupsInput,
+  type LucraUserMatchupsByTypeStatusInput,
+  type LucraUserMatchupsPage,
+  type LucraUserTournamentReward,
+  type LucraUserTournamentRewardsInput,
+  type LucraUserTournamentRewardsResponse,
 } from "../types/types.js";
 import type { Auth } from "./auth.js";
 import { LucraError, LucraErrorCode } from "./errors.js";
@@ -71,6 +84,18 @@ const SPECS = {
     MessageTypeToLucraClient.matchupDetailsRequest,
     LucraClientMessageType.matchupDetailsResponse
   ),
+  matchupsSearchByMetadata: read<LucraSearchMatchupsByMetadataResponse>(
+    MessageTypeToLucraClient.searchMatchupsByMetadataRequest,
+    LucraClientMessageType.searchMatchupsByMetadataResponse
+  ),
+  matchupsList: read<LucraUserMatchups>(
+    MessageTypeToLucraClient.userMatchupsRequest,
+    LucraClientMessageType.userMatchupsResponse
+  ),
+  matchupsListByTypeStatus: read<LucraUserMatchupsPage>(
+    MessageTypeToLucraClient.userMatchupsByTypeStatusRequest,
+    LucraClientMessageType.userMatchupsByTypeStatusResponse
+  ),
   // For these three a plain API_ERROR may mean the write still went through.
   matchupsCreate: write<LucraRecreationalGameResult>(
     MessageTypeToLucraClient.createRecreationalGameRequest,
@@ -91,6 +116,21 @@ const SPECS = {
     MessageTypeToLucraClient.achievementsRequest,
     LucraClientMessageType.achievementsResponse
   ),
+  rewardsList: read<LucraUserTournamentRewardsResponse>(
+    MessageTypeToLucraClient.userTournamentRewardsRequest,
+    LucraClientMessageType.userTournamentRewardsResponse
+  ),
+  // For these two a plain API_ERROR may mean the claim still went through.
+  achievementsClaim: write<LucraClaimAchievementResult>(
+    MessageTypeToLucraClient.claimAchievementRequest,
+    LucraClientMessageType.claimAchievementResponse,
+    true
+  ),
+  rewardsClaim: write<LucraClaimTournamentRewardResult>(
+    MessageTypeToLucraClient.claimTournamentRewardRequest,
+    LucraClientMessageType.claimTournamentRewardResponse,
+    true
+  ),
 };
 
 export type Api = {
@@ -107,6 +147,11 @@ export type Api = {
   matchups: {
     get(matchupId: string): Promise<LucraMatchup>;
     getDetails(matchupId: string): Promise<LucraMatchupDetails>;
+    searchByMetadata(filters: LucraSearchMatchupsByMetadataInput): Promise<string[]>;
+    list(options: LucraUserMatchupsInput): Promise<LucraUserMatchups>;
+    listByTypeStatus(
+      options: LucraUserMatchupsByTypeStatusInput
+    ): Promise<LucraUserMatchupsPage>;
     create(input: LucraCreateRecreationalGameInput): Promise<LucraRecreationalGameResult>;
     accept(
       matchupId: string,
@@ -116,6 +161,15 @@ export type Api = {
   };
   achievements: {
     list(): Promise<LucraAchievement[]>;
+    claim(userAchievementId: string): Promise<void>;
+  };
+  rewards: {
+    list(filters?: {
+      tournamentId?: string;
+      viewed?: boolean;
+      claimed?: boolean;
+    }): Promise<LucraUserTournamentReward[]>;
+    claim(rewardId: string): Promise<void>;
   };
   // Resolves when no write is pending. Never rejects.
   whenWriteSettled(): Promise<void>;
@@ -187,6 +241,11 @@ export function createApi(options: {
       get: (matchupId) => send(SPECS.matchupsGet, { matchupId }, false),
       getDetails: (matchupId) =>
         send(SPECS.matchupsGetDetails, { matchupId }, false),
+      searchByMetadata: (filters) =>
+        send(SPECS.matchupsSearchByMetadata, filters, true).then((r) => r.matchupIds),
+      list: (options) => send(SPECS.matchupsList, options, true),
+      listByTypeStatus: (options) =>
+        send(SPECS.matchupsListByTypeStatus, options, true),
       create: (input) => sendWrite(SPECS.matchupsCreate, input),
       accept: (matchupId, acceptOptions) =>
         sendWrite(
@@ -200,6 +259,25 @@ export function createApi(options: {
     achievements: {
       list: () =>
         send(SPECS.achievementsList, null, true).then((r) => r.achievements),
+      claim: (userAchievementId) =>
+        sendWrite(
+          SPECS.achievementsClaim,
+          { userAchievementId } satisfies LucraClaimAchievementBody
+        ).then(() => undefined),
+    },
+    rewards: {
+      list: (filters) =>
+        send(
+          SPECS.rewardsList,
+          {
+            matchupId: filters?.tournamentId,
+            viewed: filters?.viewed,
+            claimed: filters?.claimed,
+          } satisfies LucraUserTournamentRewardsInput,
+          true
+        ).then((r) => r.rewards),
+      claim: (rewardId) =>
+        sendWrite(SPECS.rewardsClaim, { rewardId } satisfies LucraClaimTournamentRewardBody).then(() => undefined),
     },
     whenWriteSettled: () => writeSettled ?? Promise.resolve(),
   };

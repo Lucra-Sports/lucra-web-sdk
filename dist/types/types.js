@@ -42,6 +42,12 @@ export var LucraClientMessageType;
     LucraClientMessageType["createRecreationalGameResponse"] = "createRecreationalGameResponse";
     LucraClientMessageType["acceptRecreationalGameResponse"] = "acceptRecreationalGameResponse";
     LucraClientMessageType["cancelRecreationalGameResponse"] = "cancelRecreationalGameResponse";
+    LucraClientMessageType["searchMatchupsByMetadataResponse"] = "searchMatchupsByMetadataResponse";
+    LucraClientMessageType["userTournamentRewardsResponse"] = "userTournamentRewardsResponse";
+    LucraClientMessageType["claimTournamentRewardResponse"] = "claimTournamentRewardResponse";
+    LucraClientMessageType["claimAchievementResponse"] = "claimAchievementResponse";
+    LucraClientMessageType["userMatchupsResponse"] = "userMatchupsResponse";
+    LucraClientMessageType["userMatchupsByTypeStatusResponse"] = "userMatchupsByTypeStatusResponse";
 })(LucraClientMessageType || (LucraClientMessageType = {}));
 export var MessageTypeToLucraClient;
 (function (MessageTypeToLucraClient) {
@@ -65,6 +71,12 @@ export var MessageTypeToLucraClient;
     MessageTypeToLucraClient["createRecreationalGameRequest"] = "createRecreationalGameRequest";
     MessageTypeToLucraClient["acceptRecreationalGameRequest"] = "acceptRecreationalGameRequest";
     MessageTypeToLucraClient["cancelRecreationalGameRequest"] = "cancelRecreationalGameRequest";
+    MessageTypeToLucraClient["searchMatchupsByMetadataRequest"] = "searchMatchupsByMetadataRequest";
+    MessageTypeToLucraClient["userTournamentRewardsRequest"] = "userTournamentRewardsRequest";
+    MessageTypeToLucraClient["claimTournamentRewardRequest"] = "claimTournamentRewardRequest";
+    MessageTypeToLucraClient["claimAchievementRequest"] = "claimAchievementRequest";
+    MessageTypeToLucraClient["userMatchupsRequest"] = "userMatchupsRequest";
+    MessageTypeToLucraClient["userMatchupsByTypeStatusRequest"] = "userMatchupsByTypeStatusRequest";
     MessageTypeToLucraClient["sdkDiagnostic"] = "sdkDiagnostic";
 })(MessageTypeToLucraClient || (MessageTypeToLucraClient = {}));
 // Message the Lucra web app posts to the opener when a deposit finishes in a

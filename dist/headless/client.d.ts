@@ -15,6 +15,7 @@ export type LucraHeadlessClient = {
         watch(matchupId: string, handlers: LucraMatchupWatchHandlers): LucraMatchupWatch;
     };
     achievements: Api["achievements"];
+    rewards: Api["rewards"];
     present: Omit<Present, "destroy">;
     on<K extends keyof LucraHeadlessEventMap>(event: K, listener: (data: LucraHeadlessEventMap[K]) => void): () => void;
     whenConnected(): Promise<void>;
