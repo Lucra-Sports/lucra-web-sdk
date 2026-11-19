@@ -211,7 +211,9 @@ export function createPresent(options) {
         gameOutOfSight = true;
         hideGame();
     });
-    // Lucra restarting reloads its page, so no game is left on it.
+    // Lucra restarting reloads its page, so no game is left on it. The minigame
+    // start's catch skips CONNECTION_RESET for the same reason: it runs after
+    // this listener and would mark the game again.
     const unsubscribeRestart = session.on(LucraClientMessageType.initialized, () => {
         gameOutOfSight = false;
     });

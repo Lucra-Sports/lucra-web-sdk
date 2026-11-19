@@ -9,6 +9,8 @@
 ### Fixed
 
 - **Preview:** the `lucra.present.minigame` docs were corrected. `matchupId` is only for tournament mode, where it is the tournament id. Tournament mode joins the tournament and takes its buy in, so do not also call `lucra.tournaments.join()`. `UNVERIFIED` is sent for a minigame start. See [Minigames](3.0_headless_client.md#minigames).
+- **Preview:** after Lucra restarts, the SDK no longer sends Lucra home for a minigame the restart already removed. A start interrupted by a restart no longer marks a game as left running.
+- **Preview:** since v1.19.0, a read that needs a logged in user and is sent again after Lucra restarts rejects with `NOT_LOGGED_IN` when the user is logged out by then. It used to reject with `CONNECTION_RESET`. Handle both if your code branches on the code. See [Reading data](3.0_headless_client.md#reading-data).
 
 ## [v1.19.0]
 

@@ -253,8 +253,12 @@ and `lucra.auth`, and have a human run login and Add Funds.
 
 - `lucra.present.minigame({ gameId, mode, amount, matchupId, signal })` starts a minigame
   session, and Lucra shows the game in its own frame. `mode` is `"practice"`, `"1v1"`,
-  `"free_for_all"`, or `"tournament"`. A bad input rejects with `INVALID_ARGUMENT` before
-  anything changes. Nothing shows until the game has started.
+  `"free_for_all"`, or `"tournament"`. Before it sends anything, the SDK checks the
+  shape and types: `gameId`, `mode`, an `amount` that is a number of 0 or more, a non empty
+  `matchupId` that is present for tournament mode and absent for the others, and `signal`. A
+  failed check rejects with `INVALID_ARGUMENT`. Lucra checks the rest, such as whether the amount
+  is one of the game's wager amounts, and refuses with one of the codes below, for example
+  `INVALID_AT_STAKE`. Nothing shows until the game has started.
 - **Tournament mode joins the tournament and takes its buy in. Never also call
   `lucra.tournaments.join()` for that play: the user would pay twice.** `matchupId` is the
   tournament id, required for `"tournament"` and refused with any other mode.
@@ -268,7 +272,7 @@ and `lucra.auth`, and have a human run login and Add Funds.
   showed, and the same ids, which are `null` when no session was started.
 - **Starting is a change that needs a logged in user**, and works inside
   `lucra.withRemediation()`. An error with `outcomeUnknown: true` means a game may have started
-  and a stake may have been placed (in tournament mode, the buy in may be taken): the SDK sends Lucra home so the game does not keep running.
+  and a stake may have been placed (in tournament mode, the buy in may be taken): unless Lucra restarted, which removes the game itself, the SDK sends Lucra home so the game does not keep running.
   Read `lucra.matchups.list()` before you try again. Never retry automatically.
 - Dismissing it while the game starts waits for Lucra's answer, then resolves `"dismissed"`
   with the ids if the game started. The game never shows.
