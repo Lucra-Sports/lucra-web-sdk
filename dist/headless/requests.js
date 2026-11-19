@@ -18,7 +18,7 @@ export function createRequests(options) {
         }
         return entry;
     };
-    const startTimer = (requestId) => setTimeout(() => {
+    const startTimer = (requestId, timeoutMs) => setTimeout(() => {
         const entry = take(requestId);
         if (!entry)
             return;
@@ -31,16 +31,17 @@ export function createRequests(options) {
         entry.reject(new LucraError(LucraErrorCode.TIMEOUT, undefined, {
             outcomeUnknown: entry.spec.kind === "write",
         }));
-    }, options.timeoutMs);
+    }, timeoutMs);
     return {
-        send(spec, body) {
+        send(spec, body, timeoutMs = options.timeoutMs) {
             const requestId = String(++lastRequestId);
             return new Promise((resolve, reject) => {
                 pending.set(requestId, {
                     spec: spec,
                     resolve: resolve,
                     reject,
-                    timer: startTimer(requestId),
+                    timer: startTimer(requestId, timeoutMs),
+                    timeoutMs,
                     sentAt: Date.now(),
                 });
                 try {
@@ -77,7 +78,9 @@ export function createRequests(options) {
                 if (entry.spec.maxTimeoutMs === undefined ||
                     Date.now() - entry.sentAt < entry.spec.maxTimeoutMs) {
                     clearTimeout(entry.timer);
-                    entry.timer = startTimer(message.requestId);
+                    // Restarts with this send's own wait, which for a resent read is only
+                    // what it had left. Only the login check gets interim answers, and it is never resent.
+                    entry.timer = startTimer(message.requestId, entry.timeoutMs);
                 }
                 return true;
             }

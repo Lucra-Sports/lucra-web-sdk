@@ -56,6 +56,8 @@ export enum LucraClientMessageType {
   markAchievementViewedResponse = "markAchievementViewedResponse",
   userMatchupsResponse = "userMatchupsResponse",
   userMatchupsByTypeStatusResponse = "userMatchupsByTypeStatusResponse",
+  presentMinigameResponse = "presentMinigameResponse",
+  minigameClosed = "minigameClosed",
 }
 
 export enum MessageTypeToLucraClient {
@@ -87,6 +89,7 @@ export enum MessageTypeToLucraClient {
   userMatchupsRequest = "userMatchupsRequest",
   userMatchupsByTypeStatusRequest = "userMatchupsByTypeStatusRequest",
   sdkDiagnostic = "sdkDiagnostic",
+  presentMinigameRequest = "presentMinigameRequest",
 }
 
 export type LucraDeepLinkResponse = {
@@ -911,6 +914,30 @@ export type LucraMinigamesTriggerInput = {
   game_mode: "practice" | "1v1" | "free_for_all" | "tournament";
   amount?: number;
   matchup_id?: string;
+};
+
+export type LucraMinigameMode = LucraMinigamesTriggerInput["game_mode"];
+
+// Asks Lucra to start a minigame session and show the game on its own page.
+export type LucraPresentMinigameBody = {
+  gameId: string;
+  mode: LucraMinigameMode;
+  // The stake. Left out for practice.
+  amount?: number;
+  // The matchup to join, or the tournament id in tournament mode.
+  matchupId?: string;
+};
+
+// Sent with the request's requestId once the session has started and the game is on
+// Lucra's page. A refusal comes back as apiRequestError instead.
+export type LucraPresentMinigameResponse = {
+  sessionId: string;
+  matchupId: string | null;
+};
+
+// Sent when the game closes itself.
+export type LucraMinigameClosedBody = {
+  sessionId: string;
 };
 
 export type LucraStartMinigamesSessionResponse = {

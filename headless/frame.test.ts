@@ -136,6 +136,10 @@ describe("createDomFrame: mount and messages", () => {
     expect(iframe().title).toBe("Lucra");
     expect(iframe().allow).toContain("geolocation");
     expect(iframe().allow).toContain("payment");
+    // For games shown inside Lucra.
+    expect(iframe().allow).toContain("fullscreen *");
+    expect(iframe().allow).toContain("autoplay *");
+    expect(iframe().allow).toContain("encrypted-media *");
   });
 
   it("waits for the body when it does not exist yet", () => {

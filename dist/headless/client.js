@@ -4,6 +4,7 @@ import { LucraError, LucraErrorCode, isLucraError } from "./errors.js";
 import { createEmitter } from "./events.js";
 import { createDomFrame, createNullFrame, hasDom, pageOrigin, } from "./frame.js";
 import { createPresent } from "./present.js";
+import { createWithRemediation } from "./remediate.js";
 import { DEFAULT_TIMEOUTS, createSession } from "./session.js";
 import { HOME_PATH, buildUrl, lucraOrigin } from "./url.js";
 import { createWatch } from "./watch.js";
@@ -29,7 +30,7 @@ export function createClient(config, deps) {
     });
     const auth = createAuth({ session, urls, timeouts });
     const activity = { screenOpen: false };
-    const api = createApi({ session, auth, activity });
+    const api = createApi({ session, auth, activity, requestMs: timeouts.requestMs });
     const watch = createWatch({ session });
     const present = createPresent({
         session,
@@ -38,6 +39,7 @@ export function createClient(config, deps) {
         urls,
         activity,
         whenWriteSettled: api.whenWriteSettled,
+        startMinigame: api.startMinigame,
     });
     const events = createEmitter();
     for (const type of EVENTS) {
@@ -58,6 +60,7 @@ export function createClient(config, deps) {
         present: {
             login: present.login,
             addFunds: present.addFunds,
+            minigame: present.minigame,
             demographics: present.demographics,
             kyc: present.kyc,
             locationGrant: present.locationGrant,
@@ -70,6 +73,7 @@ export function createClient(config, deps) {
         },
         on: events.on,
         whenConnected: session.whenConnected,
+        withRemediation: createWithRemediation(present),
         destroy() {
             if (destroyed)
                 return;

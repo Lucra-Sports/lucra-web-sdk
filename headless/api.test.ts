@@ -23,13 +23,16 @@ function setup(overrides: Partial<Timeouts> = {}) {
   const session = createSession({ frame, url: buildUrl(urls, HOME_PATH), timeouts });
   const auth = createAuth({ session, urls, timeouts });
   const activity: Activity = { screenOpen: false };
-  const api = createApi({ session, auth, activity });
+  const api = createApi({ session, auth, activity, requestMs: timeouts.requestMs });
   return { frame, session, auth, activity, api };
 }
 
 const tick = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 const count = (frame: FakeFrame, type: string) =>
   frame.posted.filter((message) => message.type === type).length;
+const ids = (frame: FakeFrame, type: string) =>
+  frame.posted.filter((message) => message.type === type).map((m) => m.requestId);
 const caught = (promise: Promise<unknown>): Promise<LucraError> =>
   promise.then(
     () => {
@@ -469,17 +472,23 @@ describe("createApi: writes", () => {
     expect(error.outcomeUnknown).toBe(false);
   });
 
-  it("rejects pending calls with CONNECTION_RESET when Lucra restarts", async () => {
+  it("sends a pending read again when Lucra restarts, but not a write", async () => {
     const { frame, api } = setup();
     await connectLoggedIn(frame);
-    const read = caught(api.tournaments.list());
+    const read = api.tournaments.list();
     const write = caught(api.tournaments.join("t1"));
     await tick();
-    frame.deliver("initialized", { success: true });
-    expect((await read).code).toBe("CONNECTION_RESET");
-    expect((await read).outcomeUnknown).toBe(false);
+    await connectLoggedIn(frame);
     expect((await write).code).toBe("CONNECTION_RESET");
     expect((await write).outcomeUnknown).toBe(true);
+    expect(count(frame, "joinTournamentRequest")).toBe(1);
+    const sent = ids(frame, "tournamentsRequest");
+    expect(sent.length).toBe(2);
+    expect(sent[0]).not.toBe(sent[1]);
+    frame.answer("tournamentsRequest", "tournamentsResponse", {
+      tournaments: [{ matchupId: "t2" }],
+    });
+    expect(await read).toEqual([{ matchupId: "t2" }]);
   });
 
   it("whenWriteSettled resolves once the pending write is done, and never rejects", async () => {
@@ -505,5 +514,176 @@ describe("createApi: writes", () => {
     session.destroy();
     expect((await caught(api.tournaments.list())).code).toBe("DESTROYED");
     expect((await caught(api.tournaments.join("t1"))).code).toBe("DESTROYED");
+  });
+});
+
+describe("createApi: reads across a restart", () => {
+  it("does not settle the read with a late answer to the first attempt", async () => {
+    const { frame, api } = setup();
+    await connectLoggedIn(frame);
+    let settled = false;
+    const read = api.tournaments.list().finally(() => {
+      settled = true;
+    });
+    await tick();
+    const [first] = ids(frame, "tournamentsRequest");
+    frame.deliver("initialized", { success: true });
+    await tick();
+    frame.deliver("tournamentsResponse", { tournaments: [{ matchupId: "old" }] }, first);
+    await tick();
+    expect(settled).toBe(false);
+    frame.answer("tournamentsRequest", "tournamentsResponse", {
+      tournaments: [{ matchupId: "new" }],
+    });
+    expect(await read).toEqual([{ matchupId: "new" }]);
+  });
+
+  it("sends markViewed again like any read", async () => {
+    const { frame, api } = setup();
+    await connectLoggedIn(frame);
+    const marked = api.achievements.markViewed("a1");
+    await tick();
+    await connectLoggedIn(frame);
+    expect(count(frame, "markAchievementViewedRequest")).toBe(2);
+    expect(frame.lastPosted("markAchievementViewedRequest")?.body).toEqual({
+      userAchievementId: "a1",
+    });
+    frame.answer("markAchievementViewedRequest", "markAchievementViewedResponse", {});
+    expect(await marked).toBeUndefined();
+  });
+
+  it("rejects CONNECTION_RESET when a second restart interrupts the same read", async () => {
+    const { frame, api } = setup();
+    await connectLoggedIn(frame);
+    const read = caught(api.tournaments.list());
+    await tick();
+    frame.deliver("initialized", { success: true });
+    await tick();
+    frame.deliver("initialized", { success: true });
+    const error = await read;
+    expect(error.code).toBe("CONNECTION_RESET");
+    expect(error.outcomeUnknown).toBe(false);
+    expect(count(frame, "tournamentsRequest")).toBe(2);
+  });
+
+  it("rejects NOT_LOGGED_IN and sends nothing when the user is logged out after the restart", async () => {
+    const { frame, api } = setup();
+    await connectLoggedIn(frame);
+    const read = caught(api.achievements.list());
+    await tick();
+    await connectLoggedOut(frame);
+    expect((await read).code).toBe("NOT_LOGGED_IN");
+    expect(count(frame, "achievementsRequest")).toBe(1);
+  });
+
+  it("rejects with the connection error when Lucra cannot start again", async () => {
+    const { frame, api } = setup();
+    await connectLoggedIn(frame);
+    const read = caught(api.tournaments.list());
+    await tick();
+    frame.deliver("initialized", { success: false });
+    expect((await read).code).toBe("CONNECTION_FAILED");
+    expect(count(frame, "tournamentsRequest")).toBe(1);
+  });
+
+  it("rejects DESTROYED when destroyed while waiting to send again", async () => {
+    const { frame, session, auth, api } = setup();
+    await connectLoggedIn(frame);
+    const read = caught(api.tournaments.list());
+    await tick();
+    session.restart("https://test-tenant.sandbox.lucrasports.com/");
+    await tick();
+    auth.destroy();
+    session.destroy();
+    expect((await read).code).toBe("DESTROYED");
+    expect(count(frame, "tournamentsRequest")).toBe(1);
+  });
+
+  // A restart at 150 ms of a 300 ms budget. A fresh full timeout for the
+  // second attempt could not end before 450 ms, so the bound below tells the
+  // two apart while leaving room for a slow machine.
+  it("rejects TIMEOUT at the first deadline while Lucra has not started again", async () => {
+    const { frame, session, api } = setup({ requestMs: 300 });
+    await connectLoggedIn(frame);
+    const started = Date.now();
+    const read = caught(api.tournaments.list());
+    await sleep(150);
+    session.restart("https://test-tenant.sandbox.lucrasports.com/");
+    const error = await read;
+    const elapsed = Date.now() - started;
+    expect(error.code).toBe("TIMEOUT");
+    expect(elapsed).toBeGreaterThanOrEqual(290);
+    expect(elapsed).toBeLessThan(440);
+  });
+
+  it("rejects TIMEOUT at the first deadline when the second attempt is not answered", async () => {
+    const { frame, api } = setup({ requestMs: 300 });
+    await connectLoggedIn(frame);
+    const started = Date.now();
+    const read = caught(api.tournaments.list());
+    await sleep(150);
+    frame.deliver("initialized", { success: true });
+    const error = await read;
+    const elapsed = Date.now() - started;
+    expect(error.code).toBe("TIMEOUT");
+    expect(error.outcomeUnknown).toBe(false);
+    expect(count(frame, "tournamentsRequest")).toBe(2);
+    expect(elapsed).toBeGreaterThanOrEqual(290);
+    expect(elapsed).toBeLessThan(440);
+    // The timeout reported is the configured one, not what was left.
+    expect(frame.lastPosted("sdkDiagnostic")?.body).toMatchObject({
+      kind: "requestTimeout",
+      requestType: "tournamentsRequest",
+      timeoutMs: 300,
+    });
+  });
+
+  it("does not send the read when its time ran out while Lucra started again", async () => {
+    const { frame, session, api } = setup({ requestMs: 1000 });
+    await connectLoggedIn(frame);
+    const read = caught(api.tournaments.list());
+    await tick();
+    session.restart("https://test-tenant.sandbox.lucrasports.com/");
+    await tick();
+    // The timer that should have rejected is late, as in a throttled tab.
+    const realNow = Date.now;
+    const now = spyOn(Date, "now").mockImplementation(() => realNow() + 5000);
+    try {
+      frame.deliver("initialized", { success: true });
+      expect((await read).code).toBe("TIMEOUT");
+    } finally {
+      now.mockRestore();
+    }
+    expect(count(frame, "tournamentsRequest")).toBe(1);
+  });
+
+  it("waits for the login confirmation after a reload, then sends the read once", async () => {
+    const { frame, api } = setup();
+    await connectLoggedIn(frame);
+    const read = api.achievements.list();
+    await tick();
+    frame.deliver("initialized", { success: true });
+    await tick();
+    frame.answer("isLoggedInRequest", "isLoggedInResponse", { isLoggedIn: true });
+    await tick();
+    expect(count(frame, "achievementsRequest")).toBe(1);
+    frame.deliver("loginSuccess", USER);
+    await tick();
+    expect(count(frame, "achievementsRequest")).toBe(2);
+    frame.answer("achievementsRequest", "achievementsResponse", { achievements: [] });
+    expect(await read).toEqual([]);
+  });
+
+  it("rejects TIMEOUT and sends nothing when the login confirmation comes too late", async () => {
+    const { frame, api } = setup({ requestMs: 100 });
+    await connectLoggedIn(frame);
+    const read = caught(api.achievements.list());
+    await tick();
+    frame.deliver("initialized", { success: true });
+    frame.answer("isLoggedInRequest", "isLoggedInResponse", { isLoggedIn: true });
+    expect((await read).code).toBe("TIMEOUT");
+    frame.deliver("loginSuccess", USER);
+    await tick();
+    expect(count(frame, "achievementsRequest")).toBe(1);
   });
 });

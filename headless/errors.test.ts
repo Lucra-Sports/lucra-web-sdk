@@ -46,7 +46,7 @@ describe("LucraError", () => {
       ["TIMEOUT", "outcomeUnknown"],
       ["CONNECTION_FAILED", "apiKey, tenantId, and env"],
       ["CONNECTION_TIMEOUT", "frame-src"],
-      ["CONNECTION_RESET", "Lucra restarted"],
+      ["CONNECTION_RESET", "After a write, read back before you retry. A read is sent again once"],
       ["DESTROYED", "lucra.destroy()"],
       ["POPUP_BLOCKED", "click handler"],
       ["SCREEN_OPEN", "lucra.present screen"],

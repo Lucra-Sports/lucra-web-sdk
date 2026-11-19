@@ -10,6 +10,7 @@ import {
   type Frame,
 } from "./frame.js";
 import { createPresent, type Present } from "./present.js";
+import { createWithRemediation } from "./remediate.js";
 import { DEFAULT_TIMEOUTS, createSession, type Timeouts } from "./session.js";
 import type {
   LucraAuthState,
@@ -42,6 +43,13 @@ export type LucraHeadlessClient = {
     listener: (data: LucraHeadlessEventMap[K]) => void
   ): () => void;
   whenConnected(): Promise<void>;
+  // Runs `call`. When it fails with an error the user can fix in Lucra, Lucra
+  // shows what the user needs, then `call` runs again. Make one Lucra call in
+  // `call`: all of it may run again, more than once, so a second call in it
+  // would be repeated. Resolves with the call's result, or rejects with the
+  // error the call failed with, usually a LucraError. If the user leaves
+  // without finishing, it rejects with a LucraError.
+  withRemediation<T>(call: () => Promise<T>): Promise<T>;
   destroy(): void;
 };
 
@@ -77,7 +85,7 @@ export function createClient(
   });
   const auth = createAuth({ session, urls, timeouts });
   const activity: Activity = { screenOpen: false };
-  const api = createApi({ session, auth, activity });
+  const api = createApi({ session, auth, activity, requestMs: timeouts.requestMs });
   const watch = createWatch({ session });
   const present = createPresent({
     session,
@@ -86,6 +94,7 @@ export function createClient(
     urls,
     activity,
     whenWriteSettled: api.whenWriteSettled,
+    startMinigame: api.startMinigame,
   });
   const events = createEmitter<LucraHeadlessEventMap>();
   for (const type of EVENTS) {
@@ -107,6 +116,7 @@ export function createClient(
     present: {
       login: present.login,
       addFunds: present.addFunds,
+      minigame: present.minigame,
       demographics: present.demographics,
       kyc: present.kyc,
       locationGrant: present.locationGrant,
@@ -119,6 +129,7 @@ export function createClient(
     },
     on: events.on,
     whenConnected: session.whenConnected,
+    withRemediation: createWithRemediation(present),
     destroy() {
       if (destroyed) return;
       destroyed = true;

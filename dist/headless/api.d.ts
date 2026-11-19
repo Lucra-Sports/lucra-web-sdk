@@ -1,4 +1,4 @@
-import { type LucraAchievement, type LucraAutoJoinedTournamentsBody, type LucraCancelRecreationalGameResult, type LucraCreateRecreationalGameInput, type LucraJoinTournamentResponse, type LucraMatchup, type LucraMatchupDetails, type LucraRecreationalGameResult, type LucraSearchMatchupsByMetadataInput, type LucraTournament, type LucraTournamentDetail, type LucraUserMatchups, type LucraUserMatchupsInput, type LucraUserMatchupsByTypeStatusInput, type LucraUserMatchupsPage, type LucraUserTournamentReward } from "../types/types.js";
+import { type LucraAchievement, type LucraAutoJoinedTournamentsBody, type LucraCancelRecreationalGameResult, type LucraCreateRecreationalGameInput, type LucraJoinTournamentResponse, type LucraMatchup, type LucraMatchupDetails, type LucraPresentMinigameBody, type LucraPresentMinigameResponse, type LucraRecreationalGameResult, type LucraSearchMatchupsByMetadataInput, type LucraTournament, type LucraTournamentDetail, type LucraUserMatchups, type LucraUserMatchupsInput, type LucraUserMatchupsByTypeStatusInput, type LucraUserMatchupsPage, type LucraUserTournamentReward } from "../types/types.js";
 import type { Auth } from "./auth.js";
 import type { Session } from "./session.js";
 export type Activity = {
@@ -41,9 +41,11 @@ export type Api = {
         claim(rewardId: string): Promise<void>;
     };
     whenWriteSettled(): Promise<void>;
+    startMinigame(body: LucraPresentMinigameBody): Promise<LucraPresentMinigameResponse>;
 };
 export declare function createApi(options: {
     session: Session;
     auth: Auth;
     activity: Activity;
+    requestMs: number;
 }): Api;

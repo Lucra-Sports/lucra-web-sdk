@@ -18,6 +18,8 @@ function setup() {
 }
 
 const tick = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+const count = (frame: FakeFrame, type: string) =>
+  frame.posted.filter((message) => message.type === type).length;
 const caught = (promise: Promise<unknown>): Promise<LucraError> =>
   promise.then(
     () => {
@@ -63,7 +65,7 @@ describe("createClient", () => {
   it("exposes exactly the public surface", () => {
     const { client } = setup();
     expect(Object.keys(client).sort()).toEqual(
-      ["achievements", "auth", "destroy", "matchups", "on", "present", "rewards", "tournaments", "whenConnected"]
+      ["achievements", "auth", "destroy", "matchups", "on", "present", "rewards", "tournaments", "whenConnected", "withRemediation"]
     );
     expect(Object.keys(client.auth).sort()).toEqual(["getState", "isLoggedIn", "logout", "subscribe"]);
     expect(Object.keys(client.tournaments).sort()).toEqual(["autoJoin", "get", "join", "leaderboard", "list"]);
@@ -71,8 +73,136 @@ describe("createClient", () => {
     expect(Object.keys(client.achievements).sort()).toEqual(["claim", "list", "markViewed"]);
     expect(Object.keys(client.rewards).sort()).toEqual(["claim", "list"]);
     expect(Object.keys(client.present).sort()).toEqual(
-      ["addFunds", "demographics", "dismiss", "getState", "kyc", "locationGrant", "login", "profile", "subscribe", "wallet", "withdraw"]
+      ["addFunds", "demographics", "dismiss", "getState", "kyc", "locationGrant", "login", "minigame", "profile", "subscribe", "wallet", "withdraw"]
     );
+  });
+
+  it("withRemediation shows the location screen, then sends the write again", async () => {
+    const { frame, client } = setup();
+    await connectLoggedIn(frame);
+    const joined = client.withRemediation(() => client.tournaments.join("t1"));
+    await tick();
+    frame.answer("joinTournamentRequest", "joinTournamentError", { code: "LOCATION_NEEDED" });
+    await tick();
+    expect(client.present.getState().screen).toBe("locationGrant");
+    frame.deliver("locationGranted", null);
+    await tick();
+    const joins = frame.posted.filter((message) => message.type === "joinTournamentRequest");
+    expect(joins.length).toBe(2);
+    expect(joins[1].requestId).not.toBe(joins[0].requestId);
+    frame.answer("joinTournamentRequest", "joinTournamentResponse", { matchupId: "t1" });
+    expect(await joined).toEqual({ matchupId: "t1" });
+  });
+
+  it("withRemediation shows login, then sends the write once after the login", async () => {
+    const { frame, client } = setup();
+    frame.deliver("initialized", { success: true });
+    frame.answer("isLoggedInRequest", "isLoggedInResponse", { isLoggedIn: false });
+    await tick();
+    const joined = client.withRemediation(() => client.tournaments.join("t1"));
+    await tick();
+    expect(client.present.getState().screen).toBe("login");
+    // Loading the login screen restarts Lucra.
+    expect(frame.urls.length).toBe(2);
+    frame.deliver("initialized", { success: true });
+    frame.answer("isLoggedInRequest", "isLoggedInResponse", { isLoggedIn: false });
+    await tick();
+    expect(count(frame, "joinTournamentRequest")).toBe(0);
+    frame.deliver("loginSuccess", USER);
+    await tick();
+    expect(count(frame, "joinTournamentRequest")).toBe(1);
+    frame.answer("joinTournamentRequest", "joinTournamentResponse", { matchupId: "t1" });
+    expect(await joined).toEqual({ matchupId: "t1" });
+    expect(count(frame, "joinTournamentRequest")).toBe(1);
+  });
+
+  it("withRemediation rejects with the call's error when the user leaves the fix", async () => {
+    const { frame, client } = setup();
+    await connectLoggedIn(frame);
+    const joined = caught(client.withRemediation(() => client.tournaments.join("t1")));
+    await tick();
+    frame.answer("joinTournamentRequest", "joinTournamentError", { code: "LOCATION_NEEDED" });
+    await tick();
+    expect(client.present.getState().screen).toBe("locationGrant");
+    frame.deliver("exitLucra", true);
+    const error = await joined;
+    expect(error).toBeInstanceOf(LucraError);
+    expect(error.code).toBe("LOCATION_NEEDED");
+    expect(count(frame, "joinTournamentRequest")).toBe(1);
+  });
+
+  it("withRemediation rejects DESTROYED when the client is destroyed during a fix", async () => {
+    const { frame, client } = setup();
+    await connectLoggedIn(frame);
+    const joined = caught(client.withRemediation(() => client.tournaments.join("t1")));
+    await tick();
+    frame.answer("joinTournamentRequest", "joinTournamentError", { code: "LOCATION_NEEDED" });
+    await tick();
+    expect(client.present.getState().screen).toBe("locationGrant");
+    client.destroy();
+    expect((await joined).code).toBe("DESTROYED");
+    expect(count(frame, "joinTournamentRequest")).toBe(1);
+  });
+
+  it("withRemediation shows the fix for a refused minigame, then starts the game", async () => {
+    const { frame, client } = setup();
+    await connectLoggedIn(frame);
+    const game = client.withRemediation(() =>
+      client.present.minigame({ gameId: "g1", mode: "1v1", amount: 5 })
+    );
+    await tick();
+    frame.answer("presentMinigameRequest", "apiRequestError", { code: "LOCATION_NEEDED" });
+    await tick();
+    expect(client.present.getState().screen).toBe("locationGrant");
+    frame.deliver("locationGranted", null);
+    await tick();
+    const starts = frame.posted.filter((message) => message.type === "presentMinigameRequest");
+    expect(starts.length).toBe(2);
+    expect(starts[1].requestId).not.toBe(starts[0].requestId);
+    expect(starts[1].body).toEqual({ gameId: "g1", mode: "1v1", amount: 5 });
+    frame.answer("presentMinigameRequest", "presentMinigameResponse", { sessionId: "s1", matchupId: "m1" });
+    await tick();
+    expect(client.present.getState().screen).toBe("minigame");
+    frame.deliver("minigameClosed", { sessionId: "s1" });
+    expect(await game).toEqual({ status: "completed", sessionId: "s1", matchupId: "m1" });
+  });
+
+  it("destroy while a minigame starts rejects DESTROYED with an unknown outcome", async () => {
+    const { frame, client } = setup();
+    await connectLoggedIn(frame);
+    const game = caught(client.present.minigame({ gameId: "g1", mode: "practice" }));
+    await tick();
+    expect(count(frame, "presentMinigameRequest")).toBe(1);
+    client.destroy();
+    const error = await game;
+    expect(error.code).toBe("DESTROYED");
+    expect(error.outcomeUnknown).toBe(true);
+    expect(frame.overlaysOpened).toBe(0);
+  });
+
+  it("destroy while a minigame shows resolves dismissed with the ids", async () => {
+    const { frame, client } = setup();
+    await connectLoggedIn(frame);
+    const game = client.present.minigame({ gameId: "g1", mode: "practice" });
+    await tick();
+    frame.answer("presentMinigameRequest", "presentMinigameResponse", { sessionId: "s1", matchupId: null });
+    await tick();
+    expect(frame.overlayOpen).toBe(true);
+    client.destroy();
+    expect(await game).toEqual({ status: "dismissed", reason: "destroyed", sessionId: "s1", matchupId: null });
+    expect(frame.overlayOpen).toBe(false);
+  });
+
+  it("types minigame as needing its input", () => {
+    // Only type checked, never run.
+    const check = (client: ReturnType<typeof setup>["client"]) => {
+      // @ts-expect-error minigame needs { gameId, mode }.
+      void client.present.minigame();
+      // @ts-expect-error mode is required.
+      void client.present.minigame({ gameId: "g1" });
+      void client.present.minigame({ gameId: "g1", mode: "practice" });
+    };
+    expect(typeof check).toBe("function");
   });
 
   it("wires auth, data calls, watch, and screens together", async () => {

@@ -42,7 +42,9 @@ export declare enum LucraClientMessageType {
     claimAchievementResponse = "claimAchievementResponse",
     markAchievementViewedResponse = "markAchievementViewedResponse",
     userMatchupsResponse = "userMatchupsResponse",
-    userMatchupsByTypeStatusResponse = "userMatchupsByTypeStatusResponse"
+    userMatchupsByTypeStatusResponse = "userMatchupsByTypeStatusResponse",
+    presentMinigameResponse = "presentMinigameResponse",
+    minigameClosed = "minigameClosed"
 }
 export declare enum MessageTypeToLucraClient {
     achievementsRequest = "achievementsRequest",
@@ -72,7 +74,8 @@ export declare enum MessageTypeToLucraClient {
     markAchievementViewedRequest = "markAchievementViewedRequest",
     userMatchupsRequest = "userMatchupsRequest",
     userMatchupsByTypeStatusRequest = "userMatchupsByTypeStatusRequest",
-    sdkDiagnostic = "sdkDiagnostic"
+    sdkDiagnostic = "sdkDiagnostic",
+    presentMinigameRequest = "presentMinigameRequest"
 }
 export type LucraDeepLinkResponse = {
     url: string;
@@ -646,6 +649,20 @@ export type LucraMinigamesTriggerInput = {
     game_mode: "practice" | "1v1" | "free_for_all" | "tournament";
     amount?: number;
     matchup_id?: string;
+};
+export type LucraMinigameMode = LucraMinigamesTriggerInput["game_mode"];
+export type LucraPresentMinigameBody = {
+    gameId: string;
+    mode: LucraMinigameMode;
+    amount?: number;
+    matchupId?: string;
+};
+export type LucraPresentMinigameResponse = {
+    sessionId: string;
+    matchupId: string | null;
+};
+export type LucraMinigameClosedBody = {
+    sessionId: string;
 };
 export type LucraStartMinigamesSessionResponse = {
     iframe_url: string;

@@ -15,6 +15,8 @@ import {
   type LucraMarkAchievementViewedResult,
   type LucraMatchup,
   type LucraMatchupDetails,
+  type LucraPresentMinigameBody,
+  type LucraPresentMinigameResponse,
   type LucraRecreationalGameResult,
   type LucraSearchMatchupsByMetadataInput,
   type LucraSearchMatchupsByMetadataResponse,
@@ -32,7 +34,7 @@ import {
   type LucraUserTournamentRewardsResponse,
 } from "../types/types.js";
 import type { Auth } from "./auth.js";
-import { LucraError, LucraErrorCode } from "./errors.js";
+import { LucraError, LucraErrorCode, isLucraError } from "./errors.js";
 import type { RequestSpec } from "./requests.js";
 import type { Session } from "./session.js";
 
@@ -139,6 +141,12 @@ const SPECS = {
     LucraClientMessageType.claimTournamentRewardResponse,
     true
   ),
+  // A stake may be placed, so a plain API_ERROR leaves the outcome unknown.
+  presentMinigame: write<LucraPresentMinigameResponse>(
+    MessageTypeToLucraClient.presentMinigameRequest,
+    LucraClientMessageType.presentMinigameResponse,
+    true
+  ),
 };
 
 export type Api = {
@@ -182,30 +190,78 @@ export type Api = {
   };
   // Resolves when no write is pending. Never rejects.
   whenWriteSettled(): Promise<void>;
+  // Not public. lucra.present.minigame() starts the game with it, through the
+  // write slot. The screen is marked open already, so that is not refused.
+  startMinigame(body: LucraPresentMinigameBody): Promise<LucraPresentMinigameResponse>;
 };
 
 export function createApi(options: {
   session: Session;
   auth: Auth;
   activity: Activity;
+  // How long a call waits for its answer, a resent read included.
+  requestMs: number;
 }): Api {
-  const { session, auth, activity } = options;
+  const { session, auth, activity, requestMs } = options;
   // The one write slot. Set while a write is pending, whatever its kind.
   let writeSettled: Promise<void> | null = null;
+  // True while the pending write is a screen's own, such as a minigame start.
+  let screenWrite = false;
+
+  const ready = async (needsLogin: boolean) => {
+    await session.whenConnected();
+    if (needsLogin) await auth.whenLoggedIn();
+  };
+
+  // Like ready(), but rejects TIMEOUT at the deadline.
+  const readyBy = async (needsLogin: boolean, deadline: number) => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const outOfTime = new Promise<never>((_, reject) => {
+      timer = setTimeout(
+        () => reject(new LucraError(LucraErrorCode.TIMEOUT)),
+        deadline - Date.now()
+      );
+    });
+    try {
+      await Promise.race([ready(needsLogin), outOfTime]);
+    } finally {
+      clearTimeout(timer);
+    }
+  };
 
   const send = async <TResponse>(
     spec: RequestSpec<TResponse>,
     body: unknown,
     needsLogin: boolean
   ): Promise<TResponse> => {
-    await session.whenConnected();
-    if (needsLogin) await auth.whenLoggedIn();
-    return session.request(spec, body);
+    await ready(needsLogin);
+    const deadline = Date.now() + requestMs;
+    try {
+      return await session.request(spec, body);
+    } catch (error) {
+      if (
+        spec.kind !== "read" ||
+        !isLucraError(error) ||
+        error.code !== LucraErrorCode.CONNECTION_RESET
+      ) {
+        throw error;
+      }
+    }
+    // Lucra restarted, so the read was lost. Send it once more, with a new
+    // request id, in what is left of the time it had. A second restart rejects.
+    await readyBy(needsLogin, deadline);
+    // A late timer, for example in a throttled background tab, can let the
+    // wait end after the deadline. Then there is no time left to send it.
+    const left = deadline - Date.now();
+    if (left <= 0) throw new LucraError(LucraErrorCode.TIMEOUT);
+    return session.request(spec, body, left);
   };
 
+  // `forScreen`: the write a lucra.present screen makes for itself.
   const sendWrite = <TResponse>(
     spec: RequestSpec<TResponse>,
-    body: unknown
+    body: unknown,
+    forScreen = false
   ): Promise<TResponse> => {
     // These three checks run before the first await, so a double click is
     // refused instead of sending the write twice.
@@ -213,9 +269,14 @@ export function createApi(options: {
       return Promise.reject(new LucraError(LucraErrorCode.DESTROYED));
     }
     if (writeSettled) {
-      return Promise.reject(new LucraError(LucraErrorCode.IN_PROGRESS));
+      // A screen's own write counts as the screen while the screen is open.
+      return Promise.reject(
+        new LucraError(
+          screenWrite && activity.screenOpen ? LucraErrorCode.SCREEN_OPEN : LucraErrorCode.IN_PROGRESS
+        )
+      );
     }
-    if (activity.screenOpen) {
+    if (activity.screenOpen && !forScreen) {
       return Promise.reject(new LucraError(LucraErrorCode.SCREEN_OPEN));
     }
     const run = send(spec, body, true);
@@ -223,8 +284,10 @@ export function createApi(options: {
     // the time the caller's own code continues.
     const free = () => {
       writeSettled = null;
+      screenWrite = false;
     };
     writeSettled = run.then(free, free);
+    screenWrite = forScreen;
     return run;
   };
 
@@ -295,5 +358,6 @@ export function createApi(options: {
         sendWrite(SPECS.rewardsClaim, { rewardId } satisfies LucraClaimTournamentRewardBody).then(() => undefined),
     },
     whenWriteSettled: () => writeSettled ?? Promise.resolve(),
+    startMinigame: (body) => sendWrite(SPECS.presentMinigame, body, true),
   };
 }

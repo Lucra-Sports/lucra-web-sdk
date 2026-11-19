@@ -10,7 +10,7 @@ export type RequestSpec<TResponse> = {
     maxTimeoutMs?: number;
 };
 export type Requests = {
-    send<TResponse>(spec: RequestSpec<TResponse>, body?: unknown): Promise<TResponse>;
+    send<TResponse>(spec: RequestSpec<TResponse>, body?: unknown, timeoutMs?: number): Promise<TResponse>;
     handle(message: InboundMessage): boolean;
     rejectAll(code: "CONNECTION_RESET" | "DESTROYED"): void;
     pendingCount(): number;

@@ -65,9 +65,11 @@ export function createNullFrame(): Frame {
 }
 
 const HOST_ID = "lucra-headless-host";
-// Same permissions the existing client grants its frame.
+// Same permissions the existing client grants its frame. The last three are for
+// games shown inside Lucra.
 const FRAME_ALLOW =
-  "geolocation *; web-share; accelerometer *; bluetooth *; gyroscope *; clipboard-write *; payment;";
+  "geolocation *; web-share; accelerometer *; bluetooth *; gyroscope *; clipboard-write *; payment; " +
+  "fullscreen *; autoplay *; encrypted-media *;";
 const HIDDEN_CSS = "display:none;";
 // Padded so iOS bars and the notch do not cover Lucra's own controls.
 const OVERLAY_CSS =

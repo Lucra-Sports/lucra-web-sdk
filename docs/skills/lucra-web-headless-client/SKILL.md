@@ -49,10 +49,11 @@ is unchanged by the preview.
 - **Prefer a container with your own close button.** Some Lucra screens have no exit control
   yet, and a full screen one leaves the user no way out. Show screens in a `container`, next to
   your own close button that calls `lucra.present.dismiss()`.
-- **Every failure is a `LucraError`.** `remediation` names the screen to show: show it, then
-  try again once if it resolves `"completed"`. If that fails too, show the error in your own UI
-  instead of the screen again. `outcomeUnknown: true` means a write may have gone
-  through: never retry it automatically, read back first.
+- **Every failure is a `LucraError`.** For a change the user started, prefer
+  `lucra.withRemediation()`, unless the app handles these steps itself: Lucra shows what the user
+  needs, then the call runs again. Pass it one Lucra call. What still rejects goes to your own UI.
+  `outcomeUnknown: true` means a write may have gone through: never retry it automatically,
+  read back first.
 - **One write at a time, and none while a `present.*` call is pending** (Add Funds aside). A
   refused write sends nothing, so a double click cannot send it twice.
 - **`present.addFunds()` runs first in a click handler**, with no `await` before it. Never call
@@ -126,6 +127,32 @@ Writes are what the guide calls changes
   screen's result before the next write. A screen asked for while a write is pending waits for
   that write to finish.
 
+**Prefer `lucra.withRemediation()` for a change the user started**, unless the app handles these
+steps itself. When the call fails with something the user can fix in Lucra, Lucra shows what the
+user needs, then the call runs again. It resolves with the call's result, or rejects with the
+error the call failed with, usually a `LucraError`, for your own UI. If the user leaves without
+finishing, it rejects with a `LucraError`.
+
+**Pass a function that makes one Lucra call.** Everything in it may run again, possibly more
+than once, so a second call in it would be repeated.
+
+```typescript
+const result = await lucra.withRemediation(() => lucra.tournaments.join(tournamentId));
+```
+
+- What Lucra shows can change between releases.
+- The promise stays pending while the user is in a Lucra screen. Keep the button disabled.
+- Some errors still reach you, such as `INSUFFICIENT_FUNDS` today. For that one, offer your own
+  button that calls `lucra.present.addFunds()`.
+- A call whose outcome is unknown is never run again.
+- `lucra.present.dismiss()` ends a fix that is showing, and the call then rejects.
+- Run one `lucra.withRemediation()` at a time: a second one that needs a screen takes the first
+  one's place.
+- Close your own modal dialogs first: a Lucra screen under one cannot be reached.
+- It also works for a read that needs a logged in user.
+- To handle it yourself instead, show `lucra.present[error.remediation]()` and decide when to
+  try again.
+
 Check with `isLucraError(error)`.
 
 - **`message` is for the user.** `source` says who raised the error: `"sdk"` when the SDK raised
@@ -135,7 +162,8 @@ Check with `isLucraError(error)`.
   `hint` is guidance for the developer: log it, never show it. It is always `null` for
   `source: "lucra"`.
 
-- **`remediation`** names the screen to show. Try the call again once if it resolves
+- **`remediation`** names the `lucra.present` call that fixes it, for when you handle it
+  yourself instead of with `lucra.withRemediation()`. Try the call again once if it resolves
   `"completed"`, and send a second failure to your own UI: for `demographics()` and `kyc()`,
   `"completed"` only means the screen closed. `"addFunds"` needs a click, so show your own Add
   Funds button instead of calling it from a `catch`.
@@ -146,6 +174,9 @@ Check with `isLucraError(error)`.
   it and are safe to repeat. One caveat: `rewards.list()` marks unviewed rewards as viewed, so a
   repeat with `viewed: false` may not return them again. `achievements.markViewed()` changes
   state but is not a write: it is safe to repeat and never sets it.
+- **A read waiting when Lucra restarts is sent again once by the SDK**, within the same 15
+  seconds. Do not repeat it yourself. So `CONNECTION_RESET` mostly means a write: read back
+  before you try again. A read gets it only when a second restart interrupts it.
 
 Every code: [Errors](../../3.0_headless_client.md#errors).
 
@@ -159,6 +190,7 @@ Every code: [Errors](../../3.0_headless_client.md#errors).
 | `present.locationGrant()` | The user shares their location |
 | `present.addFunds()` | The deposit goes through. It can also resolve `"failed"`, `"dismissed"`, or `"alreadyOpen"`. See [Add Funds](#add-funds) |
 | `present.withdraw()`, `present.profile()`, `present.wallet()` | Never. They resolve `"dismissed"` when closed |
+| `present.minigame(input)` | The game closes itself. See [Minigames](#minigames) |
 
 - **Where it shows.** Without `container`, a screen covers the whole page. With `container`, it
   fills that element. Lucra is hidden before a screen shows and after it ends.
@@ -168,17 +200,19 @@ Every code: [Errors](../../3.0_headless_client.md#errors).
   Lucra reloads and an open screen is not shown again. Call `lucra.destroy()` before you remove
   it.
 - **Show your own wrapper from state, not by wrapping calls.** `lucra.present.getState()` returns
-  `{ screen }`, the `LucraScreen` on show or `null`, and `lucra.present.subscribe(listener)`
-  calls the listener now and on every change. They behave like `lucra.auth.getState()` and
-  `subscribe()`. `screen` is set only while a screen is on show: not while it waits to connect,
-  for a login, or for a write, and never for Add Funds. A replacement goes to `null` and then to
-  the new screen, in the same task when nothing has to wait. Do not count open screens.
+  `{ screen }`, the `LucraScreen` on show, `"minigame"` while a game shows, or `null`, and
+  `lucra.present.subscribe(listener)` calls the listener now and on every change. They behave
+  like `lucra.auth.getState()` and `subscribe()`. `screen` is set only while a screen is on
+  show: not while it waits to connect, for a login, or for a write, and never for Add Funds. A
+  replacement goes to `null` and then to the new screen, in the same task when nothing has to
+  wait. Do not count open screens.
 - **The SDK draws no close control.** A screen ends with Lucra's own exit control,
   `lucra.present.dismiss()`, another `present.*` call other than `addFunds()` replacing it, the
-  user logging out inside it, `lucra.destroy()`, its own `signal` being aborted, or by
-  completing. All but completing resolve `{ status: "dismissed", reason }`, where `reason` is
-  `"exit"`, `"dismissed"`, `"replaced"`, `"loggedOut"`, `"destroyed"`, or `"aborted"`. Assume any
-  screen may lack Lucra's exit control.
+  user logging out inside it, `lucra.destroy()`, its own `signal` being aborted, Lucra
+  restarting while a game shows, or by completing. All but completing resolve
+  `{ status: "dismissed", reason }`, where `reason` is `"exit"`, `"dismissed"`, `"replaced"`,
+  `"loggedOut"`, `"destroyed"`, `"aborted"`, or `"restarted"`. Assume any screen may lack
+  Lucra's exit control.
 - **Tie a screen to a route or component with `signal`.** Every screen takes
   `{ signal?: AbortSignal }`. Abort it in that route's or component's cleanup: it closes only the
   screen that call opened, and does nothing once the call has finished or another screen
@@ -188,9 +222,10 @@ Every code: [Errors](../../3.0_headless_client.md#errors).
 - `login({ phoneNumber, signal })` fills in the form. `phoneNumber` must be exactly 10 digits:
   omit it when you have none, since `""` rejects with `INVALID_ARGUMENT`. That error's `message`,
   "The phone number must be 10 digits", is safe to show next to a number the user typed.
-- Showing the login screen restarts Lucra. Reads still waiting reject with `CONNECTION_RESET` and
-  are safe to repeat. If Lucra cannot start again while any screen shows, the screen closes and
-  rejects with `CONNECTION_FAILED` or `CONNECTION_TIMEOUT`.
+- Showing the login screen restarts Lucra. Calls still waiting follow the restart rule in
+  Errors above. If Lucra cannot start again while any screen shows, the screen closes and
+  rejects with `CONNECTION_FAILED` or `CONNECTION_TIMEOUT`. A game closes on any restart, with
+  `"restarted"`.
 - **Events:** `lucra.on(event, listener)` reports what the user did inside a Lucra screen, for
   example `matchupCreated`. It never fires for your own calls: the resolved promise is your
   signal.
@@ -213,6 +248,27 @@ and `lucra.auth`, and have a human run login and Add Funds.
   close the window.
 - `message` is text from Lucra: show it as text, never as HTML. Read the new balance from
   `lucra.auth`.
+
+### Minigames
+
+- `lucra.present.minigame({ gameId, mode, amount, matchupId, signal })` starts a minigame
+  session, and Lucra shows the game in its own frame. `mode` is `"practice"`, `"1v1"`,
+  `"free_for_all"`, or `"tournament"`. `amount` is the stake: leave it out for practice.
+  `matchupId` is the matchup to join, or the tournament id in tournament mode. A bad input
+  rejects with `INVALID_ARGUMENT` before anything changes. Nothing shows until the game has
+  started.
+- It resolves `{ status: "completed", sessionId, matchupId }` when the game closes itself. That
+  does not mean the user won: for a paid game, read `lucra.matchups.get(matchupId)`. Any other
+  close resolves `"dismissed"` with `reason`, `"restarted"` when Lucra restarted while it
+  showed, and the same ids, which are `null` when no session was started.
+- **Starting is a change that needs a logged in user**, and works inside
+  `lucra.withRemediation()`. An error with `outcomeUnknown: true` means a game may have started
+  and a stake may have been placed: the SDK sends Lucra home so the game does not keep running.
+  Read `lucra.matchups.list()` before you try again. Never retry automatically.
+- Dismissing it while the game starts waits for Lucra's answer, then resolves `"dismissed"`
+  with the ids if the game started. The game never shows.
+- It needs a Lucra environment that answers it. Until then, it rejects with `TIMEOUT`, which
+  has `outcomeUnknown: true` although nothing started, and `dismiss()` cannot end it early.
 
 ## 7. Games You Play
 
@@ -279,7 +335,7 @@ their calls are `LucraClient` calls.
 | `SCREEN_OPEN` | A write while a screen shows or is opening | Await the screen's result first |
 | `POPUP_BLOCKED` | `addFunds()` ran outside the click | Call it first in the click handler, with no `await` before it |
 | `TIMEOUT` | Lucra did not answer, or did not confirm a login, within 15 seconds | Check `outcomeUnknown`: when `true`, read back before retrying. A read is safe to repeat. A `hint` that says Lucra did not finish signing them in means Lucra reported a user it never confirmed, and nothing was sent |
-| `CONNECTION_RESET` | Lucra restarted while the call waited, for example for `present.login()` | Repeat a read. Read back after a write |
+| `CONNECTION_RESET` | Lucra restarted while the call waited. A read gets it only after a second restart | Read back after a write |
 | `UNSUPPORTED_ENVIRONMENT` | Created with no browser, for example during server rendering | Create it in browser code |
 | `onError` called with `CANCELLED` | A watch on another matchup replaced this one | Watch one matchup at a time |
 | The user is stuck on a full screen Lucra screen | That screen has no exit control, and full screen covers your page | Show screens in a `container` with your own close button that calls `lucra.present.dismiss()` |
