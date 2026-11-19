@@ -211,6 +211,12 @@ export function createPresent(options) {
         gameOutOfSight = true;
         hideGame();
     });
+    // Lucra restarting reloads its page, so no game is left on it. The minigame
+    // start's catch skips CONNECTION_RESET for the same reason: it runs after
+    // this listener and would mark the game again.
+    const unsubscribeRestart = session.on(LucraClientMessageType.initialized, () => {
+        gameOutOfSight = false;
+    });
     const unsubscribePopup = session.on(LUCRA_POPUP_MESSAGE_TYPE, (data) => {
         const result = data;
         if ((result?.toastType === "success" || result?.toastType === "error") &&
@@ -323,6 +329,12 @@ export function createPresent(options) {
             if (matchupId !== undefined && !isText(matchupId)) {
                 return invalid("matchupId must be a non empty string. Leave it out when you have none.");
             }
+            if (mode === "tournament" && matchupId === undefined) {
+                return invalid("matchupId is required for tournament mode. It must be the tournament id.");
+            }
+            if (mode !== "tournament" && matchupId !== undefined) {
+                return invalid('matchupId is only for mode "tournament". Leave it out for other modes.');
+            }
             // Only the fields given. The signal is not sent.
             const body = { gameId, mode };
             if (amount !== undefined)
@@ -349,9 +361,13 @@ export function createPresent(options) {
                         };
                     }
                     catch (error) {
-                        // The game may be on Lucra's page all the same.
-                        if (isLucraError(error) && error.outcomeUnknown)
+                        // The game may be on Lucra's page all the same. Not after a
+                        // restart: the reload took it.
+                        if (isLucraError(error) &&
+                            error.outcomeUnknown &&
+                            error.code !== LucraErrorCode.CONNECTION_RESET) {
                             gameOutOfSight = true;
+                        }
                         throw error;
                     }
                 },
@@ -406,6 +422,7 @@ export function createPresent(options) {
             popup?.close();
             unsubscribePopup();
             unsubscribeLateStart();
+            unsubscribeRestart();
             changes.clear();
         },
     };

@@ -119,9 +119,12 @@ export type LucraLoginResult =
 export type LucraMinigameInput = {
   gameId: string;
   mode: LucraMinigameMode;
-  // The stake. Leave it out for practice.
+  // The stake. "1v1" and "free_for_all" need one of the game's wager amounts above 0.
+  // Practice is always 0. Tournament ignores it and takes the tournament's buy in.
   amount?: number;
-  // The matchup to join, or the tournament id in tournament mode.
+  // Only for mode "tournament", where it is the tournament id and is required.
+  // Tournament mode joins the tournament and takes its buy in, so do not also
+  // call lucra.tournaments.join() for that play.
   matchupId?: string;
   signal?: AbortSignal;
 };

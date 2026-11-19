@@ -922,9 +922,10 @@ export type LucraMinigameMode = LucraMinigamesTriggerInput["game_mode"];
 export type LucraPresentMinigameBody = {
   gameId: string;
   mode: LucraMinigameMode;
-  // The stake. Left out for practice.
+  // The stake. Ignored for practice (always 0) and for tournament (the tournament's buy in).
   amount?: number;
-  // The matchup to join, or the tournament id in tournament mode.
+  // Only for mode "tournament", where it is the tournament id and is required.
+  // Lucra refuses it with any other mode.
   matchupId?: string;
 };
 

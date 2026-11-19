@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## [v1.20.0]
+
+### Changed
+
+- **Preview:** `lucra.present.minigame()` checks `matchupId` against `mode`. Code that passes a `matchupId` with a mode other than `"tournament"`, or uses `"tournament"` without one, now rejects with `INVALID_ARGUMENT` before anything is sent.
+
+### Fixed
+
+- **Preview:** the `lucra.present.minigame` docs were corrected. `matchupId` is only for tournament mode, where it is the tournament id. Tournament mode joins the tournament and takes its buy in, so do not also call `lucra.tournaments.join()`. `UNVERIFIED` is sent for a minigame start. See [Minigames](3.0_headless_client.md#minigames).
+- **Preview:** after Lucra restarts, the SDK no longer sends Lucra home for a minigame the restart already removed. A start interrupted by a restart no longer marks a game as left running.
+- **Preview:** since v1.19.0, a read that needs a logged in user and is sent again after Lucra restarts rejects with `NOT_LOGGED_IN` when the user is logged out by then. It used to reject with `CONNECTION_RESET`. Handle both if your code branches on the code. See [Reading data](3.0_headless_client.md#reading-data).
+
 ## [v1.19.0]
 
 ### Added
@@ -15,7 +27,7 @@
 
 - **Preview:** two result types changed shape, so code that switches over every status, or builds these results by hand, needs updating. A dismissed screen result now has a required `reason`: `"exit"`, `"dismissed"`, `"replaced"`, `"loggedOut"`, `"destroyed"`, `"aborted"`, or `"restarted"`. Add Funds is not a screen, and its `"dismissed"` result has none. `LucraAddFundsResult` has a new status, `"alreadyOpen"`: while the Add Funds window is open, another `lucra.present.addFunds()` tries to bring that window to the front and resolves `{ status: "alreadyOpen" }` at once. It used to share the first call's result, so one deposit could show two success messages. The first call still resolves when the window closes. See [Add Funds](3.0_headless_client.md#add-funds).
 - **Preview:** every default `LucraError` message the SDK raises is now plain text written for end users. What the developer needs, such as which config value to check or that `addFunds()` must run in a click handler, moved to `hint`. This includes the detail for `INVALID_CONFIG`, `INVALID_ARGUMENT`, a replaced watch's `CANCELLED`, and a login Lucra never confirmed. When `createLucraClient` throws, it logs the code and the hint to the console. A phone number that is not 10 digits has its own message. An error Lucra reported keeps Lucra's own message.
-- **Preview:** a read that is waiting when Lucra restarts, for example when `lucra.present.login()` shows, is now sent again once Lucra is back, within its usual 15 seconds. Writes are unchanged. See [Reading data](3.0_headless_client.md#reading-data).
+- **Preview:** a read that is waiting when Lucra restarts, for example when `lucra.present.login()` shows, is now sent again once Lucra is back, within its usual 15 seconds. Writes are unchanged. A read that needs a logged in user rejects with `NOT_LOGGED_IN` when the user is logged out by the time Lucra is back. It used to reject with `CONNECTION_RESET`. See [Reading data](3.0_headless_client.md#reading-data).
 
 ### Fixed
 

@@ -1013,7 +1013,7 @@ describe("LucraScreen", () => {
 });
 
 describe("createPresent: minigame", () => {
-  const GAME = { gameId: "g1", mode: "1v1" as const, amount: 5, matchupId: "m1" };
+  const GAME = { gameId: "g1", mode: "1v1" as const, amount: 5 };
   const STARTED = { sessionId: "s1", matchupId: "m1" };
   const HOME = { pathname: `/app/headless?${PARENT}` };
   const WALLET = { pathname: `/app/wallet?${PARENT}` };
@@ -1069,8 +1069,12 @@ describe("createPresent: minigame", () => {
       { gameId: "g1", mode: "1v1", amount: Number.NaN },
       { gameId: "g1", mode: "1v1", amount: Number.POSITIVE_INFINITY },
       { gameId: "g1", mode: "1v1", amount: "5" },
-      { gameId: "g1", mode: "1v1", matchupId: "" },
-      { gameId: "g1", mode: "1v1", matchupId: 7 },
+      { gameId: "g1", mode: "tournament", matchupId: "" },
+      { gameId: "g1", mode: "tournament", matchupId: 7 },
+      { gameId: "g1", mode: "tournament" },
+      { gameId: "g1", mode: "1v1", matchupId: "t1" },
+      { gameId: "g1", mode: "practice", matchupId: "t1" },
+      { gameId: "g1", mode: "free_for_all", amount: 5, matchupId: "t1" },
       { gameId: "g1", mode: "1v1", signal: {} },
     ]) {
       const error = await caught(present.minigame(input as never));
@@ -1103,7 +1107,7 @@ describe("createPresent: minigame", () => {
     await tick();
     expect(starts(frame)).toBe(1);
     const request = frame.lastPosted("presentMinigameRequest")!;
-    expect(request.body).toEqual({ gameId: "g1", mode: "1v1", amount: 5, matchupId: "m1" });
+    expect(request.body).toEqual({ gameId: "g1", mode: "1v1", amount: 5 });
     expect(typeof request.requestId).toBe("string");
     // Nothing shows until the game has started.
     expect(frame.overlayOpen).toBe(false);
@@ -1180,7 +1184,7 @@ describe("createPresent: minigame", () => {
     await join;
   });
 
-  it("rejects with outcomeUnknown on API_ERROR, a timeout, and a restart, and sends Lucra home", async () => {
+  it("rejects with outcomeUnknown on API_ERROR and a timeout, and sends Lucra home", async () => {
     const apiError = setup();
     await connectLoggedIn(apiError.frame);
     const failed = caught(apiError.present.minigame(GAME));
@@ -1198,16 +1202,52 @@ describe("createPresent: minigame", () => {
     expect(timeout.frame.overlaysOpened).toBe(0);
     expect(timeout.activity.screenOpen).toBe(false);
     expect(navigations(timeout.frame)).toEqual([HOME]);
+  });
 
-    const restart = setup();
-    await connectLoggedIn(restart.frame);
-    const reset = caught(restart.present.minigame(GAME));
+  it("rejects with outcomeUnknown on a restart and sends Lucra nowhere, now or after a later call that shows nothing", async () => {
+    const { frame, present } = setup();
+    await connectLoggedIn(frame);
+    const reset = caught(present.minigame(GAME));
     await tick();
-    restart.frame.deliver("initialized", { success: true });
-    expect((await reset).code).toBe("CONNECTION_RESET");
-    expect((await reset).outcomeUnknown).toBe(true);
-    expect(starts(restart.frame)).toBe(1);
-    expect(navigations(restart.frame)).toEqual([HOME]);
+    frame.deliver("initialized", { success: true });
+    const error = await reset;
+    expect(error.code).toBe("CONNECTION_RESET");
+    expect(error.outcomeUnknown).toBe(true);
+    expect(starts(frame)).toBe(1);
+    expect(navigations(frame)).toEqual([]);
+    // Lucra is connected again. The restart took any game with it.
+    frame.answer("isLoggedInRequest", "isLoggedInResponse", { isLoggedIn: true });
+    frame.deliver("loginSuccess", USER);
+    await tick();
+    const wallet = track(present.wallet());
+    present.dismiss();
+    await tick();
+    expect(wallet.value).toEqual({ status: "dismissed", reason: "dismissed" });
+    expect(frame.overlaysOpened).toBe(0);
+    expect(navigations(frame)).toEqual([]);
+  });
+
+  it("a restart clears a game left out of sight by a late answer", async () => {
+    const { frame, api, present } = setup({ requestMs: 20 });
+    await connectLoggedIn(frame);
+    await caught(present.minigame(GAME));
+    expect(navigations(frame)).toEqual([HOME]);
+    // A pending change holds the wallet back, so it is current and not showing.
+    const join = caught(api.tournaments.join("t1"));
+    await tick();
+    const wallet = track(present.wallet());
+    await tick();
+    answer(frame);
+    await tick();
+    expect(navigations(frame)).toEqual([HOME]);
+    // The wallet ends without showing, before anything else can change.
+    frame.deliver("initialized", { success: true });
+    present.dismiss();
+    await tick();
+    expect(wallet.value).toEqual({ status: "dismissed", reason: "dismissed" });
+    expect(frame.overlaysOpened).toBe(0);
+    expect(navigations(frame)).toEqual([HOME]);
+    await join;
   });
 
   it("refuses other changes while it starts and while it shows, and waits for one pending before", async () => {
