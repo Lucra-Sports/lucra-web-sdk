@@ -144,10 +144,17 @@ export function createApi(options) {
                     body.address = pick(address, ADDRESS_FIELDS);
                 if (metadata != null)
                     body.metadata = { ...metadata };
-                // Not sent again after a restart, unlike other reads: a different user may
-                // be logged in by then, and these details belong to the one who was.
+                // Sent only for the user known when the call was made, and not sent again
+                // after a restart: by then a different user may be logged in, and these
+                // details belong to the first one.
+                const userId = auth.getState().user?.id;
                 return ready(true)
-                    .then(() => session.request(SPECS.authUpdateUser, body))
+                    .then(() => {
+                    if (userId !== undefined && auth.getState().user?.id !== userId) {
+                        throw new LucraError(LucraErrorCode.CONNECTION_RESET);
+                    }
+                    return session.request(SPECS.authUpdateUser, body);
+                })
                     .then(() => undefined);
             },
         },

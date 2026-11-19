@@ -662,6 +662,37 @@ describe("createApi: reads across a restart", () => {
     expect(error.outcomeUnknown).toBe(false);
   });
 
+  it("does not send updateUser for a different user", async () => {
+    const { frame, auth, api } = setup();
+    await connectLoggedIn(frame);
+    frame.deliver("initialized", { success: true });
+    await tick();
+    expect(auth.getState()).toMatchObject({ status: "loading", user: { id: "u1" } });
+    const update = caught(api.auth.updateUser({ email: "ada@example.com" }));
+    frame.answer("isLoggedInRequest", "isLoggedInResponse", { isLoggedIn: true });
+    frame.deliver("loginSuccess", { id: "user-b", username: "bo" });
+    await tick();
+    expect(count(frame, "updateUserRequest")).toBe(0);
+    const error = await update;
+    expect(error.code).toBe("CONNECTION_RESET");
+    expect(error.outcomeUnknown).toBe(false);
+  });
+
+  it("sends updateUser when the same user is back after a restart", async () => {
+    const { frame, auth, api } = setup();
+    await connectLoggedIn(frame);
+    frame.deliver("initialized", { success: true });
+    await tick();
+    expect(auth.getState()).toMatchObject({ status: "loading", user: { id: "u1" } });
+    const update = api.auth.updateUser({ email: "ada@example.com" });
+    frame.answer("isLoggedInRequest", "isLoggedInResponse", { isLoggedIn: true });
+    frame.deliver("loginSuccess", USER);
+    await tick();
+    expect(count(frame, "updateUserRequest")).toBe(1);
+    frame.answer("updateUserRequest", "updateUserResponse", {});
+    expect(await update).toBeUndefined();
+  });
+
   it("rejects CONNECTION_RESET when a second restart interrupts the same read", async () => {
     const { frame, api } = setup();
     await connectLoggedIn(frame);
