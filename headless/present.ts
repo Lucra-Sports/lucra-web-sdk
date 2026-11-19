@@ -8,7 +8,7 @@ import {
 } from "../types/types.js";
 import type { Activity } from "./api.js";
 import type { Auth } from "./auth.js";
-import { LucraError, LucraErrorCode, isLucraError } from "./errors.js";
+import { LucraError, LucraErrorCode, invalid, isLucraError } from "./errors.js";
 import { createEmitter } from "./events.js";
 import type { Frame, Overlay, Popup } from "./frame.js";
 import type { Session } from "./session.js";
@@ -81,9 +81,6 @@ type Screen<TResult> = {
 
 const PHONE_NUMBER = /^[0-9]{10}$/;
 const MINIGAME_MODES: readonly unknown[] = ["practice", "1v1", "free_for_all", "tournament"];
-
-const invalid = (hint: string) =>
-  Promise.reject(new LucraError(LucraErrorCode.INVALID_ARGUMENT, undefined, { hint }));
 
 const isText = (value: unknown): value is string => typeof value === "string" && value !== "";
 

@@ -1,10 +1,9 @@
 import { LUCRA_POPUP_MESSAGE_TYPE, LucraClientMessageType, MessageTypeToLucraClient, } from "../types/types.js";
-import { LucraError, LucraErrorCode, isLucraError } from "./errors.js";
+import { LucraError, LucraErrorCode, invalid, isLucraError } from "./errors.js";
 import { createEmitter } from "./events.js";
 import { HOME_PATH, buildUrl, navigateTarget } from "./url.js";
 const PHONE_NUMBER = /^[0-9]{10}$/;
 const MINIGAME_MODES = ["practice", "1v1", "free_for_all", "tournament"];
-const invalid = (hint) => Promise.reject(new LucraError(LucraErrorCode.INVALID_ARGUMENT, undefined, { hint }));
 const isText = (value) => typeof value === "string" && value !== "";
 export function createPresent(options) {
     const { session, auth, frame, urls, activity, whenWriteSettled, startMinigame } = options;

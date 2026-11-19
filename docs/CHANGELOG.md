@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## [v1.21.0]
+
+### Added
+
+- **Preview:** `lucra.auth.updateUser(details)` on the headless client sends what you know about the user to Lucra, and resolves once Lucra has saved it. New message types `updateUserRequest` and `updateUserResponse`. New type `LucraUpdateUserInput`. It is safe to repeat and is not one of the one at a time changes. See [Updating the user's details](3.0_headless_client.md#updating-the-users-details).
+
 ## [v1.20.0]
 
 ### Changed

@@ -41,6 +41,7 @@ export declare class LucraError extends Error {
         source?: LucraErrorSource;
     });
 }
+export declare const invalid: (hint: string) => Promise<never>;
 export declare function isLucraError(value: unknown): value is LucraError;
 export type RequestKind = "read" | "write";
 export declare function fromApiError(body: {

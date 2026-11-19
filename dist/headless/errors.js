@@ -107,6 +107,8 @@ export class LucraError extends Error {
         Object.setPrototypeOf(this, LucraError.prototype);
     }
 }
+// A call's input it cannot use. Rejects rather than throws, like every call.
+export const invalid = (hint) => Promise.reject(new LucraError(LucraErrorCode.INVALID_ARGUMENT, undefined, { hint }));
 // Works across bundles, where `instanceof` can fail for a duplicated module.
 export function isLucraError(value) {
     if (value instanceof LucraError)

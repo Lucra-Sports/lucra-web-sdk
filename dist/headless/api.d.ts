@@ -1,10 +1,14 @@
 import { type LucraAchievement, type LucraAutoJoinedTournamentsBody, type LucraCancelRecreationalGameResult, type LucraCreateRecreationalGameInput, type LucraJoinTournamentResponse, type LucraMatchup, type LucraMatchupDetails, type LucraPresentMinigameBody, type LucraPresentMinigameResponse, type LucraRecreationalGameResult, type LucraSearchMatchupsByMetadataInput, type LucraTournament, type LucraTournamentDetail, type LucraUserMatchups, type LucraUserMatchupsInput, type LucraUserMatchupsByTypeStatusInput, type LucraUserMatchupsPage, type LucraUserTournamentReward } from "../types/types.js";
 import type { Auth } from "./auth.js";
 import type { Session } from "./session.js";
+import type { LucraUpdateUserInput } from "./types.js";
 export type Activity = {
     screenOpen: boolean;
 };
 export type Api = {
+    auth: {
+        updateUser(details: LucraUpdateUserInput): Promise<void>;
+    };
     tournaments: {
         list(): Promise<LucraTournament[]>;
         get(tournamentId: string): Promise<LucraTournamentDetail | null>;

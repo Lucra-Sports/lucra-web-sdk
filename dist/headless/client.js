@@ -52,6 +52,7 @@ export function createClient(config, deps) {
             subscribe: auth.subscribe,
             isLoggedIn: auth.isLoggedIn,
             logout: auth.logout,
+            updateUser: api.auth.updateUser,
         },
         tournaments: api.tournaments,
         matchups: { ...api.matchups, watch: watch.watch },

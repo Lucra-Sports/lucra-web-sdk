@@ -105,7 +105,7 @@ login.
 
 | Works logged out | Needs a logged in user |
 | --- | --- |
-| `tournaments.list()`, `matchups.get()`, `matchups.getDetails()`, `matchups.watch()`, `present.login()` | `tournaments.get()`, `tournaments.leaderboard()`, `matchups.searchByMetadata()`, `matchups.list()`, `matchups.listByTypeStatus()`, `achievements.list()`, `achievements.markViewed()`, `rewards.list()`, every write, every other `present.*` screen |
+| `tournaments.list()`, `matchups.get()`, `matchups.getDetails()`, `matchups.watch()`, `present.login()` | `tournaments.get()`, `tournaments.leaderboard()`, `matchups.searchByMetadata()`, `matchups.list()`, `matchups.listByTypeStatus()`, `achievements.list()`, `achievements.markViewed()`, `auth.updateUser()`, `rewards.list()`, every write, every other `present.*` screen |
 
 `present.addFunds()` cannot wait out `"loading"`, so it rejects with `NOT_LOGGED_IN` only when
 the status is already `"loggedOut"`.
@@ -173,7 +173,8 @@ Check with `isLucraError(error)`.
   or ask the user. A second create makes a second matchup with a second buy in. Reads never set
   it and are safe to repeat. One caveat: `rewards.list()` marks unviewed rewards as viewed, so a
   repeat with `viewed: false` may not return them again. `achievements.markViewed()` changes
-  state but is not a write: it is safe to repeat and never sets it.
+  state but is not a write: it is safe to repeat and never sets it. The same goes for
+  `auth.updateUser()`, which also works while a screen shows.
 - **A read waiting when Lucra restarts is sent again once by the SDK**, within the same 15
   seconds. Do not repeat it yourself. So `CONNECTION_RESET` mostly means a write: read back
   before you try again. A read gets it only when a second restart interrupts it.

@@ -2,6 +2,7 @@ import type {
   LucraEnvironment,
   LucraMatchupDetails,
   LucraMinigameMode,
+  SDKClientUser,
   SDKLucraUser,
 } from "../types/types.js";
 import type { LucraError } from "./errors.js";
@@ -59,6 +60,9 @@ export type {
 } from "../types/types.js";
 
 export type LucraUser = SDKLucraUser;
+
+// What lucra.auth.updateUser() sends.
+export type LucraUpdateUserInput = SDKClientUser;
 
 export type LucraClientConfig = {
   apiKey: string;
