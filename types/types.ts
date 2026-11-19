@@ -54,6 +54,7 @@ export enum LucraClientMessageType {
   claimTournamentRewardResponse = "claimTournamentRewardResponse",
   claimAchievementResponse = "claimAchievementResponse",
   markAchievementViewedResponse = "markAchievementViewedResponse",
+  updateUserResponse = "updateUserResponse",
   userMatchupsResponse = "userMatchupsResponse",
   userMatchupsByTypeStatusResponse = "userMatchupsByTypeStatusResponse",
   presentMinigameResponse = "presentMinigameResponse",
@@ -86,6 +87,7 @@ export enum MessageTypeToLucraClient {
   claimTournamentRewardRequest = "claimTournamentRewardRequest",
   claimAchievementRequest = "claimAchievementRequest",
   markAchievementViewedRequest = "markAchievementViewedRequest",
+  updateUserRequest = "updateUserRequest",
   userMatchupsRequest = "userMatchupsRequest",
   userMatchupsByTypeStatusRequest = "userMatchupsByTypeStatusRequest",
   sdkDiagnostic = "sdkDiagnostic",
@@ -424,6 +426,9 @@ export type LucraClaimAchievementBody = { userAchievementId: string };
 export type LucraClaimAchievementResult = LucraClaimAchievementBody;
 export type LucraMarkAchievementViewedBody = { userAchievementId: string };
 export type LucraMarkAchievementViewedResult = LucraMarkAchievementViewedBody;
+export type LucraUpdateUserBody = SDKClientUser;
+// Empty: the details are not sent back.
+export type LucraUpdateUserResult = Record<string, never>;
 
 // A reward the user won in a tournament. matchupId is the tournament it was won in.
 export type LucraUserTournamentReward = {

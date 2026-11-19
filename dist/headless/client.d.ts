@@ -9,7 +9,7 @@ export type LucraHeadlessClient = {
         subscribe(listener: (state: LucraAuthState) => void): () => void;
         isLoggedIn(): Promise<boolean>;
         logout(): Promise<void>;
-    };
+    } & Api["auth"];
     tournaments: Api["tournaments"];
     matchups: Api["matchups"] & {
         watch(matchupId: string, handlers: LucraMatchupWatchHandlers): LucraMatchupWatch;

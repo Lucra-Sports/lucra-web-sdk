@@ -97,6 +97,7 @@ describe("createApi: reads", () => {
       () => api.tournaments.leaderboard("t1"),
       () => api.achievements.list(),
       () => api.achievements.markViewed("a1"),
+      () => api.auth.updateUser({ email: "ada@example.com" }),
       () => api.matchups.searchByMetadata({}),
       () => api.rewards.list(),
       () => api.matchups.list({ limit: 5 }),
@@ -110,6 +111,7 @@ describe("createApi: reads", () => {
     expect(count(frame, "tournamentLeaderboardRequest")).toBe(0);
     expect(count(frame, "achievementsRequest")).toBe(0);
     expect(count(frame, "markAchievementViewedRequest")).toBe(0);
+    expect(count(frame, "updateUserRequest")).toBe(0);
     expect(count(frame, "searchMatchupsByMetadataRequest")).toBe(0);
     expect(count(frame, "userTournamentRewardsRequest")).toBe(0);
     expect(count(frame, "userMatchupsRequest")).toBe(0);
@@ -215,6 +217,101 @@ describe("createApi: reads", () => {
     expect(await first).toBeUndefined();
     expect(await second).toBeUndefined();
     expect(await claim).toBeUndefined();
+  });
+
+  it("sends the user's details and resolves with nothing", async () => {
+    const { frame, api } = setup();
+    await connectLoggedIn(frame);
+    const details = {
+      username: "ada",
+      avatarURL: "https://img.example/ada.png",
+      phoneNumber: "5550100000",
+      email: "ada@example.com",
+      firstName: "Ada",
+      lastName: "Lovelace",
+      address: { address: "1 Main St", addressCont: "Apt 2", city: "Springfield", state: "IL" as const, zip: "62701" },
+      metadata: { externalId: "ext-1" },
+    };
+    const update = api.auth.updateUser(details);
+    await tick();
+    expect(frame.lastPosted("updateUserRequest")?.body).toEqual(details);
+    frame.answer("updateUserRequest", "updateUserResponse", {});
+    expect(await update).toBeUndefined();
+  });
+
+  it("sends only the fields it knows", async () => {
+    const { frame, api } = setup();
+    await connectLoggedIn(frame);
+    const first = api.auth.updateUser({
+      email: "ada@example.com",
+      firstName: undefined,
+      address: { city: "Springfield", country: "US" },
+      password: "secret",
+    } as never);
+    await tick();
+    expect(frame.lastPosted("updateUserRequest")?.body).toStrictEqual({
+      email: "ada@example.com",
+      address: { city: "Springfield" },
+    });
+    frame.answer("updateUserRequest", "updateUserResponse", {});
+    await first;
+    const second = api.auth.updateUser({ email: null, address: null, metadata: null } as never);
+    await tick();
+    expect(frame.lastPosted("updateUserRequest")?.body).toStrictEqual({});
+    frame.answer("updateUserRequest", "updateUserResponse", {});
+    await second;
+  });
+
+  it("rejects bad updateUser input with INVALID_ARGUMENT before anything is sent", async () => {
+    const { frame, api } = setup();
+    await connectLoggedIn(frame);
+    const notAnObject = "lucra.auth.updateUser() takes an object of user details.";
+    const cases: [unknown, string][] = [
+      [undefined, notAnObject],
+      [null, notAnObject],
+      ["ada@example.com", notAnObject],
+      [[], notAnObject],
+      [{ address: "1 Main St" }, "address must be an object."],
+      [{ address: [] }, "address must be an object."],
+      [{ email: 42 }, "email must be a string."],
+      [{ firstName: { first: "Ada" } }, "firstName must be a string."],
+      [{ address: { zip: 62701 } }, "zip must be a string."],
+      [{ metadata: ["ext-1"] }, "metadata must be an object of strings, or null."],
+      [{ metadata: { externalId: 4242 } }, "metadata must be an object of strings, or null."],
+    ];
+    for (const [details, hint] of cases) {
+      const error = await caught(api.auth.updateUser(details as never));
+      expect(error.code).toBe("INVALID_ARGUMENT");
+      expect(error.hint).toBe(hint);
+    }
+    expect(count(frame, "updateUserRequest")).toBe(0);
+  });
+
+  it("does not treat updateUser as a write, nor refuse it while a screen is open", async () => {
+    const { frame, activity, api } = setup();
+    await connectLoggedIn(frame);
+    const claim = api.achievements.claim("a1");
+    activity.screenOpen = true;
+    const update = api.auth.updateUser({ email: "ada@example.com" });
+    await tick();
+    expect(count(frame, "updateUserRequest")).toBe(1);
+    frame.answer("updateUserRequest", "updateUserResponse", {});
+    expect(await update).toBeUndefined();
+    activity.screenOpen = false;
+    frame.answer("claimAchievementRequest", "claimAchievementResponse", { userAchievementId: "a1" });
+    expect(await claim).toBeUndefined();
+  });
+
+  it("rejects updateUser with Lucra's error and a known outcome", async () => {
+    const { frame, api } = setup();
+    await connectLoggedIn(frame);
+    const update = caught(api.auth.updateUser({ email: "ada@example.com" }));
+    await tick();
+    frame.answer("updateUserRequest", "apiRequestError", { code: "API_ERROR", message: "boom" });
+    const error = await update;
+    expect(error.code).toBe("API_ERROR");
+    expect(error.source).toBe("lucra");
+    expect(error.outcomeUnknown).toBe(false);
   });
 
   it("lists rewards, sending tournamentId as matchupId", async () => {
@@ -550,6 +647,67 @@ describe("createApi: reads across a restart", () => {
     });
     frame.answer("markAchievementViewedRequest", "markAchievementViewedResponse", {});
     expect(await marked).toBeUndefined();
+  });
+
+  it("does not send updateUser again after a restart", async () => {
+    const { frame, api } = setup();
+    await connectLoggedIn(frame);
+    const update = caught(api.auth.updateUser({ email: "ada@example.com" }));
+    await tick();
+    await connectLoggedIn(frame);
+    await tick();
+    expect(count(frame, "updateUserRequest")).toBe(1);
+    const error = await update;
+    expect(error.code).toBe("CONNECTION_RESET");
+    expect(error.outcomeUnknown).toBe(false);
+  });
+
+  it("does not wait for Lucra to start before updateUser", async () => {
+    const { frame, api } = setup();
+    const update = caught(api.auth.updateUser({ email: "ada@example.com" }));
+    await connectLoggedIn(frame);
+    expect(count(frame, "updateUserRequest")).toBe(0);
+    const error = await update;
+    expect(error.code).toBe("NOT_LOGGED_IN");
+    expect(error.hint).toBe(
+      'lucra.auth.updateUser() does not wait for a login. Call it once the status is "loggedIn".'
+    );
+  });
+
+  it("does not wait for the login check after a restart before updateUser", async () => {
+    const { frame, auth, api } = setup();
+    await connectLoggedIn(frame);
+    frame.deliver("initialized", { success: true });
+    await tick();
+    expect(auth.getState()).toMatchObject({ status: "loading", user: { id: "u1" } });
+    const update = caught(api.auth.updateUser({ email: "ada@example.com" }));
+    frame.answer("isLoggedInRequest", "isLoggedInResponse", { isLoggedIn: true });
+    frame.deliver("loginSuccess", { id: "user-b", username: "bo" });
+    await tick();
+    expect(count(frame, "updateUserRequest")).toBe(0);
+    expect((await update).code).toBe("NOT_LOGGED_IN");
+  });
+
+  it("does not send updateUser while Lucra restarts, though auth still shows the last user", async () => {
+    const { frame, session, auth, api } = setup();
+    await connectLoggedIn(frame);
+    session.restart(buildUrl(urls, HOME_PATH));
+    expect(auth.getState().status).toBe("loggedIn");
+    expect(session.status()).toBe("connecting");
+    const update = caught(api.auth.updateUser({ email: "ada@example.com" }));
+    expect(count(frame, "updateUserRequest")).toBe(0);
+    expect((await update).code).toBe("NOT_LOGGED_IN");
+  });
+
+  it("rejects updateUser with the connection error when Lucra is destroyed or did not start", async () => {
+    const destroyed = setup();
+    destroyed.session.destroy();
+    expect((await caught(destroyed.api.auth.updateUser({ email: "ada@example.com" }))).code).toBe("DESTROYED");
+    const refused = setup();
+    refused.frame.deliver("initialized", { success: false });
+    expect((await caught(refused.api.auth.updateUser({ email: "ada@example.com" }))).code).toBe(
+      "CONNECTION_FAILED"
+    );
   });
 
   it("rejects CONNECTION_RESET when a second restart interrupts the same read", async () => {

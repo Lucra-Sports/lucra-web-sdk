@@ -41,6 +41,7 @@ export declare enum LucraClientMessageType {
     claimTournamentRewardResponse = "claimTournamentRewardResponse",
     claimAchievementResponse = "claimAchievementResponse",
     markAchievementViewedResponse = "markAchievementViewedResponse",
+    updateUserResponse = "updateUserResponse",
     userMatchupsResponse = "userMatchupsResponse",
     userMatchupsByTypeStatusResponse = "userMatchupsByTypeStatusResponse",
     presentMinigameResponse = "presentMinigameResponse",
@@ -72,6 +73,7 @@ export declare enum MessageTypeToLucraClient {
     claimTournamentRewardRequest = "claimTournamentRewardRequest",
     claimAchievementRequest = "claimAchievementRequest",
     markAchievementViewedRequest = "markAchievementViewedRequest",
+    updateUserRequest = "updateUserRequest",
     userMatchupsRequest = "userMatchupsRequest",
     userMatchupsByTypeStatusRequest = "userMatchupsByTypeStatusRequest",
     sdkDiagnostic = "sdkDiagnostic",
@@ -276,6 +278,8 @@ export type LucraMarkAchievementViewedBody = {
     userAchievementId: string;
 };
 export type LucraMarkAchievementViewedResult = LucraMarkAchievementViewedBody;
+export type LucraUpdateUserBody = SDKClientUser;
+export type LucraUpdateUserResult = Record<string, never>;
 export type LucraUserTournamentReward = {
     rewardId: string;
     matchupId: string;

@@ -25,6 +25,8 @@ import {
   type LucraTournamentLeaderboardResponse,
   type LucraTournamentResponse,
   type LucraTournamentsResponse,
+  type LucraUpdateUserBody,
+  type LucraUpdateUserResult,
   type LucraUserMatchups,
   type LucraUserMatchupsInput,
   type LucraUserMatchupsByTypeStatusInput,
@@ -34,9 +36,10 @@ import {
   type LucraUserTournamentRewardsResponse,
 } from "../types/types.js";
 import type { Auth } from "./auth.js";
-import { LucraError, LucraErrorCode, isLucraError } from "./errors.js";
+import { LucraError, LucraErrorCode, invalid, isLucraError } from "./errors.js";
 import type { RequestSpec } from "./requests.js";
 import type { Session } from "./session.js";
+import type { LucraUpdateUserInput } from "./types.js";
 
 // Shared between the data calls and lucra.present. A write and a visible Lucra
 // screen both navigate the Lucra app, so they must never overlap.
@@ -126,6 +129,12 @@ const SPECS = {
     MessageTypeToLucraClient.markAchievementViewedRequest,
     LucraClientMessageType.markAchievementViewedResponse
   ),
+  // Sent as a read: saving the same details again is safe, so it must not wait
+  // for or block a write, and it is not refused while a Lucra screen shows.
+  authUpdateUser: read<LucraUpdateUserResult>(
+    MessageTypeToLucraClient.updateUserRequest,
+    LucraClientMessageType.updateUserResponse
+  ),
   rewardsList: read<LucraUserTournamentRewardsResponse>(
     MessageTypeToLucraClient.userTournamentRewardsRequest,
     LucraClientMessageType.userTournamentRewardsResponse
@@ -149,7 +158,30 @@ const SPECS = {
   ),
 };
 
+const USER_FIELDS = ["username", "avatarURL", "phoneNumber", "email", "firstName", "lastName"] as const;
+const ADDRESS_FIELDS = ["address", "addressCont", "city", "state", "zip"] as const;
+
+// Copies only the given fields that are set. A host may pass its own user
+// object, which can hold fields that are not Lucra's to see.
+const pick = <T extends object, K extends keyof T>(from: T, keys: readonly K[]) => {
+  const picked: Partial<Pick<T, K>> = {};
+  for (const key of keys) if (from[key] != null) picked[key] = from[key];
+  return picked;
+};
+
+// The first of these fields that is given and is not a string. With this check
+// every value sent is a string, so an object a host passes by mistake under a
+// known key never reaches Lucra, and the message can always be copied to the frame.
+const notText = <T extends object>(from: T, keys: readonly (keyof T)[]) =>
+  keys.find((key) => from[key] != null && typeof from[key] !== "string");
+
+const isObject = (value: unknown): value is object =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
 export type Api = {
+  auth: {
+    updateUser(details: LucraUpdateUserInput): Promise<void>;
+  };
   tournaments: {
     list(): Promise<LucraTournament[]>;
     get(tournamentId: string): Promise<LucraTournamentDetail | null>;
@@ -292,6 +324,47 @@ export function createApi(options: {
   };
 
   return {
+    auth: {
+      // The hints never hold a value, because these are personal details. A
+      // field that is null is left out, like one that is not given.
+      updateUser: (details) => {
+        if (!isObject(details)) {
+          return invalid("lucra.auth.updateUser() takes an object of user details.");
+        }
+        const { address, metadata } = details;
+        if (address != null && !isObject(address)) {
+          return invalid("address must be an object.");
+        }
+        const field =
+          notText(details, USER_FIELDS) ?? (address != null ? notText(address, ADDRESS_FIELDS) : undefined);
+        if (field !== undefined) return invalid(`${field} must be a string.`);
+        if (
+          metadata != null &&
+          (!isObject(metadata) || Object.values(metadata).some((v) => typeof v !== "string"))
+        ) {
+          return invalid("metadata must be an object of strings, or null.");
+        }
+        const body: LucraUpdateUserBody = pick(details, USER_FIELDS);
+        if (address != null) body.address = pick(address, ADDRESS_FIELDS);
+        if (metadata != null) body.metadata = { ...metadata };
+        // Sent at once, for the user who is logged in right now, or not at all. It
+        // does not wait for a login and is not sent again after a restart: by then
+        // a different user may be logged in, and these details belong to this one.
+        const status = session.status();
+        if (status === "failed" || status === "destroyed") {
+          // Always rejects here, with the connection error or DESTROYED.
+          return session.whenConnected();
+        }
+        if (status !== "connected" || auth.getState().status !== "loggedIn") {
+          return Promise.reject(
+            new LucraError(LucraErrorCode.NOT_LOGGED_IN, undefined, {
+              hint: 'lucra.auth.updateUser() does not wait for a login. Call it once the status is "loggedIn".',
+            })
+          );
+        }
+        return session.request(SPECS.authUpdateUser, body).then(() => undefined);
+      },
+    },
     tournaments: {
       list: () =>
         send(SPECS.tournamentsList, null, false).then((r) => r.tournaments),
