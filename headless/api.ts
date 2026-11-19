@@ -15,6 +15,8 @@ import {
   type LucraMarkAchievementViewedResult,
   type LucraMatchup,
   type LucraMatchupDetails,
+  type LucraPresentMinigameBody,
+  type LucraPresentMinigameResponse,
   type LucraRecreationalGameResult,
   type LucraSearchMatchupsByMetadataInput,
   type LucraSearchMatchupsByMetadataResponse,
@@ -139,6 +141,12 @@ const SPECS = {
     LucraClientMessageType.claimTournamentRewardResponse,
     true
   ),
+  // A stake may be placed, so a plain API_ERROR leaves the outcome unknown.
+  presentMinigame: write<LucraPresentMinigameResponse>(
+    MessageTypeToLucraClient.presentMinigameRequest,
+    LucraClientMessageType.presentMinigameResponse,
+    true
+  ),
 };
 
 export type Api = {
@@ -182,6 +190,9 @@ export type Api = {
   };
   // Resolves when no write is pending. Never rejects.
   whenWriteSettled(): Promise<void>;
+  // Not public. lucra.present.minigame() starts the game with it, through the
+  // write slot. The screen is marked open already, so that is not refused.
+  startMinigame(body: LucraPresentMinigameBody): Promise<LucraPresentMinigameResponse>;
 };
 
 export function createApi(options: {
@@ -194,6 +205,8 @@ export function createApi(options: {
   const { session, auth, activity, requestMs } = options;
   // The one write slot. Set while a write is pending, whatever its kind.
   let writeSettled: Promise<void> | null = null;
+  // True while the pending write is a screen's own, such as a minigame start.
+  let screenWrite = false;
 
   const ready = async (needsLogin: boolean) => {
     await session.whenConnected();
@@ -244,9 +257,11 @@ export function createApi(options: {
     return session.request(spec, body, left);
   };
 
+  // `forScreen`: the write a lucra.present screen makes for itself.
   const sendWrite = <TResponse>(
     spec: RequestSpec<TResponse>,
-    body: unknown
+    body: unknown,
+    forScreen = false
   ): Promise<TResponse> => {
     // These three checks run before the first await, so a double click is
     // refused instead of sending the write twice.
@@ -254,9 +269,14 @@ export function createApi(options: {
       return Promise.reject(new LucraError(LucraErrorCode.DESTROYED));
     }
     if (writeSettled) {
-      return Promise.reject(new LucraError(LucraErrorCode.IN_PROGRESS));
+      // A screen's own write counts as the screen while the screen is open.
+      return Promise.reject(
+        new LucraError(
+          screenWrite && activity.screenOpen ? LucraErrorCode.SCREEN_OPEN : LucraErrorCode.IN_PROGRESS
+        )
+      );
     }
-    if (activity.screenOpen) {
+    if (activity.screenOpen && !forScreen) {
       return Promise.reject(new LucraError(LucraErrorCode.SCREEN_OPEN));
     }
     const run = send(spec, body, true);
@@ -264,8 +284,10 @@ export function createApi(options: {
     // the time the caller's own code continues.
     const free = () => {
       writeSettled = null;
+      screenWrite = false;
     };
     writeSettled = run.then(free, free);
+    screenWrite = forScreen;
     return run;
   };
 
@@ -336,5 +358,6 @@ export function createApi(options: {
         sendWrite(SPECS.rewardsClaim, { rewardId } satisfies LucraClaimTournamentRewardBody).then(() => undefined),
     },
     whenWriteSettled: () => writeSettled ?? Promise.resolve(),
+    startMinigame: (body) => sendWrite(SPECS.presentMinigame, body, true),
   };
 }

@@ -1,6 +1,6 @@
-import type { LucraEnvironment, LucraMatchupDetails, SDKLucraUser } from "../types/types.js";
+import type { LucraEnvironment, LucraMatchupDetails, LucraMinigameMode, SDKLucraUser } from "../types/types.js";
 import type { LucraError } from "./errors.js";
-export type { LucraEnvironment, LucraAchievement, LucraTournament, LucraTournamentDetail, LucraTournamentLeaderboard, LucraLeaderboardRow, LucraLeaderboardColumn, LucraLeaderboardPagination, LucraTournamentTimer, LucraTournamentGame, LucraTournamentHowToPlayStep, LucraTournamentConfirmationTerm, LucraTournamentNotice, LucraTournamentAttemptScores, LucraTournamentAttemptData, LucraTournamentCatalogReward, LucraTournamentEarnedReward, LucraTournamentPayoutReward, LucraTournamentPayoutStructure, LucraJoinTournamentResponse, LucraAutoJoinedTournamentsBody, LucraMatchup, LucraMatchupStatus, LucraPlayStyle, LucraAtStake, LucraCashStake, LucraRecreationalGame, LucraMatchupParticipantGroup, LucraMatchupDetails, LucraMatchupGroup, LucraMatchupParticipant, LucraMatchupParticipantScore, LucraCreateRecreationalGameInput, LucraRecreationalGameResult, LucraCancelRecreationalGameResult, LucraSearchMatchupsByMetadataInput, LucraUserMatchups, LucraUserMatchupsGroup, LucraUserMatchupsPage, LucraUserMatchup, LucraUserMatchupType, LucraUserMatchupStatus, LucraUserMatchupsInput, LucraUserMatchupsByTypeStatusInput, LucraUserTournamentReward, LucraReward, } from "../types/types.js";
+export type { LucraEnvironment, LucraAchievement, LucraTournament, LucraTournamentDetail, LucraTournamentLeaderboard, LucraLeaderboardRow, LucraLeaderboardColumn, LucraLeaderboardPagination, LucraTournamentTimer, LucraTournamentGame, LucraTournamentHowToPlayStep, LucraTournamentConfirmationTerm, LucraTournamentNotice, LucraTournamentAttemptScores, LucraTournamentAttemptData, LucraTournamentCatalogReward, LucraTournamentEarnedReward, LucraTournamentPayoutReward, LucraTournamentPayoutStructure, LucraJoinTournamentResponse, LucraAutoJoinedTournamentsBody, LucraMatchup, LucraMatchupStatus, LucraPlayStyle, LucraAtStake, LucraCashStake, LucraRecreationalGame, LucraMatchupParticipantGroup, LucraMatchupDetails, LucraMatchupGroup, LucraMatchupParticipant, LucraMatchupParticipantScore, LucraCreateRecreationalGameInput, LucraRecreationalGameResult, LucraCancelRecreationalGameResult, LucraSearchMatchupsByMetadataInput, LucraUserMatchups, LucraUserMatchupsGroup, LucraUserMatchupsPage, LucraUserMatchup, LucraUserMatchupType, LucraUserMatchupStatus, LucraUserMatchupsInput, LucraUserMatchupsByTypeStatusInput, LucraUserTournamentReward, LucraReward, LucraMinigameMode, } from "../types/types.js";
 export type LucraUser = SDKLucraUser;
 export type LucraClientConfig = {
     apiKey: string;
@@ -21,7 +21,7 @@ export type LucraPresentOptions = {
 export type LucraLoginOptions = LucraPresentOptions & {
     phoneNumber?: string;
 };
-export type LucraDismissReason = "exit" | "dismissed" | "replaced" | "loggedOut" | "destroyed" | "aborted";
+export type LucraDismissReason = "exit" | "dismissed" | "replaced" | "loggedOut" | "destroyed" | "aborted" | "restarted";
 export type LucraPresentResult = {
     status: "completed";
 } | {
@@ -34,6 +34,23 @@ export type LucraLoginResult = {
 } | {
     status: "dismissed";
     reason: LucraDismissReason;
+};
+export type LucraMinigameInput = {
+    gameId: string;
+    mode: LucraMinigameMode;
+    amount?: number;
+    matchupId?: string;
+    signal?: AbortSignal;
+};
+export type LucraMinigameResult = {
+    status: "completed";
+    sessionId: string;
+    matchupId: string | null;
+} | {
+    status: "dismissed";
+    reason: LucraDismissReason;
+    sessionId: string | null;
+    matchupId: string | null;
 };
 export type LucraAddFundsResult = {
     status: "completed";

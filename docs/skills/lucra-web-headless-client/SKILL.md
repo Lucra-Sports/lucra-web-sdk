@@ -190,6 +190,7 @@ Every code: [Errors](../../3.0_headless_client.md#errors).
 | `present.locationGrant()` | The user shares their location |
 | `present.addFunds()` | The deposit goes through. It can also resolve `"failed"`, `"dismissed"`, or `"alreadyOpen"`. See [Add Funds](#add-funds) |
 | `present.withdraw()`, `present.profile()`, `present.wallet()` | Never. They resolve `"dismissed"` when closed |
+| `present.minigame(input)` | The game closes itself. See [Minigames](#minigames) |
 
 - **Where it shows.** Without `container`, a screen covers the whole page. With `container`, it
   fills that element. Lucra is hidden before a screen shows and after it ends.
@@ -199,17 +200,19 @@ Every code: [Errors](../../3.0_headless_client.md#errors).
   Lucra reloads and an open screen is not shown again. Call `lucra.destroy()` before you remove
   it.
 - **Show your own wrapper from state, not by wrapping calls.** `lucra.present.getState()` returns
-  `{ screen }`, the `LucraScreen` on show or `null`, and `lucra.present.subscribe(listener)`
-  calls the listener now and on every change. They behave like `lucra.auth.getState()` and
-  `subscribe()`. `screen` is set only while a screen is on show: not while it waits to connect,
-  for a login, or for a write, and never for Add Funds. A replacement goes to `null` and then to
-  the new screen, in the same task when nothing has to wait. Do not count open screens.
+  `{ screen }`, the `LucraScreen` on show, `"minigame"` while a game shows, or `null`, and
+  `lucra.present.subscribe(listener)` calls the listener now and on every change. They behave
+  like `lucra.auth.getState()` and `subscribe()`. `screen` is set only while a screen is on
+  show: not while it waits to connect, for a login, or for a write, and never for Add Funds. A
+  replacement goes to `null` and then to the new screen, in the same task when nothing has to
+  wait. Do not count open screens.
 - **The SDK draws no close control.** A screen ends with Lucra's own exit control,
   `lucra.present.dismiss()`, another `present.*` call other than `addFunds()` replacing it, the
-  user logging out inside it, `lucra.destroy()`, its own `signal` being aborted, or by
-  completing. All but completing resolve `{ status: "dismissed", reason }`, where `reason` is
-  `"exit"`, `"dismissed"`, `"replaced"`, `"loggedOut"`, `"destroyed"`, or `"aborted"`. Assume any
-  screen may lack Lucra's exit control.
+  user logging out inside it, `lucra.destroy()`, its own `signal` being aborted, Lucra
+  restarting while a game shows, or by completing. All but completing resolve
+  `{ status: "dismissed", reason }`, where `reason` is `"exit"`, `"dismissed"`, `"replaced"`,
+  `"loggedOut"`, `"destroyed"`, `"aborted"`, or `"restarted"`. Assume any screen may lack
+  Lucra's exit control.
 - **Tie a screen to a route or component with `signal`.** Every screen takes
   `{ signal?: AbortSignal }`. Abort it in that route's or component's cleanup: it closes only the
   screen that call opened, and does nothing once the call has finished or another screen
@@ -221,7 +224,8 @@ Every code: [Errors](../../3.0_headless_client.md#errors).
   "The phone number must be 10 digits", is safe to show next to a number the user typed.
 - Showing the login screen restarts Lucra. Calls still waiting follow the restart rule in
   Errors above. If Lucra cannot start again while any screen shows, the screen closes and
-  rejects with `CONNECTION_FAILED` or `CONNECTION_TIMEOUT`.
+  rejects with `CONNECTION_FAILED` or `CONNECTION_TIMEOUT`. A game closes on any restart, with
+  `"restarted"`.
 - **Events:** `lucra.on(event, listener)` reports what the user did inside a Lucra screen, for
   example `matchupCreated`. It never fires for your own calls: the resolved promise is your
   signal.
@@ -244,6 +248,27 @@ and `lucra.auth`, and have a human run login and Add Funds.
   close the window.
 - `message` is text from Lucra: show it as text, never as HTML. Read the new balance from
   `lucra.auth`.
+
+### Minigames
+
+- `lucra.present.minigame({ gameId, mode, amount, matchupId, signal })` starts a minigame
+  session, and Lucra shows the game in its own frame. `mode` is `"practice"`, `"1v1"`,
+  `"free_for_all"`, or `"tournament"`. `amount` is the stake: leave it out for practice.
+  `matchupId` is the matchup to join, or the tournament id in tournament mode. A bad input
+  rejects with `INVALID_ARGUMENT` before anything changes. Nothing shows until the game has
+  started.
+- It resolves `{ status: "completed", sessionId, matchupId }` when the game closes itself. That
+  does not mean the user won: for a paid game, read `lucra.matchups.get(matchupId)`. Any other
+  close resolves `"dismissed"` with `reason`, `"restarted"` when Lucra restarted while it
+  showed, and the same ids, which are `null` when no session was started.
+- **Starting is a change that needs a logged in user**, and works inside
+  `lucra.withRemediation()`. An error with `outcomeUnknown: true` means a game may have started
+  and a stake may have been placed: the SDK sends Lucra home so the game does not keep running.
+  Read `lucra.matchups.list()` before you try again. Never retry automatically.
+- Dismissing it while the game starts waits for Lucra's answer, then resolves `"dismissed"`
+  with the ids if the game started. The game never shows.
+- It needs a Lucra environment that answers it. Until then, it rejects with `TIMEOUT`, which
+  has `outcomeUnknown: true` although nothing started, and `dismiss()` cannot end it early.
 
 ## 7. Games You Play
 

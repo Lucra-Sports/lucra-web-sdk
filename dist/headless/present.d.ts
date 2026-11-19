@@ -1,12 +1,14 @@
+import { type LucraPresentMinigameBody, type LucraPresentMinigameResponse } from "../types/types.js";
 import type { Activity } from "./api.js";
 import type { Auth } from "./auth.js";
 import type { Frame } from "./frame.js";
 import type { Session } from "./session.js";
-import type { LucraAddFundsResult, LucraLoginOptions, LucraLoginResult, LucraPresentOptions, LucraPresentResult } from "./types.js";
+import type { LucraAddFundsResult, LucraLoginOptions, LucraLoginResult, LucraMinigameInput, LucraMinigameResult, LucraPresentOptions, LucraPresentResult } from "./types.js";
 import { type UrlContext } from "./url.js";
 export type Present = {
     login(options?: LucraLoginOptions): Promise<LucraLoginResult>;
     addFunds(): Promise<LucraAddFundsResult>;
+    minigame(input: LucraMinigameInput): Promise<LucraMinigameResult>;
     demographics(options?: LucraPresentOptions): Promise<LucraPresentResult>;
     kyc(options?: LucraPresentOptions): Promise<LucraPresentResult>;
     locationGrant(options?: LucraPresentOptions): Promise<LucraPresentResult>;
@@ -18,9 +20,9 @@ export type Present = {
     subscribe(listener: (state: LucraPresentState) => void): () => void;
     destroy(): void;
 };
-export type LucraScreen = Exclude<keyof Present, "addFunds" | "dismiss" | "getState" | "subscribe" | "destroy">;
+export type LucraScreen = Exclude<keyof Present, "addFunds" | "minigame" | "dismiss" | "getState" | "subscribe" | "destroy">;
 export type LucraPresentState = {
-    readonly screen: LucraScreen | null;
+    readonly screen: LucraScreen | "minigame" | null;
 };
 export declare function createPresent(options: {
     session: Session;
@@ -29,4 +31,5 @@ export declare function createPresent(options: {
     urls: UrlContext;
     activity: Activity;
     whenWriteSettled: () => Promise<void>;
+    startMinigame: (body: LucraPresentMinigameBody) => Promise<LucraPresentMinigameResponse>;
 }): Present;
