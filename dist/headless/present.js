@@ -211,6 +211,10 @@ export function createPresent(options) {
         gameOutOfSight = true;
         hideGame();
     });
+    // Lucra restarting reloads its page, so no game is left on it.
+    const unsubscribeRestart = session.on(LucraClientMessageType.initialized, () => {
+        gameOutOfSight = false;
+    });
     const unsubscribePopup = session.on(LUCRA_POPUP_MESSAGE_TYPE, (data) => {
         const result = data;
         if ((result?.toastType === "success" || result?.toastType === "error") &&
@@ -349,9 +353,13 @@ export function createPresent(options) {
                         };
                     }
                     catch (error) {
-                        // The game may be on Lucra's page all the same.
-                        if (isLucraError(error) && error.outcomeUnknown)
+                        // The game may be on Lucra's page all the same. Not after a
+                        // restart: the reload took it.
+                        if (isLucraError(error) &&
+                            error.outcomeUnknown &&
+                            error.code !== LucraErrorCode.CONNECTION_RESET) {
                             gameOutOfSight = true;
+                        }
                         throw error;
                     }
                 },
@@ -406,6 +414,7 @@ export function createPresent(options) {
             popup?.close();
             unsubscribePopup();
             unsubscribeLateStart();
+            unsubscribeRestart();
             changes.clear();
         },
     };
