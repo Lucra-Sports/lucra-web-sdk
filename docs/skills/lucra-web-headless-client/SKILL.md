@@ -44,7 +44,8 @@ is unchanged by the preview.
 - **Create once, then call.** `createLucraClient(config)` returns at once and connects in the
   background. There is no `ready` and no init event: every call waits for Lucra on its own.
 - **Do not gate calls on auth.** A call that needs a user waits out `"loading"`, then rejects
-  with `NOT_LOGGED_IN` if nobody is logged in.
+  with `NOT_LOGGED_IN` if nobody is logged in. `auth.updateUser()` is the exception: gate it on
+  `"loggedIn"`.
 - **Lucra stays hidden until `lucra.present.*`.** Everything else returns data for your own UI.
 - **Prefer a container with your own close button.** Some Lucra screens have no exit control
   yet, and a full screen one leaves the user no way out. Show screens in a `container`, next to
@@ -108,7 +109,8 @@ login.
 | `tournaments.list()`, `matchups.get()`, `matchups.getDetails()`, `matchups.watch()`, `present.login()` | `tournaments.get()`, `tournaments.leaderboard()`, `matchups.searchByMetadata()`, `matchups.list()`, `matchups.listByTypeStatus()`, `achievements.list()`, `achievements.markViewed()`, `auth.updateUser()`, `rewards.list()`, every write, every other `present.*` screen |
 
 `present.addFunds()` cannot wait out `"loading"`, so it rejects with `NOT_LOGGED_IN` only when
-the status is already `"loggedOut"`.
+the status is already `"loggedOut"`. `auth.updateUser()` does not wait either, and rejects with
+`NOT_LOGGED_IN` unless the status is already `"loggedIn"`.
 
 **Checkpoint:** after `await lucra.present.login()` resolves `"completed"`,
 `getState().status` is `"loggedIn"` and `lucra.tournaments.get(tournamentId)` resolves.

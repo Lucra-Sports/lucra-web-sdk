@@ -662,7 +662,19 @@ describe("createApi: reads across a restart", () => {
     expect(error.outcomeUnknown).toBe(false);
   });
 
-  it("does not send updateUser for a different user", async () => {
+  it("does not wait for Lucra to start before updateUser", async () => {
+    const { frame, api } = setup();
+    const update = caught(api.auth.updateUser({ email: "ada@example.com" }));
+    await connectLoggedIn(frame);
+    expect(count(frame, "updateUserRequest")).toBe(0);
+    const error = await update;
+    expect(error.code).toBe("NOT_LOGGED_IN");
+    expect(error.hint).toBe(
+      'lucra.auth.updateUser() does not wait for a login. Call it once the status is "loggedIn".'
+    );
+  });
+
+  it("does not wait for the login check after a restart before updateUser", async () => {
     const { frame, auth, api } = setup();
     await connectLoggedIn(frame);
     frame.deliver("initialized", { success: true });
@@ -673,24 +685,29 @@ describe("createApi: reads across a restart", () => {
     frame.deliver("loginSuccess", { id: "user-b", username: "bo" });
     await tick();
     expect(count(frame, "updateUserRequest")).toBe(0);
-    const error = await update;
-    expect(error.code).toBe("CONNECTION_RESET");
-    expect(error.outcomeUnknown).toBe(false);
+    expect((await update).code).toBe("NOT_LOGGED_IN");
   });
 
-  it("sends updateUser when the same user is back after a restart", async () => {
-    const { frame, auth, api } = setup();
+  it("does not send updateUser while Lucra restarts, though auth still shows the last user", async () => {
+    const { frame, session, auth, api } = setup();
     await connectLoggedIn(frame);
-    frame.deliver("initialized", { success: true });
-    await tick();
-    expect(auth.getState()).toMatchObject({ status: "loading", user: { id: "u1" } });
-    const update = api.auth.updateUser({ email: "ada@example.com" });
-    frame.answer("isLoggedInRequest", "isLoggedInResponse", { isLoggedIn: true });
-    frame.deliver("loginSuccess", USER);
-    await tick();
-    expect(count(frame, "updateUserRequest")).toBe(1);
-    frame.answer("updateUserRequest", "updateUserResponse", {});
-    expect(await update).toBeUndefined();
+    session.restart(buildUrl(urls, HOME_PATH));
+    expect(auth.getState().status).toBe("loggedIn");
+    expect(session.status()).toBe("connecting");
+    const update = caught(api.auth.updateUser({ email: "ada@example.com" }));
+    expect(count(frame, "updateUserRequest")).toBe(0);
+    expect((await update).code).toBe("NOT_LOGGED_IN");
+  });
+
+  it("rejects updateUser with the connection error when Lucra is destroyed or did not start", async () => {
+    const destroyed = setup();
+    destroyed.session.destroy();
+    expect((await caught(destroyed.api.auth.updateUser({ email: "ada@example.com" }))).code).toBe("DESTROYED");
+    const refused = setup();
+    refused.frame.deliver("initialized", { success: false });
+    expect((await caught(refused.api.auth.updateUser({ email: "ada@example.com" }))).code).toBe(
+      "CONNECTION_FAILED"
+    );
   });
 
   it("rejects CONNECTION_RESET when a second restart interrupts the same read", async () => {

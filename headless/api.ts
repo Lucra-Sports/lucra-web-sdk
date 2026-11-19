@@ -347,18 +347,22 @@ export function createApi(options: {
         const body: LucraUpdateUserBody = pick(details, USER_FIELDS);
         if (address != null) body.address = pick(address, ADDRESS_FIELDS);
         if (metadata != null) body.metadata = { ...metadata };
-        // Sent only for the user known when the call was made, and not sent again
-        // after a restart: by then a different user may be logged in, and these
-        // details belong to the first one.
-        const userId = auth.getState().user?.id;
-        return ready(true)
-          .then(() => {
-            if (userId !== undefined && auth.getState().user?.id !== userId) {
-              throw new LucraError(LucraErrorCode.CONNECTION_RESET);
-            }
-            return session.request(SPECS.authUpdateUser, body);
-          })
-          .then(() => undefined);
+        // Sent at once, for the user who is logged in right now, or not at all. It
+        // does not wait for a login and is not sent again after a restart: by then
+        // a different user may be logged in, and these details belong to this one.
+        const status = session.status();
+        if (status === "failed" || status === "destroyed") {
+          // Always rejects here, with the connection error or DESTROYED.
+          return session.whenConnected();
+        }
+        if (status !== "connected" || auth.getState().status !== "loggedIn") {
+          return Promise.reject(
+            new LucraError(LucraErrorCode.NOT_LOGGED_IN, undefined, {
+              hint: 'lucra.auth.updateUser() does not wait for a login. Call it once the status is "loggedIn".',
+            })
+          );
+        }
+        return session.request(SPECS.authUpdateUser, body).then(() => undefined);
       },
     },
     tournaments: {
