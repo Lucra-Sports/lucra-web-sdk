@@ -253,17 +253,22 @@ and `lucra.auth`, and have a human run login and Add Funds.
 
 - `lucra.present.minigame({ gameId, mode, amount, matchupId, signal })` starts a minigame
   session, and Lucra shows the game in its own frame. `mode` is `"practice"`, `"1v1"`,
-  `"free_for_all"`, or `"tournament"`. `amount` is the stake: leave it out for practice.
-  `matchupId` is the matchup to join, or the tournament id in tournament mode. A bad input
-  rejects with `INVALID_ARGUMENT` before anything changes. Nothing shows until the game has
-  started.
+  `"free_for_all"`, or `"tournament"`. A bad input rejects with `INVALID_ARGUMENT` before
+  anything changes. Nothing shows until the game has started.
+- **Tournament mode joins the tournament and takes its buy in. Never also call
+  `lucra.tournaments.join()` for that play: the user would pay twice.** `matchupId` is the
+  tournament id, required for `"tournament"` and refused with any other mode.
+- `"practice"` has no stake. `"1v1"` and `"free_for_all"` need an `amount` above 0 that is one
+  of the game's wager amounts. Tournament ignores `amount`.
+- A refusal can carry `INSUFFICIENT_FUNDS`, `UNVERIFIED`, `DEMOGRAPHIC_INFORMATION_MISSING`,
+  `LOCATION_NEEDED`, `INVALID_AT_STAKE`, `INVALID_PLAY_STYLE`, or `NOT_ALLOWED`.
 - It resolves `{ status: "completed", sessionId, matchupId }` when the game closes itself. That
   does not mean the user won: for a paid game, read `lucra.matchups.get(matchupId)`. Any other
   close resolves `"dismissed"` with `reason`, `"restarted"` when Lucra restarted while it
   showed, and the same ids, which are `null` when no session was started.
 - **Starting is a change that needs a logged in user**, and works inside
   `lucra.withRemediation()`. An error with `outcomeUnknown: true` means a game may have started
-  and a stake may have been placed: the SDK sends Lucra home so the game does not keep running.
+  and a stake may have been placed (in tournament mode, the buy in may be taken): the SDK sends Lucra home so the game does not keep running.
   Read `lucra.matchups.list()` before you try again. Never retry automatically.
 - Dismissing it while the game starts waits for Lucra's answer, then resolves `"dismissed"`
   with the ids if the game started. The game never shows.

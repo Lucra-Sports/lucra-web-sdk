@@ -1013,7 +1013,7 @@ describe("LucraScreen", () => {
 });
 
 describe("createPresent: minigame", () => {
-  const GAME = { gameId: "g1", mode: "1v1" as const, amount: 5, matchupId: "m1" };
+  const GAME = { gameId: "g1", mode: "1v1" as const, amount: 5 };
   const STARTED = { sessionId: "s1", matchupId: "m1" };
   const HOME = { pathname: `/app/headless?${PARENT}` };
   const WALLET = { pathname: `/app/wallet?${PARENT}` };
@@ -1069,8 +1069,12 @@ describe("createPresent: minigame", () => {
       { gameId: "g1", mode: "1v1", amount: Number.NaN },
       { gameId: "g1", mode: "1v1", amount: Number.POSITIVE_INFINITY },
       { gameId: "g1", mode: "1v1", amount: "5" },
-      { gameId: "g1", mode: "1v1", matchupId: "" },
-      { gameId: "g1", mode: "1v1", matchupId: 7 },
+      { gameId: "g1", mode: "tournament", matchupId: "" },
+      { gameId: "g1", mode: "tournament", matchupId: 7 },
+      { gameId: "g1", mode: "tournament" },
+      { gameId: "g1", mode: "1v1", matchupId: "t1" },
+      { gameId: "g1", mode: "practice", matchupId: "t1" },
+      { gameId: "g1", mode: "free_for_all", amount: 5, matchupId: "t1" },
       { gameId: "g1", mode: "1v1", signal: {} },
     ]) {
       const error = await caught(present.minigame(input as never));
@@ -1103,7 +1107,7 @@ describe("createPresent: minigame", () => {
     await tick();
     expect(starts(frame)).toBe(1);
     const request = frame.lastPosted("presentMinigameRequest")!;
-    expect(request.body).toEqual({ gameId: "g1", mode: "1v1", amount: 5, matchupId: "m1" });
+    expect(request.body).toEqual({ gameId: "g1", mode: "1v1", amount: 5 });
     expect(typeof request.requestId).toBe("string");
     // Nothing shows until the game has started.
     expect(frame.overlayOpen).toBe(false);

@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## [v1.20.0]
+
+### Changed
+
+- **Preview:** `lucra.present.minigame()` checks `matchupId` against `mode`. Code that passes a `matchupId` with a mode other than `"tournament"`, or uses `"tournament"` without one, now rejects with `INVALID_ARGUMENT` before anything is sent.
+
+### Fixed
+
+- **Preview:** the `lucra.present.minigame` docs were corrected. `matchupId` is only for tournament mode, where it is the tournament id. Tournament mode joins the tournament and takes its buy in, so do not also call `lucra.tournaments.join()`. `UNVERIFIED` is sent for a minigame start. See [Minigames](3.0_headless_client.md#minigames).
+
 ## [v1.19.0]
 
 ### Added
