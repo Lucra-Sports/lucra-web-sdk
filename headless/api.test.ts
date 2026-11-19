@@ -649,6 +649,19 @@ describe("createApi: reads across a restart", () => {
     expect(await marked).toBeUndefined();
   });
 
+  it("does not send updateUser again after a restart", async () => {
+    const { frame, api } = setup();
+    await connectLoggedIn(frame);
+    const update = caught(api.auth.updateUser({ email: "ada@example.com" }));
+    await tick();
+    await connectLoggedIn(frame);
+    await tick();
+    expect(count(frame, "updateUserRequest")).toBe(1);
+    const error = await update;
+    expect(error.code).toBe("CONNECTION_RESET");
+    expect(error.outcomeUnknown).toBe(false);
+  });
+
   it("rejects CONNECTION_RESET when a second restart interrupts the same read", async () => {
     const { frame, api } = setup();
     await connectLoggedIn(frame);

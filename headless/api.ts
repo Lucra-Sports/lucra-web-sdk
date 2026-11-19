@@ -347,7 +347,11 @@ export function createApi(options: {
         const body: LucraUpdateUserBody = pick(details, USER_FIELDS);
         if (address != null) body.address = pick(address, ADDRESS_FIELDS);
         if (metadata != null) body.metadata = { ...metadata };
-        return send(SPECS.authUpdateUser, body, true).then(() => undefined);
+        // Not sent again after a restart, unlike other reads: a different user may
+        // be logged in by then, and these details belong to the one who was.
+        return ready(true)
+          .then(() => session.request(SPECS.authUpdateUser, body))
+          .then(() => undefined);
       },
     },
     tournaments: {

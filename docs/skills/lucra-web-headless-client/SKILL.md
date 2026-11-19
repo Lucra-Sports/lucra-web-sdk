@@ -174,10 +174,12 @@ Check with `isLucraError(error)`.
   it and are safe to repeat. One caveat: `rewards.list()` marks unviewed rewards as viewed, so a
   repeat with `viewed: false` may not return them again. `achievements.markViewed()` changes
   state but is not a write: it is safe to repeat and never sets it. The same goes for
-  `auth.updateUser()`, which also works while a screen shows.
+  `auth.updateUser()`, which also works while a screen shows. The SDK does not send it again
+  after a restart, so on `CONNECTION_RESET` call it again.
 - **A read waiting when Lucra restarts is sent again once by the SDK**, within the same 15
   seconds. Do not repeat it yourself. So `CONNECTION_RESET` mostly means a write: read back
   before you try again. A read gets it only when a second restart interrupts it.
+  `auth.updateUser()` is the exception above.
 
 Every code: [Errors](../../3.0_headless_client.md#errors).
 
