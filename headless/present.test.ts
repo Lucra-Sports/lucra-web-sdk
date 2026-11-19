@@ -1,10 +1,11 @@
-import { describe, it, expect, beforeEach, afterEach, spyOn } from "bun:test";
+import { describe, it, expect, beforeEach, afterEach, mock, spyOn } from "bun:test";
 import { createApi, type Activity } from "./api.ts";
 import { createAuth } from "./auth.ts";
 import { LucraError } from "./errors.ts";
-import { createPresent } from "./present.ts";
+import { createPresent, type LucraScreen } from "./present.ts";
 import { DEFAULT_TIMEOUTS, createSession, type Timeouts } from "./session.ts";
 import { createFakeFrame, type FakeFrame } from "./testing.ts";
+import type { LucraDismissReason } from "./types.ts";
 import { HOME_PATH, buildUrl } from "./url.ts";
 
 const urls = {
@@ -111,7 +112,7 @@ describe("createPresent: screens", () => {
         frame.deliver("demographicComplete", null);
         expect(frame.overlayOpen).toBe(true);
         frame.deliver("exitLucra", true);
-        expect(await shown).toEqual({ status: "dismissed" });
+        expect(await shown).toEqual({ status: "dismissed", reason: "exit" });
       }
     }
   });
@@ -122,11 +123,11 @@ describe("createPresent: screens", () => {
     const a = present.kyc();
     await tick();
     frame.deliver("exitLucra", true);
-    expect(await a).toEqual({ status: "dismissed" });
+    expect(await a).toEqual({ status: "dismissed", reason: "exit" });
     const b = present.profile();
     await tick();
     present.dismiss();
-    expect(await b).toEqual({ status: "dismissed" });
+    expect(await b).toEqual({ status: "dismissed", reason: "dismissed" });
     expect(frame.overlayOpen).toBe(false);
     present.dismiss();
   });
@@ -137,13 +138,13 @@ describe("createPresent: screens", () => {
     const first = present.profile();
     await tick();
     const second = present.wallet();
-    expect(await first).toEqual({ status: "dismissed" });
+    expect(await first).toEqual({ status: "dismissed", reason: "replaced" });
     expect(activity.screenOpen).toBe(true);
     await tick();
     expect(frame.overlayOpen).toBe(true);
     expect(frame.overlaysOpened).toBe(2);
     frame.deliver("exitLucra", true);
-    expect(await second).toEqual({ status: "dismissed" });
+    expect(await second).toEqual({ status: "dismissed", reason: "exit" });
     expect(activity.screenOpen).toBe(false);
   });
 
@@ -183,7 +184,7 @@ describe("createPresent: screens", () => {
     const { frame, present } = setup();
     const shown = present.kyc();
     present.dismiss();
-    expect(await shown).toEqual({ status: "dismissed" });
+    expect(await shown).toEqual({ status: "dismissed", reason: "dismissed" });
     await connectLoggedIn(frame);
     await tick();
     expect(frame.overlaysOpened).toBe(0);
@@ -196,7 +197,7 @@ describe("createPresent: screens", () => {
     const shown = present.profile();
     await tick();
     frame.deliver("logoutComplete", null);
-    expect(await shown).toEqual({ status: "dismissed" });
+    expect(await shown).toEqual({ status: "dismissed", reason: "loggedOut" });
     expect(frame.overlayOpen).toBe(false);
   });
 
@@ -287,6 +288,8 @@ describe("createPresent: login", () => {
     for (const phoneNumber of ["123", "555-123-4567", "55512345678", ""]) {
       const error = await caught(present.login({ phoneNumber }));
       expect(error.code).toBe("INVALID_ARGUMENT");
+      expect(error.message).toBe("The phone number must be 10 digits");
+      expect(error.hint).toContain("phoneNumber must be exactly 10 digits");
     }
     expect(frame.urls.length).toBe(1);
     expect(activity.screenOpen).toBe(false);
@@ -298,7 +301,7 @@ describe("createPresent: login", () => {
     const first = present.login();
     await tick();
     frame.deliver("exitLucra", true);
-    expect(await first).toEqual({ status: "dismissed" });
+    expect(await first).toEqual({ status: "dismissed", reason: "exit" });
     expect(frame.overlayOpen).toBe(false);
     // Lucra finishes loading its login page, still logged out.
     frame.deliver("initialized", { success: true });
@@ -381,18 +384,44 @@ describe("createPresent: addFunds", () => {
     expect(await funded).toEqual({ status: "dismissed" });
   });
 
-  it("gives a second call the same result while the window is open", async () => {
+  it("answers a second call alreadyOpen at once and brings the window forward", async () => {
+    const { frame, present } = setup();
+    await connectLoggedIn(frame);
+    let firstResult: unknown = null;
+    const first = present.addFunds().then((result) => (firstResult = result));
+    expect(frame.popups[0].focused).toBe(0);
+    expect(await present.addFunds()).toEqual({ status: "alreadyOpen" });
+    expect(frame.popups.length).toBe(1);
+    expect(frame.popups[0].focused).toBe(1);
+    expect(frame.popups[0].closed).toBe(false);
+    // The first call is still waiting for the window.
+    await tick();
+    expect(firstResult).toBeNull();
+    frame.deliver("LucraPopupMessage", { toastType: "success", message: "ok" });
+    await first;
+    expect(firstResult).toEqual({ status: "completed", message: "ok" });
+    // Once it has closed, a new call opens a new window.
+    present.addFunds().catch(() => {});
+    expect(frame.popups.length).toBe(2);
+    expect(frame.popups[0].focused).toBe(1);
+  });
+
+  it("opens a new window when the user closed the last one before it was noticed", async () => {
     const { frame, present } = setup();
     await connectLoggedIn(frame);
     const first = present.addFunds();
-    const second = present.addFunds();
-    expect(second).toBe(first);
-    expect(frame.popups.length).toBe(1);
-    frame.deliver("LucraPopupMessage", { toastType: "success", message: "ok" });
-    expect(await second).toEqual({ status: "completed", message: "ok" });
-    // Once it has ended, a new call opens a new window.
-    present.addFunds().catch(() => {});
+    // The user closed it, and the poll has not seen that yet.
+    frame.popups[0].windowClosed = true;
+    let secondResult: unknown = null;
+    const second = present.addFunds().then((result) => (secondResult = result));
+    expect(await first).toEqual({ status: "dismissed" });
     expect(frame.popups.length).toBe(2);
+    expect(frame.popups[1].closed).toBe(false);
+    await tick();
+    expect(secondResult).toBeNull();
+    frame.deliver("LucraPopupMessage", { toastType: "success", message: "ok" });
+    await second;
+    expect(secondResult).toEqual({ status: "completed", message: "ok" });
   });
 
   it("rejects with POPUP_BLOCKED when the browser blocks it", async () => {
@@ -434,12 +463,542 @@ describe("createPresent: destroy", () => {
     await tick();
     present.destroy();
     present.destroy();
-    expect(await shown).toEqual({ status: "dismissed" });
+    expect(await shown).toEqual({ status: "dismissed", reason: "destroyed" });
     expect(await funded).toEqual({ status: "dismissed" });
     expect(frame.overlayOpen).toBe(false);
     expect(frame.popups[0].closed).toBe(true);
     expect((await caught(present.kyc())).code).toBe("DESTROYED");
     expect((await caught(present.login())).code).toBe("DESTROYED");
     expect((await caught(present.addFunds())).code).toBe("DESTROYED");
+  });
+});
+
+describe("createPresent: signal", () => {
+  it("closes the screen with reason aborted when the signal aborts", async () => {
+    const { frame, activity, present } = setup();
+    await connectLoggedIn(frame);
+    const controller = new AbortController();
+    const shown = present.wallet({ signal: controller.signal });
+    await tick();
+    expect(frame.overlayOpen).toBe(true);
+    controller.abort();
+    expect(await shown).toEqual({ status: "dismissed", reason: "aborted" });
+    expect(frame.overlayOpen).toBe(false);
+    expect(activity.screenOpen).toBe(false);
+    expect(frame.lastPosted("navigate")?.body).toEqual({ pathname: `/app/headless?${PARENT}` });
+  });
+
+  it("does not close a screen that replaced the aborted call's screen", async () => {
+    const { frame, activity, present } = setup();
+    await connectLoggedIn(frame);
+    const controller = new AbortController();
+    const first = present.profile({ signal: controller.signal });
+    await tick();
+    let secondResult: unknown = null;
+    const second = present.wallet().then((result) => (secondResult = result));
+    expect(await first).toEqual({ status: "dismissed", reason: "replaced" });
+    await tick();
+    expect(frame.overlaysOpened).toBe(2);
+    // The first screen's route unmounts and aborts. The replacement stays.
+    controller.abort();
+    await tick();
+    expect(secondResult).toBeNull();
+    expect(frame.overlayOpen).toBe(true);
+    expect(activity.screenOpen).toBe(true);
+    frame.deliver("exitLucra", true);
+    await second;
+    expect(secondResult).toEqual({ status: "dismissed", reason: "exit" });
+  });
+
+  it("ends a call still waiting to show, and never shows it", async () => {
+    const { frame, activity, present } = setup();
+    const controller = new AbortController();
+    const shown = present.kyc({ signal: controller.signal });
+    controller.abort();
+    expect(await shown).toEqual({ status: "dismissed", reason: "aborted" });
+    expect(activity.screenOpen).toBe(false);
+    await connectLoggedIn(frame);
+    await tick();
+    expect(frame.overlaysOpened).toBe(0);
+    expect(count(frame, "navigate")).toBe(0);
+  });
+
+  it("ends a call waiting for a pending write, and never shows it", async () => {
+    const { frame, api, present } = setup();
+    await connectLoggedIn(frame);
+    const join = api.tournaments.join("t1");
+    await tick();
+    const controller = new AbortController();
+    const shown = present.demographics({ signal: controller.signal });
+    await tick();
+    controller.abort();
+    expect(await shown).toEqual({ status: "dismissed", reason: "aborted" });
+    frame.answer("joinTournamentRequest", "joinTournamentResponse", { matchupId: "t1" });
+    await join;
+    await tick();
+    expect(frame.overlaysOpened).toBe(0);
+    expect(count(frame, "navigate")).toBe(0);
+  });
+
+  it("with a signal aborted already, shows, sends, and restarts nothing", async () => {
+    const { frame, activity, present } = setup();
+    await connectLoggedOut(frame);
+    const signal = AbortSignal.abort();
+    const urls = frame.urls.length;
+    const posted = frame.posted.length;
+    expect(await present.login({ signal })).toEqual({ status: "dismissed", reason: "aborted" });
+    expect(await present.kyc({ signal })).toEqual({ status: "dismissed", reason: "aborted" });
+    expect(frame.urls.length).toBe(urls);
+    expect(frame.posted.length).toBe(posted);
+    expect(frame.overlaysOpened).toBe(0);
+    expect(activity.screenOpen).toBe(false);
+  });
+
+  it("leaves a screen on show alone when the new call's signal is aborted already", async () => {
+    const { frame, present } = setup();
+    await connectLoggedIn(frame);
+    let result: unknown = null;
+    const shown = present.wallet().then((value) => (result = value));
+    await tick();
+    await present.profile({ signal: AbortSignal.abort() });
+    await tick();
+    expect(result).toBeNull();
+    expect(frame.overlayOpen).toBe(true);
+    present.dismiss();
+    await shown;
+  });
+
+  it("does nothing when aborted after the screen finished", async () => {
+    const { frame, present } = setup();
+    await connectLoggedIn(frame);
+    const controller = new AbortController();
+    const first = present.demographics({ signal: controller.signal });
+    await tick();
+    frame.deliver("demographicComplete", null);
+    expect(await first).toEqual({ status: "completed" });
+    let result: unknown = null;
+    const next = present.wallet().then((value) => (result = value));
+    await tick();
+    controller.abort();
+    await tick();
+    expect(result).toBeNull();
+    expect(frame.overlayOpen).toBe(true);
+    present.dismiss();
+    await next;
+  });
+
+  it("rejects a signal that is not an AbortSignal, and leaves the screen on show alone", async () => {
+    const { frame, activity, present } = setup();
+    await connectLoggedIn(frame);
+    let result: unknown = null;
+    const shown = present.wallet().then((value) => (result = value));
+    await tick();
+    const noAborted = { addEventListener() {}, removeEventListener() {} };
+    for (const signal of [{}, "stop", 1, { aborted: false }, noAborted, new EventTarget()]) {
+      const error = await caught(present.kyc({ signal } as never));
+      expect(error.code).toBe("INVALID_ARGUMENT");
+      expect(error.hint).toBe("signal must be an AbortSignal.");
+      expect((await caught(present.login({ signal } as never))).code).toBe("INVALID_ARGUMENT");
+    }
+    await tick();
+    expect(result).toBeNull();
+    expect(present.getState()).toEqual({ screen: "wallet" });
+    expect(activity.screenOpen).toBe(true);
+    present.dismiss();
+    await shown;
+    expect(activity.screenOpen).toBe(false);
+    // A later screen still works.
+    const next = present.profile();
+    await tick();
+    expect(present.getState()).toEqual({ screen: "profile" });
+    frame.deliver("exitLucra", true);
+    expect(await next).toEqual({ status: "dismissed", reason: "exit" });
+  });
+
+  it("removes its abort listener when the screen finishes", async () => {
+    const { frame, present } = setup();
+    await connectLoggedIn(frame);
+    const controller = new AbortController();
+    const add = spyOn(controller.signal, "addEventListener");
+    const remove = spyOn(controller.signal, "removeEventListener");
+    const shown = present.wallet({ signal: controller.signal });
+    expect(add).toHaveBeenCalledTimes(1);
+    expect(remove).toHaveBeenCalledTimes(0);
+    await tick();
+    frame.deliver("exitLucra", true);
+    await shown;
+    expect(remove).toHaveBeenCalledTimes(1);
+    expect(remove.mock.calls[0][1]).toBe(add.mock.calls[0][1]);
+  });
+});
+
+describe("createPresent: state", () => {
+  const screenOf = (present: { getState(): { screen: unknown } }) => present.getState().screen;
+
+  it("is null at first, and stays null while a screen waits to show", async () => {
+    const { frame, present } = setup();
+    expect(present.getState()).toEqual({ screen: null });
+    const shown = present.profile();
+    expect(screenOf(present)).toBeNull();
+    frame.deliver("initialized", { success: true });
+    await tick();
+    // Connected, but still waiting to hear who is logged in.
+    expect(screenOf(present)).toBeNull();
+    frame.answer("isLoggedInRequest", "isLoggedInResponse", { isLoggedIn: true });
+    frame.deliver("loginSuccess", USER);
+    await tick();
+    expect(frame.overlayOpen).toBe(true);
+    expect(screenOf(present)).toBe("profile");
+    present.dismiss();
+    await shown;
+    expect(screenOf(present)).toBeNull();
+  });
+
+  it("stays null while a screen waits for a pending write", async () => {
+    const { frame, api, present } = setup();
+    await connectLoggedIn(frame);
+    const join = api.tournaments.join("t1");
+    await tick();
+    const shown = present.kyc();
+    await tick();
+    expect(screenOf(present)).toBeNull();
+    frame.answer("joinTournamentRequest", "joinTournamentResponse", { matchupId: "t1" });
+    await join;
+    await tick();
+    expect(screenOf(present)).toBe("kyc");
+    present.dismiss();
+    await shown;
+  });
+
+  it("names each screen while it shows", async () => {
+    for (const screen of ["demographics", "kyc", "locationGrant", "withdraw", "profile", "wallet"] as const) {
+      const { frame, present } = setup();
+      await connectLoggedIn(frame);
+      const shown = present[screen]();
+      await tick();
+      expect(screenOf(present)).toBe(screen);
+      present.dismiss();
+      await shown;
+    }
+    const { frame, present } = setup();
+    await connectLoggedOut(frame);
+    const login = present.login();
+    await tick();
+    expect(screenOf(present)).toBe("login");
+    frame.deliver("loginSuccess", USER);
+    await login;
+    expect(screenOf(present)).toBeNull();
+  });
+
+  it("goes back to null on exit, dismiss, abort, a logout inside, and destroy, with the reason", async () => {
+    const closers: [LucraDismissReason, (frame: FakeFrame, present: ReturnType<typeof setup>["present"], abort: () => void) => void][] = [
+      ["exit", (frame) => frame.deliver("exitLucra", true)],
+      ["dismissed", (_frame, present) => present.dismiss()],
+      ["aborted", (_frame, _present, abort) => abort()],
+      ["loggedOut", (frame) => frame.deliver("logoutComplete", null)],
+      ["destroyed", (_frame, present) => present.destroy()],
+    ];
+    for (const [reason, close] of closers) {
+      const { frame, present } = setup();
+      await connectLoggedIn(frame);
+      const controller = new AbortController();
+      const shown = present.wallet({ signal: controller.signal });
+      await tick();
+      expect(screenOf(present)).toBe("wallet");
+      close(frame, present, () => controller.abort());
+      expect(await shown).toEqual({ status: "dismissed", reason });
+      expect(present.getState().screen).toBeNull();
+    }
+  });
+
+  it("never reports Add Funds", async () => {
+    const { frame, present } = setup();
+    await connectLoggedIn(frame);
+    const changes: unknown[] = [];
+    present.subscribe((state) => changes.push(state.screen));
+    present.addFunds().catch(() => {});
+    expect(frame.popups.length).toBe(1);
+    expect(changes).toEqual([null]);
+  });
+
+  it("hides the first screen, then shows the one that replaced it", async () => {
+    const { frame, present } = setup();
+    await connectLoggedIn(frame);
+    const changes: unknown[] = [];
+    present.subscribe((state) => changes.push(state.screen));
+    const first = present.profile();
+    await tick();
+    const second = present.wallet();
+    // The first screen hides as soon as it is replaced. The second shows once
+    // its own waits are over.
+    expect(changes).toEqual([null, "profile", null]);
+    expect(await first).toEqual({ status: "dismissed", reason: "replaced" });
+    // With nothing to wait for, the second shows within the same task.
+    for (let i = 0; i < 10; i += 1) await Promise.resolve();
+    expect(changes).toEqual([null, "profile", null, "wallet"]);
+    frame.deliver("exitLucra", true);
+    await second;
+    expect(changes).toEqual([null, "profile", null, "wallet", null]);
+  });
+
+  it("calls a listener now, then once per change, and not after unsubscribe", async () => {
+    const { frame, present } = setup();
+    await connectLoggedIn(frame);
+    const listener = mock((_state: unknown) => {});
+    const stop = present.subscribe(listener);
+    expect(listener).toHaveBeenCalledTimes(1);
+    expect(listener).toHaveBeenLastCalledWith({ screen: null });
+    const shown = present.wallet();
+    await tick();
+    expect(listener).toHaveBeenCalledTimes(2);
+    expect(listener).toHaveBeenLastCalledWith({ screen: "wallet" });
+    // Lucra restarting does not change what is on show.
+    frame.deliver("initialized", { success: true });
+    expect(listener).toHaveBeenCalledTimes(2);
+    stop();
+    present.dismiss();
+    await shown;
+    expect(listener).toHaveBeenCalledTimes(2);
+    expect(present.getState()).toEqual({ screen: null });
+  });
+
+  it("returns the same object until the state changes", async () => {
+    const { frame, present } = setup();
+    await connectLoggedIn(frame);
+    const before = present.getState();
+    expect(present.getState()).toBe(before);
+    const shown = present.wallet();
+    expect(present.getState()).toBe(before);
+    await tick();
+    const during = present.getState();
+    expect(during).not.toBe(before);
+    expect(present.getState()).toBe(during);
+    present.dismiss();
+    await shown;
+    expect(present.getState()).not.toBe(during);
+  });
+
+  it("keeps a listener that throws from stopping the others", async () => {
+    const { frame, present } = setup();
+    await connectLoggedIn(frame);
+    const error = spyOn(console, "error").mockImplementation(() => {});
+    present.subscribe(() => {
+      throw new Error("boom");
+    });
+    const other = mock((_state: unknown) => {});
+    present.subscribe(other);
+    const shown = present.wallet();
+    await tick();
+    expect(other).toHaveBeenLastCalledWith({ screen: "wallet" });
+    present.dismiss();
+    await shown;
+    error.mockRestore();
+  });
+
+  it("reports null to listeners on destroy, then stops calling them", async () => {
+    const { frame, present } = setup();
+    await connectLoggedIn(frame);
+    const listener = mock((_state: unknown) => {});
+    present.subscribe(listener);
+    const shown = present.wallet();
+    await tick();
+    present.destroy();
+    await shown;
+    expect(listener).toHaveBeenLastCalledWith({ screen: null });
+    const calls = listener.mock.calls.length;
+    present.subscribe(listener);
+    expect(listener).toHaveBeenCalledTimes(calls + 1);
+    expect(present.getState()).toEqual({ screen: null });
+  });
+});
+
+describe("createPresent: a listener that acts as a screen shows", () => {
+  const kycPath = { pathname: `/app/kyc?${PARENT}` };
+  const navigatedTo = (frame: FakeFrame, body: unknown) =>
+    frame.posted.some(
+      (message) => message.type === "navigate" && JSON.stringify(message.body) === JSON.stringify(body)
+    );
+  async function reconnect(frame: FakeFrame) {
+    frame.deliver("initialized", { success: true });
+    frame.answer("isLoggedInRequest", "isLoggedInResponse", { isLoggedIn: true });
+    await tick();
+  }
+
+  it("dismissing it ends the call, and nothing more is sent or shown", async () => {
+    const { frame, activity, present } = setup();
+    await connectLoggedIn(frame);
+    let mark = -1;
+    present.subscribe((state) => {
+      if (state.screen !== "kyc") return;
+      present.dismiss();
+      mark = frame.posted.length;
+    });
+    expect(await present.kyc()).toEqual({ status: "dismissed", reason: "dismissed" });
+    await tick();
+    expect(frame.posted.slice(mark)).toEqual([]);
+    expect(navigatedTo(frame, kycPath)).toBe(false);
+    expect(frame.overlayOpen).toBe(false);
+    expect(activity.screenOpen).toBe(false);
+    expect(present.getState()).toEqual({ screen: null });
+    await reconnect(frame);
+    expect(count(frame, "enableExitLucra")).toBe(0);
+  });
+
+  it("dismissing login does not restart Lucra at its login screen", async () => {
+    const { frame, present } = setup();
+    await connectLoggedOut(frame);
+    present.subscribe((state) => {
+      if (state.screen === "login") present.dismiss();
+    });
+    expect(await present.login()).toEqual({ status: "dismissed", reason: "dismissed" });
+    await tick();
+    expect(frame.urls.length).toBe(1);
+    expect(count(frame, "enableExitLucra")).toBe(0);
+  });
+
+  it("aborting the call's own signal ends it, and nothing more is sent or shown", async () => {
+    const { frame, present } = setup();
+    await connectLoggedIn(frame);
+    const controller = new AbortController();
+    let mark = -1;
+    present.subscribe((state) => {
+      if (state.screen !== "kyc") return;
+      controller.abort();
+      mark = frame.posted.length;
+    });
+    expect(await present.kyc({ signal: controller.signal })).toEqual({
+      status: "dismissed",
+      reason: "aborted",
+    });
+    await tick();
+    expect(frame.posted.slice(mark)).toEqual([]);
+    expect(navigatedTo(frame, kycPath)).toBe(false);
+    await reconnect(frame);
+    expect(count(frame, "enableExitLucra")).toBe(0);
+  });
+
+  it("showing another screen replaces it, and the first call leaves nothing behind", async () => {
+    const { frame, present } = setup();
+    await connectLoggedIn(frame);
+    let second: Promise<unknown> | null = null;
+    present.subscribe((state) => {
+      if (state.screen === "kyc" && !second) second = present.profile();
+    });
+    let secondResult: unknown = null;
+    expect(await present.kyc()).toEqual({ status: "dismissed", reason: "replaced" });
+    second!.then((result) => (secondResult = result));
+    await tick();
+    expect(present.getState()).toEqual({ screen: "profile" });
+    expect(frame.overlayOpen).toBe(true);
+    expect(navigatedTo(frame, kycPath)).toBe(false);
+    expect(count(frame, "enableExitLucra")).toBe(1);
+    // Only the second call is listening now.
+    await reconnect(frame);
+    expect(count(frame, "enableExitLucra")).toBe(2);
+    frame.deliver("exitLucra", true);
+    await tick();
+    expect(secondResult).toEqual({ status: "dismissed", reason: "exit" });
+    expect(present.getState()).toEqual({ screen: null });
+    await reconnect(frame);
+    expect(count(frame, "enableExitLucra")).toBe(2);
+  });
+
+  it("a screen started while the one on show closes is replaced too, and only the newest shows", async () => {
+    const { frame, activity, api, present } = setup();
+    await connectLoggedIn(frame);
+    const wallet = present.wallet();
+    await tick();
+    let armed = false;
+    let profile: Promise<unknown> | null = null;
+    present.subscribe((state) => {
+      if (armed && state.screen === null && !profile) profile = present.profile();
+    });
+    armed = true;
+    let kycResult: unknown = null;
+    const kyc = present.kyc().then((result) => (kycResult = result));
+    expect(await wallet).toEqual({ status: "dismissed", reason: "replaced" });
+    let profileResult: unknown = null;
+    profile!.then((result) => (profileResult = result));
+    await tick();
+    expect(profileResult).toEqual({ status: "dismissed", reason: "replaced" });
+    expect(present.getState()).toEqual({ screen: "kyc" });
+    expect(frame.overlayOpen).toBe(true);
+    // The wallet and kyc overlays. The profile call never opened one.
+    expect(frame.overlaysOpened).toBe(2);
+    expect(activity.screenOpen).toBe(true);
+    frame.deliver("exitLucra", true);
+    await kyc;
+    expect(kycResult).toEqual({ status: "dismissed", reason: "exit" });
+    expect(present.getState()).toEqual({ screen: null });
+    expect(activity.screenOpen).toBe(false);
+    const join = api.tournaments.join("t1");
+    await tick();
+    frame.answer("joinTournamentRequest", "joinTournamentResponse", { matchupId: "t1" });
+    await join;
+  });
+
+  it("an abort while the screen on show closes ends the call, and nothing is sent or shown", async () => {
+    const { frame, activity, present } = setup();
+    await connectLoggedIn(frame);
+    const wallet = present.wallet();
+    await tick();
+    const controller = new AbortController();
+    let armed = false;
+    present.subscribe((state) => {
+      if (armed && state.screen === null) controller.abort();
+    });
+    armed = true;
+    let kycResult: unknown = null;
+    const kyc = present.kyc({ signal: controller.signal }).then((result) => (kycResult = result));
+    expect(await wallet).toEqual({ status: "dismissed", reason: "replaced" });
+    await tick();
+    expect(kycResult).toEqual({ status: "dismissed", reason: "aborted" });
+    expect(frame.overlaysOpened).toBe(1);
+    expect(navigatedTo(frame, kycPath)).toBe(false);
+    expect(present.getState()).toEqual({ screen: null });
+    expect(activity.screenOpen).toBe(false);
+    await kyc;
+  });
+
+  it("a later listener is only ever handed the current state", async () => {
+    const { frame, present } = setup();
+    await connectLoggedIn(frame);
+    let once = true;
+    present.subscribe((state) => {
+      if (state.screen === "kyc" && once) {
+        once = false;
+        present.dismiss();
+      }
+    });
+    const seen: unknown[] = [];
+    const stale: unknown[] = [];
+    present.subscribe((state) => {
+      seen.push(state.screen);
+      if (state !== present.getState()) stale.push(state.screen);
+    });
+    await present.kyc();
+    expect(stale).toEqual([]);
+    expect(seen[seen.length - 1]).toBe(present.getState().screen);
+    expect(present.getState()).toEqual({ screen: null });
+  });
+});
+
+describe("LucraScreen", () => {
+  // A Record, so a screen missing here or a name that is not one fails to compile.
+  const SCREENS: Record<LucraScreen, true> = {
+    login: true,
+    demographics: true,
+    kyc: true,
+    locationGrant: true,
+    withdraw: true,
+    profile: true,
+    wallet: true,
+  };
+
+  it("names every present call that shows in the page", () => {
+    const { present } = setup();
+    const notScreens = ["addFunds", "dismiss", "getState", "subscribe", "destroy"];
+    const screens = Object.keys(present).filter((key) => !notScreens.includes(key));
+    expect(Object.keys(SCREENS).sort()).toEqual(screens.sort());
   });
 });

@@ -128,6 +128,13 @@ Writes are what the guide calls changes
 
 Check with `isLucraError(error)`.
 
+- **`message` is for the user.** `source` says who raised the error: `"sdk"` when the SDK raised
+  it (timeouts, connection problems, `NOT_LOGGED_IN`, `IN_PROGRESS`, `SCREEN_OPEN`, and so on),
+  and its `message` is written for end users; `"lucra"` when Lucra reported it for the call, and
+  `message` is then Lucra's own text. `API_ERROR` is a catch-all, so its text can be technical.
+  `hint` is guidance for the developer: log it, never show it. It is always `null` for
+  `source: "lucra"`.
+
 - **`remediation`** names the screen to show. Try the call again once if it resolves
   `"completed"`, and send a second failure to your own UI: for `demographics()` and `kyc()`,
   `"completed"` only means the screen closed. `"addFunds"` needs a click, so show your own Add
@@ -150,7 +157,7 @@ Every code: [Errors](../../3.0_headless_client.md#errors).
 | `present.demographics()` | The form closes. That does not promise the user filled it in: try your call again to find out |
 | `present.kyc()` | The identity check closes. Same caveat |
 | `present.locationGrant()` | The user shares their location |
-| `present.addFunds()` | The deposit goes through. It can also resolve `"failed"`. See [Add Funds](#add-funds) |
+| `present.addFunds()` | The deposit goes through. It can also resolve `"failed"`, `"dismissed"`, or `"alreadyOpen"`. See [Add Funds](#add-funds) |
 | `present.withdraw()`, `present.profile()`, `present.wallet()` | Never. They resolve `"dismissed"` when closed |
 
 - **Where it shows.** Without `container`, a screen covers the whole page. With `container`, it
@@ -160,12 +167,27 @@ Every code: [Errors](../../3.0_headless_client.md#errors).
   the client and stay there: removed, calls time out and an open screen keeps waiting; moved,
   Lucra reloads and an open screen is not shown again. Call `lucra.destroy()` before you remove
   it.
+- **Show your own wrapper from state, not by wrapping calls.** `lucra.present.getState()` returns
+  `{ screen }`, the `LucraScreen` on show or `null`, and `lucra.present.subscribe(listener)`
+  calls the listener now and on every change. They behave like `lucra.auth.getState()` and
+  `subscribe()`. `screen` is set only while a screen is on show: not while it waits to connect,
+  for a login, or for a write, and never for Add Funds. A replacement goes to `null` and then to
+  the new screen, in the same task when nothing has to wait. Do not count open screens.
 - **The SDK draws no close control.** A screen ends with Lucra's own exit control,
   `lucra.present.dismiss()`, another `present.*` call other than `addFunds()` replacing it, the
-  user logging out inside it, `lucra.destroy()`, or by completing. All but completing resolve
-  `{ status: "dismissed" }`. Assume any screen may lack Lucra's exit control.
-- `login({ phoneNumber })` fills in the form. `phoneNumber` must be exactly 10 digits: omit it
-  when you have none, since `""` rejects with `INVALID_ARGUMENT`.
+  user logging out inside it, `lucra.destroy()`, its own `signal` being aborted, or by
+  completing. All but completing resolve `{ status: "dismissed", reason }`, where `reason` is
+  `"exit"`, `"dismissed"`, `"replaced"`, `"loggedOut"`, `"destroyed"`, or `"aborted"`. Assume any
+  screen may lack Lucra's exit control.
+- **Tie a screen to a route or component with `signal`.** Every screen takes
+  `{ signal?: AbortSignal }`. Abort it in that route's or component's cleanup: it closes only the
+  screen that call opened, and does nothing once the call has finished or another screen
+  replaced it. `lucra.present.dismiss()` closes whatever screen shows, so it is wrong for that
+  cleanup. A signal aborted already resolves `"aborted"` at once and shows nothing. A value
+  that is not an `AbortSignal` rejects with `INVALID_ARGUMENT` and leaves any screen alone.
+- `login({ phoneNumber, signal })` fills in the form. `phoneNumber` must be exactly 10 digits:
+  omit it when you have none, since `""` rejects with `INVALID_ARGUMENT`. That error's `message`,
+  "The phone number must be 10 digits", is safe to show next to a number the user typed.
 - Showing the login screen restarts Lucra. Reads still waiting reject with `CONNECTION_RESET` and
   are safe to repeat. If Lucra cannot start again while any screen shows, the screen closes and
   rejects with `CONNECTION_FAILED` or `CONNECTION_TIMEOUT`.
@@ -174,9 +196,9 @@ Every code: [Errors](../../3.0_headless_client.md#errors).
   signal.
 
 **Checkpoint:** `lucra.present.profile()` fills your container, and your close button resolves it
-`{ status: "dismissed" }`. Lucra's screens run on Lucra's own site, so an automated or agent
-driven browser cannot click or type in them. Verify through promise results and `lucra.auth`,
-and have a human run login and Add Funds.
+`{ status: "dismissed", reason: "dismissed" }`. Lucra's screens run on Lucra's own site, so an
+automated or agent driven browser cannot click or type in them. Verify through promise results
+and `lucra.auth`, and have a human run login and Add Funds.
 
 ### Add Funds
 
@@ -184,8 +206,11 @@ and have a human run login and Add Funds.
   first in a click handler rejects with `POPUP_BLOCKED`.
 - It opens its own window. It resolves `{ status: "completed", message }`,
   `{ status: "failed", message }`, or `{ status: "dismissed" }` when closed without finishing.
-  Calling it again while the window is open returns the same result. `dismiss()` does not close
-  it.
+- Calling it again while the window is open tries to bring the window to the front (browsers
+  may ignore it) and resolves `{ status: "alreadyOpen" }` at once. Only the first call reports
+  the deposit, so show a success message from that call alone. If the user just closed the
+  window, the first call resolves `"dismissed"` and a new window opens. `dismiss()` does not
+  close the window.
 - `message` is text from Lucra: show it as text, never as HTML. Read the new balance from
   `lucra.auth`.
 
@@ -227,6 +252,11 @@ their calls are `LucraClient` calls.
   `useSyncExternalStore(subscribeAuth, getAuth, getAuth)`, where the third argument serves server
   rendering and hydration. Keep the wrappers: `subscribe` and `getState` are typed as methods,
   so the `@typescript-eslint/unbound-method` lint rule flags passing them bare.
+- **Read the screen on show the same way**, with module scope wrappers around
+  `lucra.present.subscribe` and `lucra.present.getState`. Show your wrapper while `screen` is not
+  `null`.
+- **Tie a screen to a component with `signal`**: create an `AbortController` in the effect that
+  calls `lucra.present.*`, and abort it in the cleanup.
 - **Where to create the client.** Without a container, at module scope. With one, once the
   element is in the page, for example in a `useLayoutEffect` that reads `ref.current`. Never
   during render. Keep the client in a ref, and in that effect's cleanup call `destroy()` and set
@@ -241,14 +271,14 @@ their calls are `LucraClient` calls.
 
 | Code or symptom | Cause | Fix |
 | --- | --- | --- |
-| `INVALID_CONFIG` thrown by `createLucraClient` | A config it refuses. See [section 3](#3-setup) | Fix the config, or `destroy()` the existing client first |
+| `INVALID_CONFIG` thrown by `createLucraClient`, or `INVALID_ARGUMENT` | A config or argument it refuses. See [section 3](#3-setup). `message` is usually generic | Read `error.hint`, which `createLucraClient` also logs to the console. Fix the config or argument, or `destroy()` the existing client first |
 | `CONNECTION_FAILED` | Lucra refused the config | Check `apiKey`, `tenantId`, and `env` together |
 | `CONNECTION_TIMEOUT` | Lucra did not start within 30 seconds. Usually a `Content-Security-Policy` that does not allow your Lucra address under `frame-src`, or a Lucra address that does not load | Allow `https://<tenantId>.<env>.lucrasports.com` under `frame-src`, or `https://<tenantId>.lucrasports.com` in production, with `tenantId` in lowercase. Only that call gave up: the client keeps waiting |
 | `lucra.auth` stays `"loading"` | The client never connected, or Lucra reported a user it never confirmed. In the second case calls that need a user reject with `TIMEOUT` | `await lucra.whenConnected()` to get the connection error |
 | `IN_PROGRESS` | Another write is pending | Wait for it. If your app had none pending, Lucra is still running an earlier one: read back before retrying |
 | `SCREEN_OPEN` | A write while a screen shows or is opening | Await the screen's result first |
 | `POPUP_BLOCKED` | `addFunds()` ran outside the click | Call it first in the click handler, with no `await` before it |
-| `TIMEOUT` | Lucra did not answer, or did not confirm a login, within 15 seconds | Check `outcomeUnknown`: when `true`, read back before retrying. A read is safe to repeat. The message `"Lucra did not finish signing the user in"` means Lucra reported a user it never confirmed, and nothing was sent |
+| `TIMEOUT` | Lucra did not answer, or did not confirm a login, within 15 seconds | Check `outcomeUnknown`: when `true`, read back before retrying. A read is safe to repeat. A `hint` that says Lucra did not finish signing them in means Lucra reported a user it never confirmed, and nothing was sent |
 | `CONNECTION_RESET` | Lucra restarted while the call waited, for example for `present.login()` | Repeat a read. Read back after a write |
 | `UNSUPPORTED_ENVIRONMENT` | Created with no browser, for example during server rendering | Create it in browser code |
 | `onError` called with `CANCELLED` | A watch on another matchup replaced this one | Watch one matchup at a time |

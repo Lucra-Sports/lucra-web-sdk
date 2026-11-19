@@ -27,13 +27,18 @@ export declare const LucraErrorCode: {
 };
 export type LucraErrorCode = (typeof LucraErrorCode)[keyof typeof LucraErrorCode];
 export type LucraRemediation = "login" | "addFunds" | "demographics" | "locationGrant" | "kyc";
+export type LucraErrorSource = "lucra" | "sdk";
 export declare class LucraError extends Error {
     readonly code: LucraErrorCode;
     readonly remediation: LucraRemediation | null;
     readonly outcomeUnknown: boolean;
+    readonly source: LucraErrorSource;
+    readonly hint: string | null;
     constructor(code: LucraErrorCode, message?: string, options?: {
         outcomeUnknown?: boolean;
         cause?: unknown;
+        hint?: string;
+        source?: LucraErrorSource;
     });
 }
 export declare function isLucraError(value: unknown): value is LucraError;

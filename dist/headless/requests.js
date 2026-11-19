@@ -49,7 +49,10 @@ export function createRequests(options) {
                 catch (cause) {
                     // For example a body that cannot be cloned. Nothing was sent.
                     take(requestId);
-                    reject(new LucraError(LucraErrorCode.INVALID_ARGUMENT, "The request could not be sent", { cause }));
+                    reject(new LucraError(LucraErrorCode.INVALID_ARGUMENT, undefined, {
+                        cause,
+                        hint: "The request could not be sent to Lucra. Pass only plain data.",
+                    }));
                 }
             });
         },

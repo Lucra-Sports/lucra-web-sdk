@@ -1,5 +1,23 @@
 # CHANGELOG
 
+## [v1.19.0]
+
+### Added
+
+- **Preview:** the type `LucraScreen` from `lucra-web-sdk/headless` names the `lucra.present` screens that show in the page: every one except `addFunds`. `lucra.present[screen]()` type checks for any `screen` of this type. See [Showing a Lucra screen](3.0_headless_client.md#showing-a-lucra-screen).
+- **Preview:** `LucraError` has two new fields. `source` is `"lucra"` when Lucra reported the error for your call, and `"sdk"` when the SDK raised it. `hint` is guidance for the developer, never shown to users, and is `null` when there is none. The type `LucraErrorSource` names the values of `source`. See [Errors](3.0_headless_client.md#errors).
+- **Preview:** every `lucra.present` screen takes `{ signal }`, an `AbortSignal`. Aborting it closes only the screen that call opened, so a route's cleanup cannot close a screen that replaced it. A value that is not an `AbortSignal` rejects with `INVALID_ARGUMENT`. New types `LucraDismissReason`, `LucraPresentOptions`, and `LucraLoginOptions`. See [Closing only your own screen](3.0_headless_client.md#closing-only-your-own-screen).
+- **Preview:** `lucra.present.getState()` and `lucra.present.subscribe(listener)` tell you which screen is on show, as `{ screen }` with a `LucraScreen` or `null`. They behave like `lucra.auth.getState()` and `lucra.auth.subscribe()`, so they work with React's `useSyncExternalStore`. A screen still waiting to show and the Add Funds window are not reported. New type `LucraPresentState`. See [Showing your own wrapper](3.0_headless_client.md#showing-your-own-wrapper).
+
+### Changed
+
+- **Preview:** two result types changed shape, so code that switches over every status, or builds these results by hand, needs updating. A dismissed screen result now has a required `reason`: `"exit"`, `"dismissed"`, `"replaced"`, `"loggedOut"`, `"destroyed"`, or `"aborted"`. Add Funds is not a screen, and its `"dismissed"` result has none. `LucraAddFundsResult` has a new status, `"alreadyOpen"`: while the Add Funds window is open, another `lucra.present.addFunds()` tries to bring that window to the front and resolves `{ status: "alreadyOpen" }` at once. It used to share the first call's result, so one deposit could show two success messages. The first call still resolves when the window closes. See [Add Funds](3.0_headless_client.md#add-funds).
+- **Preview:** every default `LucraError` message the SDK raises is now plain text written for end users. What the developer needs, such as which config value to check or that `addFunds()` must run in a click handler, moved to `hint`. This includes the detail for `INVALID_CONFIG`, `INVALID_ARGUMENT`, a replaced watch's `CANCELLED`, and a login Lucra never confirmed. When `createLucraClient` throws, it logs the code and the hint to the console. A phone number that is not 10 digits has its own message. An error Lucra reported keeps Lucra's own message.
+
+### Fixed
+
+- **Preview:** showing the login screen with `lucra.present.login()` no longer adds a browser history entry, so Back works on the first press.
+
 ## [v1.18.0]
 
 ### Added

@@ -71,7 +71,7 @@ describe("createClient", () => {
     expect(Object.keys(client.achievements).sort()).toEqual(["claim", "list", "markViewed"]);
     expect(Object.keys(client.rewards).sort()).toEqual(["claim", "list"]);
     expect(Object.keys(client.present).sort()).toEqual(
-      ["addFunds", "demographics", "dismiss", "kyc", "locationGrant", "login", "profile", "wallet", "withdraw"]
+      ["addFunds", "demographics", "dismiss", "getState", "kyc", "locationGrant", "login", "profile", "subscribe", "wallet", "withdraw"]
     );
   });
 
@@ -104,7 +104,7 @@ describe("createClient", () => {
     expect(frame.overlayOpen).toBe(true);
     expect((await caught(client.tournaments.join("t1"))).code).toBe("SCREEN_OPEN");
     client.present.dismiss();
-    expect(await shown).toEqual({ status: "dismissed" });
+    expect(await shown).toEqual({ status: "dismissed", reason: "dismissed" });
   });
 
   it("passes Lucra's events to lucra.on listeners", async () => {
@@ -166,7 +166,7 @@ describe("createClient", () => {
     client.destroy();
     expect(onDestroy).toHaveBeenCalledTimes(1);
     expect((await read).code).toBe("DESTROYED");
-    expect(await shown).toEqual({ status: "dismissed" });
+    expect(await shown).toEqual({ status: "dismissed", reason: "destroyed" });
     expect(frame.destroyed).toBe(true);
     expect(frame.overlayOpen).toBe(false);
     expect((await caught(client.whenConnected())).code).toBe("DESTROYED");
@@ -197,6 +197,35 @@ describe("createClient", () => {
 });
 
 describe("createLucraClient", () => {
+  // createLucraClient logs why it threw. Kept quiet here, and checked below.
+  let error: ReturnType<typeof spyOn>;
+  beforeEach(() => {
+    error = spyOn(console, "error").mockImplementation(() => {});
+  });
+  afterEach(() => {
+    error.mockRestore();
+  });
+
+  it("logs the code and the hint once when it throws, then throws the same error", () => {
+    let thrownError: unknown = null;
+    try {
+      createLucraClient({ ...config, apiKey: "" });
+    } catch (e) {
+      thrownError = e;
+    }
+    expect(thrownError).toBeInstanceOf(LucraError);
+    expect((thrownError as LucraError).message).toBe("Something went wrong");
+    expect(error).toHaveBeenCalledTimes(1);
+    expect(error).toHaveBeenCalledWith(
+      "Lucra INVALID_CONFIG: apiKey, tenantId, and env are required."
+    );
+  });
+
+  it("logs nothing when it makes a client", () => {
+    createLucraClient(config).destroy();
+    expect(error).toHaveBeenCalledTimes(0);
+  });
+
   it("throws INVALID_CONFIG when apiKey, tenantId, or env is missing", () => {
     for (const bad of [
       { ...config, apiKey: "" },
@@ -366,7 +395,8 @@ describe("createLucraClient", () => {
       ] as const) {
         const error = thrown(() => createLucraClient({ ...config, container } as never));
         expect(error.code).toBe("INVALID_CONFIG");
-        expect(error.message).toContain(message);
+        // The detail is for the developer, so it is in the hint, not the message.
+        expect(error.hint).toContain(message);
       }
       expect(added).toEqual([]);
       // Nothing was remembered, so a good config still makes a client.

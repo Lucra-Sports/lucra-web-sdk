@@ -13,13 +13,16 @@ export type InboundMessage = {
 export type Overlay = {
     close(): void;
 };
+export type Popup = LucraPopupHandle & {
+    focus(): boolean;
+};
 export type Frame = {
     mount(url: string): void;
     reload(url: string): void;
     post(message: OutboundMessage): void;
     onMessage(listener: (message: InboundMessage) => void): () => void;
     openOverlay(): Overlay;
-    openPopup(url: string): LucraPopupHandle;
+    openPopup(url: string): Popup;
     destroy(): void;
 };
 export declare function hasDom(): boolean;

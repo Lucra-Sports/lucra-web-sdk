@@ -1,4 +1,3 @@
-import type { LucraPopupHandle } from "../popup.js";
 import {
   LUCRA_POPUP_MESSAGE_TYPE,
   LucraClientMessageType,
@@ -7,32 +6,51 @@ import {
 import type { Activity } from "./api.js";
 import type { Auth } from "./auth.js";
 import { LucraError, LucraErrorCode, isLucraError } from "./errors.js";
-import type { Frame, Overlay } from "./frame.js";
+import { createEmitter } from "./events.js";
+import type { Frame, Overlay, Popup } from "./frame.js";
 import type { Session } from "./session.js";
 import type {
   LucraAddFundsResult,
+  LucraDismissReason,
+  LucraLoginOptions,
   LucraLoginResult,
+  LucraPresentOptions,
   LucraPresentResult,
   LucraUser,
 } from "./types.js";
 import { HOME_PATH, buildUrl, navigateTarget, type UrlContext } from "./url.js";
 
 export type Present = {
-  login(options?: { phoneNumber?: string }): Promise<LucraLoginResult>;
+  login(options?: LucraLoginOptions): Promise<LucraLoginResult>;
   addFunds(): Promise<LucraAddFundsResult>;
-  demographics(): Promise<LucraPresentResult>;
-  kyc(): Promise<LucraPresentResult>;
-  locationGrant(): Promise<LucraPresentResult>;
-  withdraw(): Promise<LucraPresentResult>;
-  profile(): Promise<LucraPresentResult>;
-  wallet(): Promise<LucraPresentResult>;
+  demographics(options?: LucraPresentOptions): Promise<LucraPresentResult>;
+  kyc(options?: LucraPresentOptions): Promise<LucraPresentResult>;
+  locationGrant(options?: LucraPresentOptions): Promise<LucraPresentResult>;
+  withdraw(options?: LucraPresentOptions): Promise<LucraPresentResult>;
+  profile(options?: LucraPresentOptions): Promise<LucraPresentResult>;
+  wallet(options?: LucraPresentOptions): Promise<LucraPresentResult>;
   dismiss(): void;
+  // The current state. The same object is returned until something changes.
+  getState(): LucraPresentState;
+  // Calls the listener now with the current state, then on every change.
+  subscribe(listener: (state: LucraPresentState) => void): () => void;
   destroy(): void;
 };
 
-type Dismissed = { status: "dismissed" };
+// The lucra.present screens that show in the page. Add Funds opens its own window.
+export type LucraScreen = Exclude<
+  keyof Present,
+  "addFunds" | "dismiss" | "getState" | "subscribe" | "destroy"
+>;
+
+// The screen on show in the page, or null. A screen still waiting to show,
+// and the Add Funds window, are never reported.
+export type LucraPresentState = { readonly screen: LucraScreen | null };
+
+type Dismissed = { status: "dismissed"; reason: LucraDismissReason };
 
 type Screen<TResult> = {
+  name: LucraScreen;
   needsLogin: boolean;
   // Resolves with a result to skip the screen entirely, or null to show it.
   skip?: () => Promise<TResult | null>;
@@ -57,21 +75,50 @@ export function createPresent(options: {
 }): Present {
   const { session, auth, frame, urls, activity, whenWriteSettled } = options;
   // The overlay screen on show, if any. Only one at a time.
-  let current: { dismiss: () => void } | null = null;
-  // The Add Funds window, while it is open, and the result it will give.
-  let popup: { handle: LucraPopupHandle; result: Promise<LucraAddFundsResult> } | null =
-    null;
+  let current: { dismiss: (reason: LucraDismissReason) => void } | null = null;
+  // The Add Funds window, while it is open.
+  let popup: Popup | null = null;
   let destroyed = false;
+  let state: LucraPresentState = { screen: null };
+  const changes = createEmitter<{ change: LucraPresentState }>();
+
+  const setScreen = (screen: LucraScreen | null) => {
+    if (state.screen === screen) return;
+    state = { screen };
+    changes.emit("change", state);
+  };
 
   const navigate = (path: string) =>
     session.post(MessageTypeToLucraClient.navigate, {
       pathname: navigateTarget(urls, path),
     });
 
-  const present = <TResult>(screen: Screen<TResult>): Promise<TResult | Dismissed> => {
+  const present = <TResult>(
+    screen: Screen<TResult>,
+    signal: AbortSignal | undefined
+  ): Promise<TResult | Dismissed> => {
     if (destroyed) return Promise.reject(new LucraError(LucraErrorCode.DESTROYED));
-    // A new screen replaces the one on show.
-    current?.dismiss();
+    // Checked before anything changes, so a bad value cannot leave a screen
+    // marked open. Not instanceof: the signal can come from another window.
+    if (
+      signal != null &&
+      (typeof signal.addEventListener !== "function" ||
+        typeof signal.removeEventListener !== "function" ||
+        typeof signal.aborted !== "boolean")
+    ) {
+      return Promise.reject(
+        new LucraError(LucraErrorCode.INVALID_ARGUMENT, undefined, {
+          hint: "signal must be an AbortSignal.",
+        })
+      );
+    }
+    // Aborted already: show nothing, and leave any screen on show alone.
+    if (signal?.aborted) {
+      return Promise.resolve({ status: "dismissed", reason: "aborted" });
+    }
+    // A new screen replaces the one on show. A loop, because a state listener
+    // told the old screen closed may start another screen.
+    while (current) current.dismiss("replaced");
     // Set before the first await, so a write started right after is refused.
     activity.screenOpen = true;
 
@@ -92,6 +139,7 @@ export function createPresent(options: {
         }
         if (overlay) {
           overlay.close();
+          setScreen(null);
           if (screen.goHomeAfter && session.status() === "connected") {
             navigate(HOME_PATH);
           }
@@ -100,8 +148,22 @@ export function createPresent(options: {
         else resolve(outcome.result);
       };
 
-      const handle = { dismiss: () => finish({ result: { status: "dismissed" } }) };
+      const handle = {
+        dismiss: (reason: LucraDismissReason) =>
+          finish({ result: { status: "dismissed", reason } }),
+      };
       current = handle;
+
+      // The signal ends only this call. Once it has finished, for example
+      // because another screen replaced it, the listener is gone.
+      if (signal) {
+        const onAbort = () => handle.dismiss("aborted");
+        signal.addEventListener("abort", onAbort);
+        cleanups.push(() => signal.removeEventListener("abort", onAbort));
+        // A state listener may have aborted it while the old screen closed,
+        // before the listener above was added.
+        if (signal.aborted) handle.dismiss("aborted");
+      }
 
       (async () => {
         await session.whenConnected();
@@ -113,16 +175,23 @@ export function createPresent(options: {
         }
         // A pending write is navigating Lucra. Showing a screen navigates it too.
         await whenWriteSettled();
-        // Dismissed or replaced while waiting.
+        // Dismissed, replaced, or aborted while waiting.
         if (done) return;
 
         overlay = frame.openOverlay();
+        setScreen(screen.name);
+        // A listener told about the screen may have closed it already.
+        if (done) return;
         // The SDK draws no exit. The user leaves with Lucra's own control.
-        cleanups.push(session.on(LucraClientMessageType.exitLucra, handle.dismiss));
+        cleanups.push(
+          session.on(LucraClientMessageType.exitLucra, () => handle.dismiss("exit"))
+        );
         if (screen.needsLogin) {
           // The user signed out from inside the screen.
           cleanups.push(
-            session.on(LucraClientMessageType.logoutComplete, handle.dismiss)
+            session.on(LucraClientMessageType.logoutComplete, () =>
+              handle.dismiss("loggedOut")
+            )
           );
         }
         const { completeOn, completed } = screen;
@@ -152,17 +221,20 @@ export function createPresent(options: {
     });
   };
 
-  const page = (
-    path: string,
-    completeOn?: LucraClientMessageType
-  ): Promise<LucraPresentResult> =>
-    present<LucraPresentResult>({
-      needsLogin: true,
-      show: () => navigate(path),
-      completeOn,
-      completed: () => ({ status: "completed" }),
-      goHomeAfter: true,
-    });
+  const page =
+    (name: LucraScreen, path: string, completeOn?: LucraClientMessageType) =>
+    (pageOptions?: LucraPresentOptions): Promise<LucraPresentResult> =>
+      present<LucraPresentResult>(
+        {
+          name,
+          needsLogin: true,
+          show: () => navigate(path),
+          completeOn,
+          completed: () => ({ status: "completed" }),
+          goHomeAfter: true,
+        },
+        pageOptions?.signal
+      );
 
   const unsubscribePopup = session.on(LUCRA_POPUP_MESSAGE_TYPE, (data) => {
     const result = data as { toastType?: unknown; message?: unknown } | null;
@@ -170,7 +242,7 @@ export function createPresent(options: {
       (result?.toastType === "success" || result?.toastType === "error") &&
       typeof result.message === "string"
     ) {
-      popup?.handle.resolve({ toastType: result.toastType, message: result.message });
+      popup?.resolve({ toastType: result.toastType, message: result.message });
     }
   });
 
@@ -179,13 +251,13 @@ export function createPresent(options: {
       const phoneNumber = loginOptions?.phoneNumber;
       if (phoneNumber !== undefined && !PHONE_NUMBER.test(phoneNumber)) {
         return Promise.reject(
-          new LucraError(
-            LucraErrorCode.INVALID_ARGUMENT,
-            "phoneNumber must be exactly 10 digits"
-          )
+          new LucraError(LucraErrorCode.INVALID_ARGUMENT, "The phone number must be 10 digits", {
+            hint: "phoneNumber must be exactly 10 digits. Omit it when you have none.",
+          })
         );
       }
       return present<LucraLoginResult>({
+        name: "login",
         needsLogin: false,
         // Already logged in: there is nothing to show.
         skip: async () => {
@@ -218,7 +290,7 @@ export function createPresent(options: {
           user: (data ?? {}) as LucraUser,
         }),
         goHomeAfter: false,
-      });
+      }, loginOptions?.signal);
     },
 
     addFunds() {
@@ -233,10 +305,13 @@ export function createPresent(options: {
       if (auth.getState().status === "loggedOut") {
         return Promise.reject(new LucraError(LucraErrorCode.NOT_LOGGED_IN));
       }
-      // The window is already open: one deposit, one result. Closing it and
-      // opening another right away can hand back the window that is closing.
-      if (popup) return popup.result;
-      let handle: LucraPopupHandle;
+      // The window is already open. Bring it forward instead of opening another:
+      // closing it and opening another right away can hand back the window that
+      // is closing. The first call alone reports the deposit. A window the user
+      // closed since the last poll is not open: focus() closes its handle, which
+      // ends the first call, and a new window opens below.
+      if (popup?.focus()) return Promise.resolve({ status: "alreadyOpen" });
+      let handle: Popup;
       try {
         handle = frame.openPopup(buildUrl(urls, "app/add-funds"));
       } catch (cause) {
@@ -246,7 +321,7 @@ export function createPresent(options: {
       }
       const result = new Promise<LucraAddFundsResult>((resolve) => {
         handle.onClose((closed) => {
-          if (popup?.handle === handle) popup = null;
+          if (popup === handle) popup = null;
           if (!closed) resolve({ status: "dismissed" });
           else if (closed.toastType === "success") {
             resolve({ status: "completed", message: closed.message });
@@ -255,27 +330,51 @@ export function createPresent(options: {
           }
         });
       });
-      popup = { handle, result };
+      popup = handle;
       return result;
     },
 
-    demographics: () => page("app/demographicform", LucraClientMessageType.demographicComplete),
-    kyc: () => page("app/kyc", LucraClientMessageType.kycComplete),
-    locationGrant: () => page("app/location-grant", LucraClientMessageType.locationGranted),
-    withdraw: () => page("app/withdraw-funds"),
-    profile: () => page("app/profile"),
-    wallet: () => page("app/wallet"),
+    demographics: page(
+      "demographics",
+      "app/demographicform",
+      LucraClientMessageType.demographicComplete
+    ),
+    kyc: page("kyc", "app/kyc", LucraClientMessageType.kycComplete),
+    locationGrant: page(
+      "locationGrant",
+      "app/location-grant",
+      LucraClientMessageType.locationGranted
+    ),
+    withdraw: page("withdraw", "app/withdraw-funds"),
+    profile: page("profile", "app/profile"),
+    wallet: page("wallet", "app/wallet"),
 
     dismiss() {
-      current?.dismiss();
+      current?.dismiss("dismissed");
+    },
+
+    getState: () => state,
+
+    subscribe(listener) {
+      // Always the current state: a listener can change it while others are
+      // still being told about the change before.
+      const unsubscribe = changes.on("change", () => listener(state));
+      try {
+        listener(state);
+      } catch (e) {
+        console.error("Lucra present listener threw an error", e);
+      }
+      return unsubscribe;
     },
 
     destroy() {
       if (destroyed) return;
       destroyed = true;
-      current?.dismiss();
-      popup?.handle.close();
+      // Closing the screen on show takes the state back to null first.
+      current?.dismiss("destroyed");
+      popup?.close();
       unsubscribePopup();
+      changes.clear();
     },
   };
 }

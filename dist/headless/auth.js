@@ -2,7 +2,9 @@ import { LucraClientMessageType, MessageTypeToLucraClient, } from "../types/type
 import { LucraError, LucraErrorCode, isLucraError } from "./errors.js";
 import { createEmitter } from "./events.js";
 import { navigateTarget } from "./url.js";
-const NOT_READY_MESSAGE = "Lucra did not finish signing the user in";
+const notReady = () => new LucraError(LucraErrorCode.TIMEOUT, undefined, {
+    hint: "Lucra reported a logged in user but did not finish signing them in. Nothing was sent.",
+});
 export function createAuth(options) {
     const { session, urls, timeouts } = options;
     const loginCheck = {
@@ -101,7 +103,7 @@ export function createAuth(options) {
             readyTimer = setTimeout(() => {
                 readyTimer = null;
                 stalled = true;
-                settleWaiters(new LucraError(LucraErrorCode.TIMEOUT, NOT_READY_MESSAGE));
+                settleWaiters(notReady());
             }, timeouts.authReadyMs);
         }, (error) => {
             if (destroyed || generation !== checkGeneration)
@@ -168,7 +170,7 @@ export function createAuth(options) {
             return Promise.reject(new LucraError(LucraErrorCode.NOT_LOGGED_IN));
         }
         if (stalled) {
-            return Promise.reject(new LucraError(LucraErrorCode.TIMEOUT, NOT_READY_MESSAGE));
+            return Promise.reject(notReady());
         }
         return new Promise((resolve, reject) => {
             waiters.add({ resolve, reject });
@@ -177,7 +179,9 @@ export function createAuth(options) {
     return {
         getState: () => state,
         subscribe(listener) {
-            const unsubscribe = changes.on("change", listener);
+            // Always the current state: a listener can change it while others are
+            // still being told about the change before.
+            const unsubscribe = changes.on("change", () => listener(state));
             try {
                 listener(state);
             }

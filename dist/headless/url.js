@@ -25,14 +25,18 @@ const isCleanLucraOrigin = (origin) => {
 // to another site.
 export function lucraOrigin(config) {
     if (!Object.keys(ENVIRONMENTS).includes(config.env)) {
-        throw new LucraError(LucraErrorCode.INVALID_CONFIG, `env must be one of ${Object.keys(ENVIRONMENTS).join(", ")}`);
+        throw new LucraError(LucraErrorCode.INVALID_CONFIG, undefined, {
+            hint: `env must be one of ${Object.keys(ENVIRONMENTS).join(", ")}.`,
+        });
     }
     if (config.env === "local")
         return "http://localhost:3000";
     const env = config.env !== "production" ? `${config.env}.` : "";
     const origin = `https://${config.tenantId.toLowerCase()}.${env}lucrasports.com`;
     if (!isCleanLucraOrigin(origin)) {
-        throw new LucraError(LucraErrorCode.INVALID_CONFIG, "tenantId does not form a valid Lucra address");
+        throw new LucraError(LucraErrorCode.INVALID_CONFIG, undefined, {
+            hint: "tenantId does not form a valid Lucra address.",
+        });
     }
     return origin;
 }

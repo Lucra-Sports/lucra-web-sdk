@@ -157,10 +157,9 @@ export function createWatch(options: { session: Session }): Watch {
         if (previous) {
           fail(
             previous,
-            new LucraError(
-              LucraErrorCode.CANCELLED,
-              "Replaced by a watch on another matchup"
-            )
+            new LucraError(LucraErrorCode.CANCELLED, undefined, {
+              hint: "A watch on another matchup replaced this one.",
+            })
           );
         }
       }

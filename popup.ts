@@ -18,20 +18,30 @@ function popupFeatures(): string {
   return `left=${left},top=${top},width=${POPUP_WIDTH},height=${POPUP_HEIGHT},resizable,scrollbars=yes,status=1`;
 }
 
-// Opens `url` in a real popup window and returns a handle. window.open returns
-// null when the browser blocks the popup, which happens unless this runs inside
-// a user gesture (e.g. a click handler) -- surface that as a clear error rather
-// than silently doing nothing. The popup self-closes when the web app finishes a
-// deposit; polling window.closed covers that and the user dismissing it.
+// Opens `url` in a real popup window and returns a handle. The popup
+// self-closes when the web app finishes a deposit.
 // pollMs is overridable so tests can poll faster than the 500ms default.
 export function createPopup(url: string, pollMs = 500): LucraPopupHandle {
+  return trackPopup(openPopupWindow(url), pollMs);
+}
+
+// Opens `url` in the centered popup window. window.open returns null when the
+// browser blocks the popup, which happens unless this runs inside a user
+// gesture (e.g. a click handler) -- surface that as a clear error rather than
+// silently doing nothing.
+export function openPopupWindow(url: string): Window {
   const win = window.open(url, POPUP_WINDOW_NAME, popupFeatures());
   if (!win) {
     throw new Error(
       "Unable to open the Lucra popup. Popups must be opened from a user gesture (e.g. a click handler) and may be blocked by the browser."
     );
   }
+  return win;
+}
 
+// Wraps an open popup window in a handle. Polling window.closed covers the web
+// app closing it after a deposit and the user dismissing it.
+export function trackPopup(win: Window, pollMs = 500): LucraPopupHandle {
   const onCloseCallbacks = new Set<(result?: LucraPopupResult) => void>();
   let closed = false;
   let result: LucraPopupResult | undefined;

@@ -1,8 +1,5 @@
-import { createPopup, type LucraPopupHandle } from "../popup.js";
-import {
-  LUCRA_POPUP_MESSAGE_TYPE,
-  type MessageTypeToLucraClient,
-} from "../types/types.js";
+import { openPopupWindow, trackPopup, type LucraPopupHandle } from "../popup.js";
+import { LUCRA_POPUP_MESSAGE_TYPE, type MessageTypeToLucraClient } from "../types/types.js";
 
 // A message the SDK sends to the Lucra app.
 export type OutboundMessage = {
@@ -20,6 +17,10 @@ export type InboundMessage = {
 
 export type Overlay = { close(): void };
 
+// An open popup window. `focus` brings it in front of the page and returns
+// true. When the window is already closed, it closes the handle and returns false.
+export type Popup = LucraPopupHandle & { focus(): boolean };
+
 // Everything the client needs from the page. This file implements it with the
 // DOM. Tests use the fake in testing.ts. No other file may touch the DOM.
 export type Frame = {
@@ -34,7 +35,7 @@ export type Frame = {
   // exit: Lucra shows its own, and the app can call present.dismiss().
   openOverlay(): Overlay;
   // Opens a real popup window. Throws when the browser blocks it.
-  openPopup(url: string): LucraPopupHandle;
+  openPopup(url: string): Popup;
   destroy(): void;
 };
 
@@ -75,7 +76,6 @@ const OVERLAY_CSS =
 const CONTAINED_CSS = "display:block;width:100%;height:100%;";
 // Block, so an inline frame's baseline gap cannot overflow the container.
 const IFRAME_CSS = "display:block;flex:1 1 auto;width:100%;height:100%;border:0;";
-
 // With a container, the frame lives and shows there. Without one, it lives in
 // the body and shows full screen.
 export function createDomFrame(origin: string, container?: HTMLElement): Frame {
@@ -137,7 +137,18 @@ export function createDomFrame(origin: string, container?: HTMLElement): Frame {
     },
 
     reload(url) {
-      if (iframe) iframe.src = url;
+      if (!iframe) return;
+      // Setting src on a loaded frame adds a browser history entry, so Back
+      // would first rewind the hidden frame. Replacing the location does not.
+      try {
+        if (iframe.contentWindow) {
+          iframe.contentWindow.location.replace(url);
+          return;
+        }
+      } catch {
+        // Fall back to src below.
+      }
+      iframe.src = url;
     },
 
     post(message) {
@@ -184,7 +195,24 @@ export function createDomFrame(origin: string, container?: HTMLElement): Frame {
     },
 
     openPopup(url) {
-      return createPopup(url);
+      const win = openPopupWindow(url);
+      const popup = trackPopup(win);
+      return {
+        ...popup,
+        focus() {
+          // The user may have closed it since the last poll.
+          if (win.closed) {
+            popup.close();
+            return false;
+          }
+          try {
+            win.focus();
+          } catch {
+            // Some browsers refuse. The window stays open either way.
+          }
+          return true;
+        },
+      };
     },
 
     destroy() {

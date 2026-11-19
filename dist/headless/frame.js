@@ -1,5 +1,5 @@
-import { createPopup } from "../popup.js";
-import { LUCRA_POPUP_MESSAGE_TYPE, } from "../types/types.js";
+import { openPopupWindow, trackPopup } from "../popup.js";
+import { LUCRA_POPUP_MESSAGE_TYPE } from "../types/types.js";
 // True when there is a page to work with. False on a server.
 export function hasDom() {
     return typeof window !== "undefined" && typeof document !== "undefined";
@@ -95,8 +95,20 @@ export function createDomFrame(origin, container) {
             }
         },
         reload(url) {
-            if (iframe)
-                iframe.src = url;
+            if (!iframe)
+                return;
+            // Setting src on a loaded frame adds a browser history entry, so Back
+            // would first rewind the hidden frame. Replacing the location does not.
+            try {
+                if (iframe.contentWindow) {
+                    iframe.contentWindow.location.replace(url);
+                    return;
+                }
+            }
+            catch {
+                // Fall back to src below.
+            }
+            iframe.src = url;
         },
         post(message) {
             iframe?.contentWindow?.postMessage(message, origin);
@@ -140,7 +152,25 @@ export function createDomFrame(origin, container) {
             return { close };
         },
         openPopup(url) {
-            return createPopup(url);
+            const win = openPopupWindow(url);
+            const popup = trackPopup(win);
+            return {
+                ...popup,
+                focus() {
+                    // The user may have closed it since the last poll.
+                    if (win.closed) {
+                        popup.close();
+                        return false;
+                    }
+                    try {
+                        win.focus();
+                    }
+                    catch {
+                        // Some browsers refuse. The window stays open either way.
+                    }
+                    return true;
+                },
+            };
         },
         destroy() {
             destroyed = true;

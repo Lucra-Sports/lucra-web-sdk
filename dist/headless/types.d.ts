@@ -15,16 +15,25 @@ export type LucraAuthState = {
     readonly status: LucraAuthStatus;
     readonly user: LucraUser | null;
 };
+export type LucraPresentOptions = {
+    signal?: AbortSignal;
+};
+export type LucraLoginOptions = LucraPresentOptions & {
+    phoneNumber?: string;
+};
+export type LucraDismissReason = "exit" | "dismissed" | "replaced" | "loggedOut" | "destroyed" | "aborted";
 export type LucraPresentResult = {
     status: "completed";
 } | {
     status: "dismissed";
+    reason: LucraDismissReason;
 };
 export type LucraLoginResult = {
     status: "completed";
     user: LucraUser;
 } | {
     status: "dismissed";
+    reason: LucraDismissReason;
 };
 export type LucraAddFundsResult = {
     status: "completed";
@@ -34,6 +43,8 @@ export type LucraAddFundsResult = {
     message: string;
 } | {
     status: "dismissed";
+} | {
+    status: "alreadyOpen";
 };
 export type LucraMatchupWatchHandlers = {
     onUpdate: (details: LucraMatchupDetails) => void;

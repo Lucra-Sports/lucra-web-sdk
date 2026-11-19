@@ -16,7 +16,10 @@ type FakeElement = {
   attributes: Record<string, string>;
   children: FakeElement[];
   parent: FakeElement | null;
-  contentWindow?: { postMessage: ReturnType<typeof mock> };
+  contentWindow?: {
+    postMessage: ReturnType<typeof mock>;
+    location: { replace: ReturnType<typeof mock> };
+  };
   focus: ReturnType<typeof mock>;
   appendChild(child: FakeElement): void;
   remove(): void;
@@ -53,7 +56,12 @@ function makeElement(tag: string): FakeElement {
       delete element.attributes[name];
     },
   };
-  if (tag === "iframe") element.contentWindow = { postMessage: mock(() => {}) };
+  if (tag === "iframe") {
+    element.contentWindow = {
+      postMessage: mock(() => {}),
+      location: { replace: mock((_url: string) => {}) },
+    };
+  }
   return element;
 }
 
@@ -148,10 +156,33 @@ describe("createDomFrame: mount and messages", () => {
     expect(iframe().contentWindow?.postMessage).toHaveBeenCalledWith(outbound, ORIGIN);
   });
 
-  it("reloads the frame at a new url", () => {
+  it("reloads the frame in place, so the browser history does not grow", () => {
     const frame = createDomFrame(ORIGIN);
     frame.mount(URL_1);
     frame.reload(`${ORIGIN}/?login=true`);
+    expect(iframe().contentWindow?.location.replace).toHaveBeenCalledWith(
+      `${ORIGIN}/?login=true`
+    );
+    expect(iframe().src).toBe(URL_1);
+  });
+
+  it("reloads through src when the frame has no window", () => {
+    const frame = createDomFrame(ORIGIN);
+    frame.mount(URL_1);
+    iframe().contentWindow = undefined;
+    frame.reload(`${ORIGIN}/?login=true`);
+    expect(iframe().src).toBe(`${ORIGIN}/?login=true`);
+  });
+
+  it("reloads through src when replacing the location throws", () => {
+    const frame = createDomFrame(ORIGIN);
+    frame.mount(URL_1);
+    const replace = iframe().contentWindow?.location.replace;
+    replace?.mockImplementation(() => {
+      throw new Error("blocked");
+    });
+    frame.reload(`${ORIGIN}/?login=true`);
+    expect(replace).toHaveBeenCalledTimes(1);
     expect(iframe().src).toBe(`${ORIGIN}/?login=true`);
   });
 
@@ -344,6 +375,49 @@ describe("createDomFrame: destroy", () => {
     frame.reload(URL_1);
     frame.mount(URL_1);
     expect(dom.body.children.length).toBe(0);
+  });
+});
+
+describe("createDomFrame: openPopup", () => {
+  const fakeWindow = () => ({ closed: false, close: mock(() => {}), focus: mock(() => {}) });
+  const page = () =>
+    (globalThis as unknown as { window: Record<string, unknown> }).window;
+
+  it("opens the Add Funds window and brings it forward on focus()", () => {
+    const win = fakeWindow();
+    const open = mock((..._args: unknown[]) => win);
+    Object.assign(page(), { open, screenX: 0, screenY: 0, innerWidth: 1430, innerHeight: 1800 });
+    const popup = createDomFrame(ORIGIN).openPopup(URL_1);
+    expect(open).toHaveBeenCalledTimes(1);
+    expect(open.mock.calls[0][0]).toBe(URL_1);
+    expect(open.mock.calls[0][1]).toBe("lucrasports:deposit:popup");
+    expect(String(open.mock.calls[0][2])).toContain("left=500,top=500,width=430,height=800");
+    expect(popup.focus()).toBe(true);
+    expect(win.focus).toHaveBeenCalledTimes(1);
+    const onClose = mock((_result?: unknown) => {});
+    popup.onClose(onClose);
+    popup.resolve({ toastType: "success", message: "ok" });
+    expect(win.close).toHaveBeenCalledTimes(1);
+    expect(onClose).toHaveBeenCalledWith({ toastType: "success", message: "ok" });
+  });
+
+  it("closes the handle instead of focusing a window the user already closed", () => {
+    const win = fakeWindow();
+    Object.assign(page(), { open: () => win, screenX: 0, screenY: 0, innerWidth: 0, innerHeight: 0 });
+    const popup = createDomFrame(ORIGIN).openPopup(URL_1);
+    const onClose = mock((_result?: unknown) => {});
+    popup.onClose(onClose);
+    // Closed by the user before the next poll.
+    win.closed = true;
+    expect(popup.focus()).toBe(false);
+    expect(win.focus).toHaveBeenCalledTimes(0);
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onClose).toHaveBeenCalledWith(undefined);
+  });
+
+  it("throws when the browser blocks it", () => {
+    Object.assign(page(), { open: () => null, screenX: 0, screenY: 0, innerWidth: 0, innerHeight: 0 });
+    expect(() => createDomFrame(ORIGIN).openPopup(URL_1)).toThrow();
   });
 });
 
