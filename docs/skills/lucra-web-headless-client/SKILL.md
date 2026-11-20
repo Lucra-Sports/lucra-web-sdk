@@ -4,8 +4,8 @@ description: >
   Use for any work with Lucra's preview headless client: code that imports createLucraClient
   from lucra-web-sdk/headless, uses its client (lucra.auth, lucra.tournaments, lucra.matchups,
   lucra.present, LucraError), or migrates LucraClient code to it. Covers the preview status,
-  setup and config, how calls wait and fail, showing Lucra screens full screen, as a modal or
-  sheet, or in your own container, Add Funds, Games You Play create, accept, and cancel, React usage, and
+  setup and config, how calls wait and fail, showing Lucra screens full screen, as a modal, or
+  as a sheet, Add Funds, Games You Play create, accept, and cancel, React usage, and
   troubleshooting codes such as INVALID_CONFIG, CONNECTION_TIMEOUT, NOT_LOGGED_IN, IN_PROGRESS,
   SCREEN_OPEN, POPUP_BLOCKED, and TIMEOUT. Not for LucraClient (LucraClient.initialize,
   client.open, client.ready, client.api.*): load lucra-web-starting-point or lucra-web-headless
@@ -47,10 +47,9 @@ is unchanged by the preview.
   with `NOT_LOGGED_IN` if nobody is logged in. `auth.updateUser()` is the exception: gate it on
   `"loggedIn"`.
 - **Lucra stays hidden until `lucra.present.*`.** Everything else returns data for your own UI.
-- **Prefer a container with your own close button.** Some Lucra screens have no exit control
-  yet. Without a container, a screen covers or dims your page (full screen, modal, or sheet), so
-  one without an exit leaves the user no way out. Show screens in a `container`, next to your
-  own close button that calls `lucra.present.dismiss()`.
+- **Plan for screens with no exit.** Some Lucra screens have no exit control yet, and the SDK
+  draws none. A screen covers or dims your page, so close it from your app with
+  `lucra.present.dismiss()` or the call's `signal`, for example when the user navigates away.
 - **Every failure is a `LucraError`.** For a change the user started, prefer
   `lucra.withRemediation()`, unless the app handles these steps itself: Lucra shows what the user
   needs, then the call runs again. Pass it one Lucra call. What still rejects goes to your own UI.
@@ -72,17 +71,16 @@ is unchanged by the preview.
 | `env` | Required. `"sandbox"` or `"production"`, or another environment your Lucra contact names. Any other value throws `INVALID_CONFIG` |
 | `locationId` | Optional |
 | `autoJoin` | Optional, defaults to `true`. See [autoJoin](../../1.2_initialize_client.md#autojoin) |
-| `container` | Optional element that Lucra screens show inside. See [section 6](#6-screens) |
-| `presentation` | Optional. `"fullScreen"` (default), `"modal"`, or `"sheet"`: the default for screens without a `container`. Each `present.*` call can pass its own. Not allowed with `container`. See [section 6](#6-screens) |
+| `presentation` | Optional. `"fullScreen"` (default), `"modal"`, or `"sheet"`: the default for screens. Each `present.*` call can pass its own. See [section 6](#6-screens) |
 
 - `createLucraClient` **throws `INVALID_CONFIG` synchronously**, before it adds anything to the
   page, for a missing `apiKey`, `tenantId`, or `env`, an unknown `env`, a `tenantId` that does
-  not form a Lucra address, a `container` that is not an element in the page, an unknown
-  `presentation` or one passed with `container`, or a different config while a client exists.
-- The same config and the same container return the same client, so hot reload, repeated
-  imports, and repeated calls are safe. An omitted `autoJoin` counts as `true`, and an omitted
-  `presentation` as `"fullScreen"`.
-- To change the config or the container, call `lucra.destroy()`, then create it again.
+  not form a Lucra address, an unknown `presentation`, or a different config while a client
+  exists.
+- The same config returns the same client, so hot reload, repeated imports, and repeated calls
+  are safe. An omitted `autoJoin` counts as `true`, and an omitted `presentation` as
+  `"fullScreen"`.
+- To change the config, call `lucra.destroy()`, then create it again.
 - Where there is no browser (server rendering) it returns an inert client whose calls reject
   with `UNSUPPORTED_ENVIRONMENT`. Create it in browser code.
 
@@ -200,23 +198,18 @@ Every code: [Errors](../../3.0_headless_client.md#errors).
 | `present.withdraw()`, `present.profile()`, `present.wallet()` | Never. They resolve `"dismissed"` when closed |
 | `present.minigame(input)` | The game closes itself. See [Minigames](#minigames) |
 
-- **Where it shows.** Without `container`, a screen covers the whole page. With
+- **Where it shows.** By default, a screen covers the whole page. With
   `presentation: "modal"` it is a panel up to 430 by 800px in the middle of the dimmed page, and
   with `"sheet"` a panel up to 430px wide at the right edge. Under 640px wide a modal covers the
   page and a sheet comes up from the bottom, leaving 96px of the page above it. The dimmed page
   takes no clicks, and neither a click on it nor Escape closes the screen. Every screen but
   `addFunds()` takes `{ presentation }` for that screen only; the client's is the default, also
-  for screens `withRemediation()` shows. On a client with a `container`, a call's
-  `presentation` rejects with `INVALID_ARGUMENT`. With `container`, a screen fills that element.
-  Lucra is hidden before a screen shows and after it ends. See
+  for screens `withRemediation()` shows. Lucra never shows inside your own element. It is hidden
+  before a screen shows and after it ends. See
   [As a modal or a sheet](../../3.0_headless_client.md#as-a-modal-or-a-sheet).
-- **Container rules.** Use an empty element with a real height (`height`, not only
-  `min-height`, or a flex or grid item that stretches). It must be in the page when you create
-  the client and stay there: removed, calls time out and an open screen keeps waiting; moved,
-  Lucra reloads and an open screen is not shown again. Call `lucra.destroy()` before you remove
-  it.
-- **Show your own wrapper from state, not by wrapping calls.** `lucra.present.getState()` returns
-  `{ screen }`, the `LucraScreen` on show, `"minigame"` while a game shows, or `null`, and
+- **React to the screen on show from state, not by wrapping calls**, for example to pause your
+  own media while a screen covers it. `lucra.present.getState()` returns `{ screen }`, the
+  `LucraScreen` on show, `"minigame"` while a game shows, or `null`, and
   `lucra.present.subscribe(listener)` calls the listener now and on every change. They behave
   like `lucra.auth.getState()` and `subscribe()`. `screen` is set only while a screen is on
   show: not while it waits to connect, for a login, or for a write, and never for Add Funds. A
@@ -246,8 +239,8 @@ Every code: [Errors](../../3.0_headless_client.md#errors).
   example `matchupCreated`. It never fires for your own calls: the resolved promise is your
   signal.
 
-**Checkpoint:** `lucra.present.profile()` fills your container, and your close button resolves it
-`{ status: "dismissed", reason: "dismissed" }`. Lucra's screens run on Lucra's own site, so an
+**Checkpoint:** `lucra.present.profile()` shows Lucra over your page, and
+`lucra.present.dismiss()` resolves it `{ status: "dismissed", reason: "dismissed" }`. Lucra's screens run on Lucra's own site, so an
 automated or agent driven browser cannot click or type in them. Verify through promise results
 and `lucra.auth`, and have a human run login and Add Funds.
 
@@ -334,17 +327,13 @@ their calls are `LucraClient` calls.
   rendering and hydration. Keep the wrappers: `subscribe` and `getState` are typed as methods,
   so the `@typescript-eslint/unbound-method` lint rule flags passing them bare.
 - **Read the screen on show the same way**, with module scope wrappers around
-  `lucra.present.subscribe` and `lucra.present.getState`. Show your wrapper while `screen` is not
-  `null`.
+  `lucra.present.subscribe` and `lucra.present.getState`. React to it, for example pause your own
+  media, while `screen` is not `null`.
 - **Tie a screen to a component with `signal`**: create an `AbortController` in the effect that
   calls `lucra.present.*`, and abort it in the cleanup.
-- **Where to create the client.** Without a container, at module scope. With one, once the
-  element is in the page, for example in a `useLayoutEffect` that reads `ref.current`. Never
-  during render. Keep the client in a ref, and in that effect's cleanup call `destroy()` and set
-  the ref to `null`, since Fast Refresh reruns layout effects. Do not use a `useEffect` cleanup:
-  it runs after React has removed the element.
-- **StrictMode** runs effects twice in development. That is safe: the same config and container
-  return the same client, and a destroyed client can be created again.
+- **Where to create the client.** At module scope, never during render or in an effect.
+- **StrictMode** runs effects twice in development. That is safe: the same config returns the
+  same client, and a destroyed client can be created again.
 - **Start writes from event handlers**, not effects. An effect that runs twice sends the write
   once, and the second call rejects with `IN_PROGRESS`.
 
@@ -363,8 +352,7 @@ their calls are `LucraClient` calls.
 | `CONNECTION_RESET` | Lucra restarted while the call waited. A read gets it only after a second restart | Read back after a write |
 | `UNSUPPORTED_ENVIRONMENT` | Created with no browser, for example during server rendering | Create it in browser code |
 | `onError` called with `CANCELLED` | A watch on another matchup replaced this one | Watch one matchup at a time |
-| The user is stuck on a Lucra screen shown without a container | That screen has no exit control, and without a container it covers or dims your page (full screen, modal, or sheet) | Show screens in a `container` with your own close button that calls `lucra.present.dismiss()` |
-| A screen does not fill your container | The container has only `min-height`. A screen takes 100% of its `height` | Give it a `height`, or make it a flex or grid item that stretches |
+| The user is stuck on a Lucra screen | That screen has no exit control, and it covers or dims your page | Close it from your app with `lucra.present.dismiss()` or the call's `signal`, for example when the user navigates away |
 | `lucra.on(...)` never fires after your call | Events report what the user did inside a Lucra screen, never your own calls | Use the resolved promise |
 | `lucra-web-sdk/headless` cannot be resolved | The installed tag or commit predates the headless client, or the bundler does not read the `exports` field (webpack 4, for example) | Pin a tag or commit that includes it. For the bundler, alias `lucra-web-sdk/headless` to `lucra-web-sdk/dist/headless/index.js` |
 | Old behavior after installing a new preview build | The dev server still serves its cached copy of the old build | Restart the dev server with its dependency cache cleared (for Vite, `--force`, or delete `node_modules/.vite`) |
@@ -375,7 +363,7 @@ their calls are `LucraClient` calls.
 - [Who is logged in](../../3.0_headless_client.md#who-is-logged-in)
 - [Reading data](../../3.0_headless_client.md#reading-data)
 - [Showing a Lucra screen](../../3.0_headless_client.md#showing-a-lucra-screen)
-- [In your own container](../../3.0_headless_client.md#in-your-own-container)
+- [As a modal or a sheet](../../3.0_headless_client.md#as-a-modal-or-a-sheet)
 - [Add Funds](../../3.0_headless_client.md#add-funds)
 - [Watching a matchup](../../3.0_headless_client.md#watching-a-matchup)
 - [Events](../../3.0_headless_client.md#events)

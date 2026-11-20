@@ -64,9 +64,9 @@ export type LucraUser = SDKLucraUser;
 // What lucra.auth.updateUser() sends.
 export type LucraUpdateUserInput = SDKClientUser;
 
-// How Lucra screens show when there is no container. "modal" is a panel in the
-// middle of the dimmed page, and full screen on a narrow window. "sheet" is a
-// panel at the right edge, or from the bottom on a narrow window.
+// How Lucra screens show. "fullScreen" covers the page. "modal" is a panel in
+// the middle of the dimmed page, and full screen on a narrow window. "sheet" is
+// a panel at the right edge, or from the bottom on a narrow window.
 export type LucraPresentation = "fullScreen" | "modal" | "sheet";
 
 export type LucraClientConfig = {
@@ -75,14 +75,8 @@ export type LucraClientConfig = {
   env: LucraEnvironment;
   locationId?: string;
   autoJoin?: boolean;
-  // Where Lucra screens show. Without it they cover the page. It must be in the
-  // page when the client is created and stay there. Removed, calls time out and
-  // an open screen keeps waiting. Moved, Lucra reloads and an open screen is not
-  // shown again. Call destroy() in the cleanup of whatever renders it, for
-  // example a component's unmount, and create the client again after.
-  container?: HTMLElement;
   // The default for lucra.present screens. Each call can pass its own. Defaults
-  // to "fullScreen". Not allowed with a container, since a screen fills it.
+  // to "fullScreen".
   presentation?: LucraPresentation;
 };
 
@@ -98,7 +92,7 @@ export type LucraAuthState = {
 // Options every lucra.present screen takes. Aborting `signal` closes the
 // screen that call opened, and only while that call is pending. `presentation`
 // shows this screen full screen, as a modal, or as a sheet, in place of the
-// client's. It is not allowed on a client with a container.
+// client's.
 export type LucraPresentOptions = { signal?: AbortSignal; presentation?: LucraPresentation };
 
 export type LucraLoginOptions = LucraPresentOptions & { phoneNumber?: string };

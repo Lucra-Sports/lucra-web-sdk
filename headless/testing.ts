@@ -22,7 +22,7 @@ export type FakeFrame = Frame & {
   overlayOpen: boolean;
   overlaysOpened: number;
   // What each openOverlay() was given, in order.
-  presentations: (LucraPresentation | undefined)[];
+  presentations: LucraPresentation[];
   popups: FakePopup[];
   // When true, openPopup throws like a blocked popup.
   blockPopups: boolean;

@@ -33,5 +33,4 @@ export declare function createPresent(options: {
     whenWriteSettled: () => Promise<void>;
     startMinigame: (body: LucraPresentMinigameBody) => Promise<LucraPresentMinigameResponse>;
     presentation: LucraPresentation;
-    contained: boolean;
 }): Present;

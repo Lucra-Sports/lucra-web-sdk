@@ -35,8 +35,7 @@ const COVER_CSS = "position:fixed;inset:0;z-index:2147483647;display:flex;";
 // Padded so iOS bars and the notch do not cover Lucra's own controls.
 const SAFE_AREA_CSS = "padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);";
 const OVERLAY_CSS = COVER_CSS + "flex-direction:column;background:#000;" + SAFE_AREA_CSS + "box-sizing:border-box;";
-const CONTAINED_CSS = "display:block;width:100%;height:100%;";
-// Block, so an inline frame's baseline gap cannot overflow the container.
+// Fills the full screen host, a flex column.
 const IFRAME_CSS = "display:block;flex:1 1 auto;width:100%;height:100%;border:0;";
 // 640px is Tailwind's sm, where Lucra's web app switches its own dialogs.
 const WIDE_QUERY = "(min-width: 640px)";
@@ -83,11 +82,10 @@ function layout(presentation, wide) {
     // Full screen, and a modal on a narrow window.
     return { host: OVERLAY_CSS, iframe: IFRAME_CSS };
 }
-// With a container, the frame lives and shows there. Without one, it lives in
-// the body and each screen shows full screen, or as a modal or sheet over the
-// dimmed page. Only styles change, never where the frame is, since moving it
-// would reload Lucra.
-export function createDomFrame(origin, container) {
+// The frame lives in the body. Each screen shows full screen, or as a modal or
+// sheet over the dimmed page. Only styles change, never where the frame is,
+// since moving it would reload Lucra.
+export function createDomFrame(origin) {
     let host = null;
     let iframe = null;
     let destroyed = false;
@@ -133,12 +131,12 @@ export function createDomFrame(origin, container) {
         iframe.style.cssText = IFRAME_CSS;
         iframe.src = url;
         host.appendChild(iframe);
-        (container ?? document.body).appendChild(host);
+        document.body.appendChild(host);
     };
     return {
         mount(url) {
             window.addEventListener("message", onWindowMessage);
-            if (container || document.body) {
+            if (document.body) {
                 attach(url);
             }
             else {
@@ -172,33 +170,26 @@ export function createDomFrame(origin, container) {
                 listeners.delete(listener);
             };
         },
-        openOverlay(presentation = "fullScreen") {
+        openOverlay(presentation) {
             closeOverlay?.();
             if (!host || !iframe)
                 return { close() { } };
             const overlayHost = host;
             const overlayFrame = iframe;
             const previousFocus = document.activeElement;
-            // A modal and a sheet change shape with the window width. Full screen and
-            // a container do not.
-            const media = container || presentation === "fullScreen" ? null : window.matchMedia(WIDE_QUERY);
+            // A modal and a sheet change shape with the window width. Full screen does not.
+            const media = presentation === "fullScreen" ? null : window.matchMedia(WIDE_QUERY);
             const fit = () => {
                 const css = layout(presentation, media?.matches === true);
                 overlayHost.style.cssText = css.host;
                 overlayFrame.style.cssText = css.iframe;
             };
-            if (container) {
-                // A div with no role cannot be named. The frame's own title names it.
-                overlayHost.style.cssText = CONTAINED_CSS;
-            }
-            else {
-                // It covers the page, or dims it behind a panel, so it is a modal dialog.
-                fit();
-                media?.addEventListener("change", fit);
-                overlayHost.setAttribute("role", "dialog");
-                overlayHost.setAttribute("aria-modal", "true");
-                overlayHost.setAttribute("aria-label", "Lucra");
-            }
+            // It covers the page, or dims it behind a panel, so it is a modal dialog.
+            fit();
+            media?.addEventListener("change", fit);
+            overlayHost.setAttribute("role", "dialog");
+            overlayHost.setAttribute("aria-modal", "true");
+            overlayHost.setAttribute("aria-label", "Lucra");
             overlayFrame.focus();
             const close = () => {
                 // Only the overlay on show can close. A late close of an older one does nothing.

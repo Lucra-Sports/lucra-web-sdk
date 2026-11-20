@@ -96,11 +96,8 @@ export function createPresent(options: {
   startMinigame: (body: LucraPresentMinigameBody) => Promise<LucraPresentMinigameResponse>;
   // The client's presentation, for calls that pass none.
   presentation: LucraPresentation;
-  // True when screens fill the app's container. A call cannot pass a presentation then.
-  contained: boolean;
 }): Present {
-  const { session, auth, frame, urls, activity, whenWriteSettled, startMinigame, contained } =
-    options;
+  const { session, auth, frame, urls, activity, whenWriteSettled, startMinigame } = options;
   // The overlay screen on show, if any. Only one at a time.
   let current: { dismiss: (reason: LucraDismissReason) => void } | null = null;
   // The Add Funds window, while it is open.
@@ -158,11 +155,6 @@ export function createPresent(options: {
     }
     if (presentation !== undefined && !PRESENTATIONS.includes(presentation)) {
       return invalid('presentation must be "fullScreen", "modal", or "sheet".');
-    }
-    if (presentation !== undefined && contained) {
-      return invalid(
-        "presentation cannot be used on a client with a container. A screen fills the container."
-      );
     }
     // Aborted already: show nothing, and leave any screen on show alone.
     if (signal?.aborted) {
@@ -261,10 +253,8 @@ export function createPresent(options: {
           }
         }
 
-        // The call's own presentation, or the client's. A container has only one.
-        overlay = frame.openOverlay(
-          contained ? undefined : (presentation ?? options.presentation)
-        );
+        // The call's own presentation, or the client's.
+        overlay = frame.openOverlay(presentation ?? options.presentation);
         // This screen takes over Lucra's page.
         gameOutOfSight = false;
         setScreen(screen.name);

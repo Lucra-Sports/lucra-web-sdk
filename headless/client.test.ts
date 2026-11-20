@@ -77,7 +77,7 @@ describe("createClient", () => {
     );
   });
 
-  it("passes the config's presentation and container to the screens", async () => {
+  it("passes the config's presentation to the screens", async () => {
     const frame = createFakeFrame();
     const client = createClient({ ...config, presentation: "sheet" }, { frame, parentOrigin: "" });
     await connectLoggedIn(frame);
@@ -87,14 +87,6 @@ describe("createClient", () => {
     await tick();
     expect(frame.presentations).toEqual(["sheet", "modal"]);
     client.destroy();
-
-    const contained = createClient(
-      { ...config, container: {} as HTMLElement },
-      { frame: createFakeFrame(), parentOrigin: "" }
-    );
-    const error = await caught(contained.present.wallet({ presentation: "modal" }));
-    expect(error.code).toBe("INVALID_ARGUMENT");
-    contained.destroy();
   });
 
   it("withRemediation shows the location screen, then sends the write again", async () => {
@@ -403,14 +395,6 @@ describe("createLucraClient", () => {
     }
   });
 
-  it("throws INVALID_CONFIG for a container that is not an element", () => {
-    for (const container of [{}, "app", 1, null]) {
-      const error = thrown(() => createLucraClient({ ...config, container } as never));
-      expect(error).toBeInstanceOf(LucraError);
-      expect(error.code).toBe("INVALID_CONFIG");
-    }
-  });
-
   it("returns an inert client where there is no browser, and does not remember it", async () => {
     // bun test has no window or document, so this is the no browser path.
     const first = createLucraClient(config);
@@ -427,8 +411,6 @@ describe("createLucraClient", () => {
       document: (globalThis as { document?: unknown }).document,
     };
     const element = () => ({
-      nodeType: 1,
-      isConnected: true,
       style: { cssText: "" },
       appendChild() {},
       remove() {},
@@ -467,37 +449,17 @@ describe("createLucraClient", () => {
         { ...config, env: "production" as const },
         { ...config, locationId: "loc-1" },
         { ...config, autoJoin: false },
-        { ...config, container: element() as unknown as HTMLElement },
       ]) {
         expect(thrown(() => createLucraClient(other)).code).toBe("INVALID_CONFIG");
       }
       first.destroy();
     });
 
-    it("returns the same client for the same container, and throws for another", () => {
-      const container = element() as unknown as HTMLElement;
-      const first = createLucraClient({ ...config, container });
-      expect(createLucraClient({ ...config, container })).toBe(first);
-      expect(thrown(() => createLucraClient(config)).code).toBe("INVALID_CONFIG");
-      const other = element() as unknown as HTMLElement;
-      expect(thrown(() => createLucraClient({ ...config, container: other })).code).toBe(
-        "INVALID_CONFIG"
-      );
-      first.destroy();
-    });
-
-    it("throws INVALID_CONFIG for an unknown presentation, or one with a container", () => {
-      for (const [bad, hint] of [
-        [{ ...config, presentation: "popup" }, "presentation must be"],
-        [{ ...config, presentation: null }, "presentation must be"],
-        [{ ...config, presentation: "modal", container: element() }, "container"],
-        // A screen fills the container, so even the default is refused.
-        [{ ...config, presentation: "fullScreen", container: element() }, "container"],
-      ] as const) {
-        const error = thrown(() => createLucraClient(bad as never));
+    it("throws INVALID_CONFIG for an unknown presentation", () => {
+      for (const presentation of ["popup", null]) {
+        const error = thrown(() => createLucraClient({ ...config, presentation } as never));
         expect(error.code).toBe("INVALID_CONFIG");
-        expect(error.hint).toContain(hint);
-        expect(error.hint).not.toContain("popup");
+        expect(error.hint).toBe('presentation must be "fullScreen", "modal", or "sheet".');
       }
       // Nothing was remembered, so a good config still makes a client.
       createLucraClient(config).destroy();
@@ -522,27 +484,6 @@ describe("createLucraClient", () => {
       first.destroy();
     });
 
-    it("puts Lucra in the container instead of the body", () => {
-      const added = { body: 0, container: 0 };
-      const doc = (globalThis as unknown as { document: { body: { appendChild(): void } } })
-        .document;
-      doc.body.appendChild = () => {
-        added.body += 1;
-      };
-      const container = {
-        ...element(),
-        appendChild() {
-          added.container += 1;
-        },
-      };
-      const client = createLucraClient({
-        ...config,
-        container: container as unknown as HTMLElement,
-      });
-      expect(added).toEqual({ body: 0, container: 1 });
-      client.destroy();
-    });
-
     it("adds nothing to the page for a config that is not a Lucra address", () => {
       const created: unknown[] = [];
       const doc = (globalThis as unknown as { document: { createElement: () => unknown } })
@@ -560,33 +501,6 @@ describe("createLucraClient", () => {
       const client = createLucraClient({ ...config, tenantId: "Test-Tenant" });
       expect(created.length).toBeGreaterThan(0);
       client.destroy();
-    });
-
-    it("refuses a container that is not an element in the page, and adds nothing", () => {
-      const added: string[] = [];
-      const page = globalThis as unknown as {
-        window: { addEventListener: (type: string) => void };
-        document: { createElement: () => unknown };
-      };
-      page.window.addEventListener = (type) => added.push(`listener:${type}`);
-      const original = page.document.createElement;
-      page.document.createElement = () => {
-        added.push("element");
-        return original();
-      };
-      for (const [container, message] of [
-        [{ ...element(), nodeType: 3 }, "element"], // a text node
-        [{ ...element(), nodeType: 9 }, "element"], // a document
-        [{ ...element(), isConnected: false }, "in the page"],
-      ] as const) {
-        const error = thrown(() => createLucraClient({ ...config, container } as never));
-        expect(error.code).toBe("INVALID_CONFIG");
-        // The detail is for the developer, so it is in the hint, not the message.
-        expect(error.hint).toContain(message);
-      }
-      expect(added).toEqual([]);
-      // Nothing was remembered, so a good config still makes a client.
-      createLucraClient(config).destroy();
     });
 
     it("makes a new client after destroy", () => {

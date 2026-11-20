@@ -17,7 +17,7 @@ const PARENT = "parentUrl=https%3A%2F%2Fhost.example";
 
 function setup(
   overrides: Partial<Timeouts> = {},
-  client: { presentation?: LucraPresentation; contained?: boolean } = {}
+  client: { presentation?: LucraPresentation } = {}
 ) {
   const frame = createFakeFrame();
   const timeouts = { ...DEFAULT_TIMEOUTS, ...overrides };
@@ -34,7 +34,6 @@ function setup(
     whenWriteSettled: api.whenWriteSettled,
     startMinigame: api.startMinigame,
     presentation: client.presentation ?? "fullScreen",
-    contained: client.contained ?? false,
   });
   return { frame, session, auth, activity, api, present };
 }
@@ -686,21 +685,12 @@ describe("createPresent: presentation", () => {
     await game;
   });
 
-  const UNKNOWN = 'presentation must be "fullScreen", "modal", or "sheet".';
-  const CONTAINED = "presentation cannot be used on a client with a container. A screen fills the container.";
-  for (const [client, presentation, hint] of [
-    [{}, "popup", UNKNOWN],
-    [{}, null, UNKNOWN],
-    [{ contained: true }, "modal", CONTAINED],
-    [{ contained: true }, "fullScreen", CONTAINED],
-  ] as const) {
-    it(`rejects ${presentation} ${client.contained ? "with" : "without"} a container, and leaves the screen on show alone`, async () => {
-      const { frame, activity, present } = setup({}, client);
+  for (const presentation of ["popup", null]) {
+    it(`rejects ${presentation}, and leaves the screen on show alone`, async () => {
+      const { frame, activity, present } = setup();
       await connectLoggedIn(frame);
       const wallet = present.wallet();
       await tick();
-      // A contained client opens the overlay with no presentation.
-      expect(frame.presentations).toEqual([client.contained ? undefined : "fullScreen"]);
       const options = { presentation } as never;
       for (const call of [
         () => present.kyc(options),
@@ -709,7 +699,7 @@ describe("createPresent: presentation", () => {
       ]) {
         const error = await caught(call());
         expect(error.code).toBe("INVALID_ARGUMENT");
-        expect(error.hint).toBe(hint);
+        expect(error.hint).toBe('presentation must be "fullScreen", "modal", or "sheet".');
       }
       await tick();
       expect(present.getState()).toEqual({ screen: "wallet" });

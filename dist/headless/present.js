@@ -7,7 +7,7 @@ const PHONE_NUMBER = /^[0-9]{10}$/;
 const MINIGAME_MODES = ["practice", "1v1", "free_for_all", "tournament"];
 const isText = (value) => typeof value === "string" && value !== "";
 export function createPresent(options) {
-    const { session, auth, frame, urls, activity, whenWriteSettled, startMinigame, contained } = options;
+    const { session, auth, frame, urls, activity, whenWriteSettled, startMinigame } = options;
     // The overlay screen on show, if any. Only one at a time.
     let current = null;
     // The Add Funds window, while it is open.
@@ -56,9 +56,6 @@ export function createPresent(options) {
         }
         if (presentation !== undefined && !PRESENTATIONS.includes(presentation)) {
             return invalid('presentation must be "fullScreen", "modal", or "sheet".');
-        }
-        if (presentation !== undefined && contained) {
-            return invalid("presentation cannot be used on a client with a container. A screen fills the container.");
         }
         // Aborted already: show nothing, and leave any screen on show alone.
         if (signal?.aborted) {
@@ -162,8 +159,8 @@ export function createPresent(options) {
                         return;
                     }
                 }
-                // The call's own presentation, or the client's. A container has only one.
-                overlay = frame.openOverlay(contained ? undefined : (presentation ?? options.presentation));
+                // The call's own presentation, or the client's.
+                overlay = frame.openOverlay(presentation ?? options.presentation);
                 // This screen takes over Lucra's page.
                 gameOutOfSight = false;
                 setScreen(screen.name);

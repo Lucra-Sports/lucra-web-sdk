@@ -278,7 +278,7 @@ describe("createDomFrame: overlay", () => {
   it("shows the host full screen with nothing drawn over the frame", () => {
     const frame = createDomFrame(ORIGIN);
     frame.mount(URL_1);
-    frame.openOverlay();
+    frame.openOverlay("fullScreen");
     // Padded so iOS bars and the notch do not cover Lucra's own controls.
     expect(host().style.cssText).toBe(
       "position:fixed;inset:0;z-index:2147483647;display:flex;flex-direction:column;background:#000;" +
@@ -297,7 +297,7 @@ describe("createDomFrame: overlay", () => {
   it("hides again on close and gives focus back", () => {
     const frame = createDomFrame(ORIGIN);
     frame.mount(URL_1);
-    const overlay = frame.openOverlay();
+    const overlay = frame.openOverlay("fullScreen");
     overlay.close();
     overlay.close();
     expect(host().style.cssText).toBe("display:none;");
@@ -308,8 +308,8 @@ describe("createDomFrame: overlay", () => {
   it("closes the first overlay when a second one opens", () => {
     const frame = createDomFrame(ORIGIN);
     frame.mount(URL_1);
-    const first = frame.openOverlay();
-    frame.openOverlay();
+    const first = frame.openOverlay("fullScreen");
+    frame.openOverlay("fullScreen");
     expect(dom.focused.focus).toHaveBeenCalledTimes(1);
     // A late close of the first one leaves the second one showing.
     first.close();
@@ -318,7 +318,7 @@ describe("createDomFrame: overlay", () => {
 
   it("does nothing before the frame is mounted", () => {
     const frame = createDomFrame(ORIGIN);
-    frame.openOverlay().close();
+    frame.openOverlay("fullScreen").close();
     expect(dom.body.children.length).toBe(0);
   });
 });
@@ -445,74 +445,15 @@ describe("createDomFrame: modal and sheet", () => {
     expect(changeListeners()).toBe(1);
     resize(false);
     expect(styles()).toEqual(SHEET_NARROW);
-    frame.openOverlay();
+    frame.openOverlay("fullScreen");
     expect(styles()).toEqual(FULL_SCREEN);
     expect(changeListeners()).toBe(0);
   });
 
-  it("shows full screen by default, and a container ignores the presentation", () => {
-    mounted().openOverlay();
+  it("full screen never asks for the window width", () => {
+    mounted().openOverlay("fullScreen");
     expect(styles()).toEqual(FULL_SCREEN);
-    const container = makeElement("section");
-    const contained = createDomFrame(ORIGIN, container as unknown as HTMLElement);
-    contained.mount(URL_1);
-    contained.openOverlay("sheet");
-    expect(container.children[0].style.cssText).toBe("display:block;width:100%;height:100%;");
-    expect(container.children[0].attributes).toEqual({});
     expect(dom.matchMedia).toHaveBeenCalledTimes(0);
-  });
-});
-
-describe("createDomFrame: in a container", () => {
-  let container: FakeElement;
-  beforeEach(() => {
-    container = makeElement("section");
-  });
-  const inContainer = () => createDomFrame(ORIGIN, container as unknown as HTMLElement);
-  const wrapper = () => container.children[0];
-
-  it("adds the hidden host to the container, not the body", () => {
-    const frame = inContainer();
-    frame.mount(URL_1);
-    frame.mount(URL_1);
-    expect(dom.body.children.length).toBe(0);
-    expect(container.children.length).toBe(1);
-    expect(wrapper().style.cssText).toBe("display:none;");
-    expect(wrapper().children.map((child) => child.tag)).toEqual(["iframe"]);
-    expect(wrapper().children[0].src).toBe(URL_1);
-  });
-
-  it("adds it at once, without waiting for the body", () => {
-    dom.document.body = null;
-    const frame = inContainer();
-    frame.mount(URL_1);
-    expect(container.children.length).toBe(1);
-    expect(dom.documentListeners.get("DOMContentLoaded")?.size ?? 0).toBe(0);
-  });
-
-  it("fills the container while a screen shows, then hides again", () => {
-    const frame = inContainer();
-    frame.mount(URL_1);
-    const overlay = frame.openOverlay();
-    expect(wrapper().style.cssText).toBe("display:block;width:100%;height:100%;");
-    // A div with no role cannot be named. The frame's own title names it.
-    expect(wrapper().attributes).toEqual({});
-    expect(wrapper().children.map((child) => child.tag)).toEqual(["iframe"]);
-    expect(dom.documentListeners.get("keydown")?.size ?? 0).toBe(0);
-    expect(wrapper().children[0].focus).toHaveBeenCalledTimes(1);
-    overlay.close();
-    expect(wrapper().style.cssText).toBe("display:none;");
-    expect(wrapper().attributes).toEqual({});
-    expect(dom.focused.focus).toHaveBeenCalledTimes(1);
-  });
-
-  it("removes the host from the container on destroy", () => {
-    const frame = inContainer();
-    frame.mount(URL_1);
-    frame.openOverlay();
-    expect(container.children.length).toBe(1);
-    frame.destroy();
-    expect(container.children.length).toBe(0);
   });
 });
 
@@ -522,7 +463,7 @@ describe("createDomFrame: destroy", () => {
     frame.mount(URL_1);
     const listener = mock(() => {});
     frame.onMessage(listener);
-    frame.openOverlay();
+    frame.openOverlay("fullScreen");
     const frameWindow = iframe().contentWindow;
     frame.destroy();
     expect(dom.body.children.length).toBe(0);
@@ -599,7 +540,7 @@ describe("page helpers", () => {
     frame.reload(URL_1);
     frame.post({ type: MessageTypeToLucraClient.enableExitLucra, body: true });
     frame.onMessage(() => {})();
-    frame.openOverlay().close();
+    frame.openOverlay("fullScreen").close();
     frame.destroy();
     expect(() => frame.openPopup(URL_1)).toThrow();
   });

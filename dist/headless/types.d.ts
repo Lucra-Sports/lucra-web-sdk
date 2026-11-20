@@ -10,7 +10,6 @@ export type LucraClientConfig = {
     env: LucraEnvironment;
     locationId?: string;
     autoJoin?: boolean;
-    container?: HTMLElement;
     presentation?: LucraPresentation;
 };
 export type LucraAuthStatus = "loading" | "loggedOut" | "loggedIn";
