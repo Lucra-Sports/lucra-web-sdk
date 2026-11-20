@@ -44,6 +44,7 @@ export declare enum LucraClientMessageType {
     updateUserResponse = "updateUserResponse",
     userMatchupsResponse = "userMatchupsResponse",
     userMatchupsByTypeStatusResponse = "userMatchupsByTypeStatusResponse",
+    minigamesResponse = "minigamesResponse",
     presentMinigameResponse = "presentMinigameResponse",
     minigameClosed = "minigameClosed"
 }
@@ -76,6 +77,7 @@ export declare enum MessageTypeToLucraClient {
     updateUserRequest = "updateUserRequest",
     userMatchupsRequest = "userMatchupsRequest",
     userMatchupsByTypeStatusRequest = "userMatchupsByTypeStatusRequest",
+    minigamesRequest = "minigamesRequest",
     sdkDiagnostic = "sdkDiagnostic",
     presentMinigameRequest = "presentMinigameRequest"
 }
@@ -655,6 +657,22 @@ export type LucraMinigamesTriggerInput = {
     matchup_id?: string;
 };
 export type LucraMinigameMode = LucraMinigamesTriggerInput["game_mode"];
+export type LucraMinigameOption = {
+    mode: LucraMinigameMode;
+    amount: number | null;
+    groupSize: number | null;
+};
+export type LucraMinigame = {
+    gameId: string;
+    name: string;
+    description: string | null;
+    imageUrl: string | null;
+    videoUrl: string | null;
+    options: LucraMinigameOption[];
+};
+export type LucraMinigamesResponse = {
+    minigames: LucraMinigame[];
+};
 export type LucraPresentMinigameBody = {
     gameId: string;
     mode: LucraMinigameMode;

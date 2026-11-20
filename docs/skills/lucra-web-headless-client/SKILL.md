@@ -106,7 +106,7 @@ login.
 
 | Works logged out | Needs a logged in user |
 | --- | --- |
-| `tournaments.list()`, `matchups.get()`, `matchups.getDetails()`, `matchups.watch()`, `present.login()` | `tournaments.get()`, `tournaments.leaderboard()`, `matchups.searchByMetadata()`, `matchups.list()`, `matchups.listByTypeStatus()`, `achievements.list()`, `achievements.markViewed()`, `auth.updateUser()`, `rewards.list()`, every write, every other `present.*` screen |
+| `tournaments.list()`, `minigames.list()`, `matchups.get()`, `matchups.getDetails()`, `matchups.watch()`, `present.login()` | `tournaments.get()`, `tournaments.leaderboard()`, `matchups.searchByMetadata()`, `matchups.list()`, `matchups.listByTypeStatus()`, `achievements.list()`, `achievements.markViewed()`, `auth.updateUser()`, `rewards.list()`, every write, every other `present.*` screen |
 
 `present.addFunds()` cannot wait out `"loading"`, so it rejects with `NOT_LOGGED_IN` only when
 the status is already `"loggedOut"`. `auth.updateUser()` does not wait either, and rejects with
@@ -264,6 +264,8 @@ and `lucra.auth`, and have a human run login and Add Funds.
   failed check rejects with `INVALID_ARGUMENT`. Lucra checks the rest, such as whether the amount
   is one of the game's wager amounts, and refuses with one of the codes below, for example
   `INVALID_AT_STAKE`. Nothing shows until the game has started.
+- Take `gameId`, `mode`, and `amount` from `lucra.minigames.list()`, which lists each game with
+  the modes and amounts it accepts.
 - **Tournament mode joins the tournament and takes its buy in. Never also call
   `lucra.tournaments.join()` for that play: the user would pay twice.** `matchupId` is the
   tournament id, required for `"tournament"` and refused with any other mode.

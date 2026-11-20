@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## [v1.22.0]
+
+### Added
+
+- **Preview:** `lucra.minigames.list()` on the headless client lists the tenant's minigames, each with the modes and amounts `lucra.present.minigame()` accepts for it. It works logged out. New message types `minigamesRequest` and `minigamesResponse`. New types `LucraMinigame` and `LucraMinigameOption`. Where Lucra does not answer it yet, it rejects with `TIMEOUT`. See [Minigames](3.0_headless_client.md#minigames).
+
 ## [v1.21.0]
 
 ### Added

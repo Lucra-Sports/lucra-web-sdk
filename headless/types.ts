@@ -57,6 +57,8 @@ export type {
   LucraUserTournamentReward,
   LucraReward,
   LucraMinigameMode,
+  LucraMinigame,
+  LucraMinigameOption,
 } from "../types/types.js";
 
 export type LucraUser = SDKLucraUser;

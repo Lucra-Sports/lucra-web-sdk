@@ -58,6 +58,7 @@ export function createClient(config, deps) {
         matchups: { ...api.matchups, watch: watch.watch },
         achievements: api.achievements,
         rewards: api.rewards,
+        minigames: api.minigames,
         present: {
             login: present.login,
             addFunds: present.addFunds,
