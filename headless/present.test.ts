@@ -5,7 +5,7 @@ import { LucraError } from "./errors.ts";
 import { createPresent, type LucraScreen } from "./present.ts";
 import { DEFAULT_TIMEOUTS, createSession, type Timeouts } from "./session.ts";
 import { createFakeFrame, type FakeFrame } from "./testing.ts";
-import type { LucraDismissReason } from "./types.ts";
+import type { LucraDismissReason, LucraPresentation } from "./types.ts";
 import { HOME_PATH, buildUrl } from "./url.ts";
 
 const urls = {
@@ -15,7 +15,10 @@ const urls = {
 const USER = { id: "u1", username: "pat", balance: 25 };
 const PARENT = "parentUrl=https%3A%2F%2Fhost.example";
 
-function setup(overrides: Partial<Timeouts> = {}) {
+function setup(
+  overrides: Partial<Timeouts> = {},
+  client: { presentation?: LucraPresentation } = {}
+) {
   const frame = createFakeFrame();
   const timeouts = { ...DEFAULT_TIMEOUTS, ...overrides };
   const session = createSession({ frame, url: buildUrl(urls, HOME_PATH), timeouts });
@@ -30,6 +33,7 @@ function setup(overrides: Partial<Timeouts> = {}) {
     activity,
     whenWriteSettled: api.whenWriteSettled,
     startMinigame: api.startMinigame,
+    presentation: client.presentation ?? "fullScreen",
   });
   return { frame, session, auth, activity, api, present };
 }
@@ -638,6 +642,73 @@ describe("createPresent: signal", () => {
     expect(remove).toHaveBeenCalledTimes(1);
     expect(remove.mock.calls[0][1]).toBe(add.mock.calls[0][1]);
   });
+});
+
+describe("createPresent: presentation", () => {
+  it("opens each screen in the client's presentation unless the call passes its own", async () => {
+    const { frame, present } = setup({}, { presentation: "modal" });
+    await connectLoggedIn(frame);
+    const screens = [present.wallet()];
+    await tick();
+    // Replaces the wallet, in its own presentation.
+    screens.push(present.profile({ presentation: "sheet" }));
+    await tick();
+    screens.push(present.kyc());
+    await tick();
+    expect(frame.presentations).toEqual(["modal", "sheet", "modal"]);
+    present.dismiss();
+    await Promise.all(screens);
+    // Add Funds opens its own window, never an overlay.
+    void present.addFunds();
+    expect(frame.popups.length).toBe(1);
+    expect(frame.presentations.length).toBe(3);
+  });
+
+  it("login and minigame take it too, and the game's request does not carry it", async () => {
+    const loggedOut = setup();
+    await connectLoggedOut(loggedOut.frame);
+    const login = loggedOut.present.login({ presentation: "sheet" });
+    await tick();
+    expect(loggedOut.frame.presentations).toEqual(["sheet"]);
+    loggedOut.present.dismiss();
+    await login;
+
+    const { frame, present } = setup();
+    await connectLoggedIn(frame);
+    const game = present.minigame({ gameId: "g1", mode: "practice", presentation: "modal" });
+    await tick();
+    expect(frame.lastPosted("presentMinigameRequest")?.body).toEqual({ gameId: "g1", mode: "practice" });
+    frame.answer("presentMinigameRequest", "presentMinigameResponse", { sessionId: "s1", matchupId: null });
+    await tick();
+    expect(frame.presentations).toEqual(["modal"]);
+    present.dismiss();
+    await game;
+  });
+
+  for (const presentation of ["popup", null]) {
+    it(`rejects ${presentation}, and leaves the screen on show alone`, async () => {
+      const { frame, activity, present } = setup();
+      await connectLoggedIn(frame);
+      const wallet = present.wallet();
+      await tick();
+      const options = { presentation } as never;
+      for (const call of [
+        () => present.kyc(options),
+        () => present.login(options),
+        () => present.minigame({ gameId: "g1", mode: "practice", ...(options as object) }),
+      ]) {
+        const error = await caught(call());
+        expect(error.code).toBe("INVALID_ARGUMENT");
+        expect(error.hint).toBe('presentation must be "fullScreen", "modal", or "sheet".');
+      }
+      await tick();
+      expect(present.getState()).toEqual({ screen: "wallet" });
+      expect(frame.overlaysOpened).toBe(1);
+      present.dismiss();
+      expect(await wallet).toEqual({ status: "dismissed", reason: "dismissed" });
+      expect(activity.screenOpen).toBe(false);
+    });
+  }
 });
 
 describe("createPresent: state", () => {
