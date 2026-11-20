@@ -48,7 +48,7 @@ describe("createFakeFrame", () => {
 
   it("tracks whether the overlay is open", () => {
     const frame = createFakeFrame();
-    const overlay = frame.openOverlay();
+    const overlay = frame.openOverlay("fullScreen");
     expect(frame.overlayOpen).toBe(true);
     expect(frame.overlaysOpened).toBe(1);
     overlay.close();
@@ -58,11 +58,12 @@ describe("createFakeFrame", () => {
 
   it("keeps the newer overlay open when an older one is closed late", () => {
     const frame = createFakeFrame();
-    const older = frame.openOverlay();
-    frame.openOverlay();
+    const older = frame.openOverlay("fullScreen");
+    frame.openOverlay("sheet");
     older.close();
     expect(frame.overlayOpen).toBe(true);
     expect(frame.overlaysOpened).toBe(2);
+    expect(frame.presentations).toEqual(["fullScreen", "sheet"]);
   });
 
   it("records popups and how each one ends", () => {
@@ -94,7 +95,7 @@ describe("createFakeFrame", () => {
     const frame = createFakeFrame();
     const listener = mock(() => {});
     frame.onMessage(listener);
-    frame.openOverlay();
+    frame.openOverlay("fullScreen");
     frame.destroy();
     expect(frame.destroyed).toBe(true);
     expect(frame.overlayOpen).toBe(false);

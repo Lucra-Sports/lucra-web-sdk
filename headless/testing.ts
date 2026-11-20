@@ -1,5 +1,6 @@
 import type { LucraPopupResult } from "../types/types.js";
 import type { Frame, InboundMessage, OutboundMessage, Overlay, Popup } from "./frame.js";
+import type { LucraPresentation } from "./types.js";
 
 export type FakePopup = {
   url: string;
@@ -20,6 +21,8 @@ export type FakeFrame = Frame & {
   posted: OutboundMessage[];
   overlayOpen: boolean;
   overlaysOpened: number;
+  // What each openOverlay() was given, in order.
+  presentations: LucraPresentation[];
   popups: FakePopup[];
   // When true, openPopup throws like a blocked popup.
   blockPopups: boolean;
@@ -42,6 +45,7 @@ export function createFakeFrame(): FakeFrame {
     posted: [],
     overlayOpen: false,
     overlaysOpened: 0,
+    presentations: [],
     popups: [],
     blockPopups: false,
     destroyed: false,
@@ -61,9 +65,10 @@ export function createFakeFrame(): FakeFrame {
         listeners.delete(listener);
       };
     },
-    openOverlay() {
+    openOverlay(presentation) {
       frame.overlayOpen = true;
       frame.overlaysOpened += 1;
+      frame.presentations.push(presentation);
       const overlay: Overlay = {
         close() {
           if (currentOverlay !== overlay) return;

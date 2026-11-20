@@ -3,13 +3,14 @@ import type { LucraError } from "./errors.js";
 export type { LucraEnvironment, LucraAchievement, LucraTournament, LucraTournamentDetail, LucraTournamentLeaderboard, LucraLeaderboardRow, LucraLeaderboardColumn, LucraLeaderboardPagination, LucraTournamentTimer, LucraTournamentGame, LucraTournamentHowToPlayStep, LucraTournamentConfirmationTerm, LucraTournamentNotice, LucraTournamentAttemptScores, LucraTournamentAttemptData, LucraTournamentCatalogReward, LucraTournamentEarnedReward, LucraTournamentPayoutReward, LucraTournamentPayoutStructure, LucraJoinTournamentResponse, LucraAutoJoinedTournamentsBody, LucraMatchup, LucraMatchupStatus, LucraPlayStyle, LucraAtStake, LucraCashStake, LucraRecreationalGame, LucraMatchupParticipantGroup, LucraMatchupDetails, LucraMatchupGroup, LucraMatchupParticipant, LucraMatchupParticipantScore, LucraCreateRecreationalGameInput, LucraRecreationalGameResult, LucraCancelRecreationalGameResult, LucraSearchMatchupsByMetadataInput, LucraUserMatchups, LucraUserMatchupsGroup, LucraUserMatchupsPage, LucraUserMatchup, LucraUserMatchupType, LucraUserMatchupStatus, LucraUserMatchupsInput, LucraUserMatchupsByTypeStatusInput, LucraUserTournamentReward, LucraReward, LucraMinigameMode, LucraMinigame, LucraMinigameOption, } from "../types/types.js";
 export type LucraUser = SDKLucraUser;
 export type LucraUpdateUserInput = SDKClientUser;
+export type LucraPresentation = "fullScreen" | "modal" | "sheet";
 export type LucraClientConfig = {
     apiKey: string;
     tenantId: string;
     env: LucraEnvironment;
     locationId?: string;
     autoJoin?: boolean;
-    container?: HTMLElement;
+    presentation?: LucraPresentation;
 };
 export type LucraAuthStatus = "loading" | "loggedOut" | "loggedIn";
 export type LucraAuthState = {
@@ -18,6 +19,7 @@ export type LucraAuthState = {
 };
 export type LucraPresentOptions = {
     signal?: AbortSignal;
+    presentation?: LucraPresentation;
 };
 export type LucraLoginOptions = LucraPresentOptions & {
     phoneNumber?: string;
@@ -42,6 +44,7 @@ export type LucraMinigameInput = {
     amount?: number;
     matchupId?: string;
     signal?: AbortSignal;
+    presentation?: LucraPresentation;
 };
 export type LucraMinigameResult = {
     status: "completed";

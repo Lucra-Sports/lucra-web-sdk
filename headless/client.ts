@@ -3,6 +3,7 @@ import { createAuth } from "./auth.js";
 import { LucraError, LucraErrorCode, isLucraError } from "./errors.js";
 import { createEmitter } from "./events.js";
 import {
+  PRESENTATIONS,
   createDomFrame,
   createNullFrame,
   hasDom,
@@ -96,6 +97,7 @@ export function createClient(
     activity,
     whenWriteSettled: api.whenWriteSettled,
     startMinigame: api.startMinigame,
+    presentation: config.presentation ?? "fullScreen",
   });
   const events = createEmitter<LucraHeadlessEventMap>();
   for (const type of EVENTS) {
@@ -147,11 +149,7 @@ export function createClient(
 }
 
 // The one live client on this page, and the config it was made with.
-let live: {
-  key: string;
-  container: HTMLElement | undefined;
-  client: LucraHeadlessClient;
-} | null = null;
+let live: { key: string; client: LucraHeadlessClient } | null = null;
 
 export function createLucraClient(config: LucraClientConfig): LucraHeadlessClient {
   try {
@@ -172,35 +170,26 @@ function createLiveClient(config: LucraClientConfig): LucraHeadlessClient {
       hint: "apiKey, tenantId, and env are required.",
     });
   }
-  const { container } = config;
-  if (container !== undefined) {
-    // 1 is an element node. Unlike instanceof, this also works for an element
-    // from another window, such as a same origin iframe.
-    if ((container as { nodeType?: unknown } | null)?.nodeType !== 1) {
-      throw new LucraError(LucraErrorCode.INVALID_CONFIG, undefined, {
-        hint: "container must be an HTML element.",
-      });
-    }
-    if (container.isConnected !== true) {
-      throw new LucraError(LucraErrorCode.INVALID_CONFIG, undefined, {
-        hint: "container must be in the page.",
-      });
-    }
+  const { presentation } = config;
+  if (presentation !== undefined && !PRESENTATIONS.includes(presentation)) {
+    throw new LucraError(LucraErrorCode.INVALID_CONFIG, undefined, {
+      hint: 'presentation must be "fullScreen", "modal", or "sheet".',
+    });
   }
   // Throws INVALID_CONFIG before anything is added to the page.
   const origin = lucraOrigin(config);
-  // The container is compared on its own: an element turns into {} as JSON.
   const key = JSON.stringify([
     config.apiKey,
     config.tenantId,
     config.env,
     config.locationId ?? null,
     config.autoJoin ?? true,
+    presentation ?? "fullScreen",
   ]);
   if (live) {
     // The same config again returns the same client, so a hot reload or a
     // second import does not start a second Lucra session.
-    if (live.key === key && live.container === container) return live.client;
+    if (live.key === key) return live.client;
     throw new LucraError(LucraErrorCode.INVALID_CONFIG, undefined, {
       hint: "A Lucra client already exists with a different configuration. Call destroy() on it first.",
     });
@@ -208,7 +197,7 @@ function createLiveClient(config: LucraClientConfig): LucraHeadlessClient {
 
   const supported = hasDom();
   const client = createClient(config, {
-    frame: supported ? createDomFrame(origin, container) : createNullFrame(),
+    frame: supported ? createDomFrame(origin) : createNullFrame(),
     parentOrigin: supported ? pageOrigin() : "",
     unsupported: !supported,
     onDestroy: () => {
@@ -216,6 +205,6 @@ function createLiveClient(config: LucraClientConfig): LucraHeadlessClient {
     },
   });
   // A client made where there is no page is inert, so it is not remembered.
-  if (supported) live = { key, container, client };
+  if (supported) live = { key, client };
   return client;
 }
