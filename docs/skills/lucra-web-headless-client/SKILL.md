@@ -269,7 +269,8 @@ and `lucra.auth`, and have a human run login and Add Funds.
   rest, such as whether the amount is one of the game's wager amounts, and refuses with one of
   the codes below, for example `INVALID_AT_STAKE`. Nothing shows until the game has started.
 - Take `gameId`, `mode`, and `amount` from `lucra.minigames.list()`, which lists each game with
-  the modes and amounts it accepts.
+  the modes and amounts it accepts. Pass `amount` only when it is not `null`: practice and
+  tournament options have none.
 - **Tournament mode joins the tournament and takes its buy in. Never also call
   `lucra.tournaments.join()` for that play: the user would pay twice.** `matchupId` is the
   tournament id, required for `"tournament"` and refused with any other mode.
