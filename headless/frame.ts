@@ -38,9 +38,10 @@ export type Frame = {
   reload(url: string): void;
   post(message: OutboundMessage): void;
   onMessage(listener: (message: InboundMessage) => void): () => void;
-  // Shows the frame over the page, or filling the app's container. It draws no
-  // exit: Lucra shows its own, and the app can call present.dismiss().
-  openOverlay(): Overlay;
+  // Shows the frame over the page in `presentation`, full screen by default,
+  // or filling the app's container, which ignores it. It draws no exit: Lucra
+  // shows its own, and the app can call present.dismiss().
+  openOverlay(presentation?: LucraPresentation): Overlay;
   // Opens a real popup window. Throws when the browser blocks it.
   openPopup(url: string): Popup;
   destroy(): void;
@@ -70,6 +71,9 @@ export function createNullFrame(): Frame {
     destroy() {},
   };
 }
+
+// Every LucraPresentation, to check a value at run time.
+export const PRESENTATIONS: readonly LucraPresentation[] = ["fullScreen", "modal", "sheet"];
 
 const HOST_ID = "lucra-headless-host";
 // Same permissions the existing client grants its frame. The last three are for
@@ -140,14 +144,10 @@ function layout(presentation: LucraPresentation, wide: boolean) {
 }
 
 // With a container, the frame lives and shows there. Without one, it lives in
-// the body and shows in `presentation`: full screen, or as a modal or sheet
-// over the dimmed page. Only styles change, never where the frame is, since
-// moving it would reload Lucra.
-export function createDomFrame(
-  origin: string,
-  container?: HTMLElement,
-  presentation: LucraPresentation = "fullScreen"
-): Frame {
+// the body and each screen shows full screen, or as a modal or sheet over the
+// dimmed page. Only styles change, never where the frame is, since moving it
+// would reload Lucra.
+export function createDomFrame(origin: string, container?: HTMLElement): Frame {
   let host: HTMLDivElement | null = null;
   let iframe: HTMLIFrameElement | null = null;
   let destroyed = false;
@@ -231,14 +231,16 @@ export function createDomFrame(
       };
     },
 
-    openOverlay() {
+    openOverlay(presentation = "fullScreen") {
       closeOverlay?.();
       if (!host || !iframe) return { close() {} };
       const overlayHost = host;
       const overlayFrame = iframe;
       const previousFocus = document.activeElement as HTMLElement | null;
-      // A modal and a sheet change shape with the window width. Full screen does not.
-      const media = presentation === "fullScreen" ? null : window.matchMedia(WIDE_QUERY);
+      // A modal and a sheet change shape with the window width. Full screen and
+      // a container do not.
+      const media =
+        container || presentation === "fullScreen" ? null : window.matchMedia(WIDE_QUERY);
       const fit = () => {
         const css = layout(presentation, media?.matches === true);
         overlayHost.style.cssText = css.host;

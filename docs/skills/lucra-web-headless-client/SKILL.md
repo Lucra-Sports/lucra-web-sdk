@@ -73,7 +73,7 @@ is unchanged by the preview.
 | `locationId` | Optional |
 | `autoJoin` | Optional, defaults to `true`. See [autoJoin](../../1.2_initialize_client.md#autojoin) |
 | `container` | Optional element that Lucra screens show inside. See [section 6](#6-screens) |
-| `presentation` | Optional. `"fullScreen"` (default), `"modal"`, or `"sheet"`: how screens show without a `container`. Not allowed with `container`. See [section 6](#6-screens) |
+| `presentation` | Optional. `"fullScreen"` (default), `"modal"`, or `"sheet"`: the default for screens without a `container`. Each `present.*` call can pass its own. Not allowed with `container`. See [section 6](#6-screens) |
 
 - `createLucraClient` **throws `INVALID_CONFIG` synchronously**, before it adds anything to the
   page, for a missing `apiKey`, `tenantId`, or `env`, an unknown `env`, a `tenantId` that does
@@ -204,8 +204,11 @@ Every code: [Errors](../../3.0_headless_client.md#errors).
   `presentation: "modal"` it is a panel up to 430 by 800px in the middle of the dimmed page, and
   with `"sheet"` a panel up to 430px wide at the right edge. Under 640px wide a modal covers the
   page and a sheet comes up from the bottom, leaving 96px of the page above it. The dimmed page
-  takes no clicks, and neither a click on it nor Escape closes the screen. With `container`, it
-  fills that element. Lucra is hidden before a screen shows and after it ends. See
+  takes no clicks, and neither a click on it nor Escape closes the screen. Every screen but
+  `addFunds()` takes `{ presentation }` for that screen only; the client's is the default, also
+  for screens `withRemediation()` shows. On a client with a `container`, a call's
+  `presentation` rejects with `INVALID_ARGUMENT`. With `container`, a screen fills that element.
+  Lucra is hidden before a screen shows and after it ends. See
   [As a modal or a sheet](../../3.0_headless_client.md#as-a-modal-or-a-sheet).
 - **Container rules.** Use an empty element with a real height (`height`, not only
   `min-height`, or a flex or grid item that stretches). It must be in the page when you create
@@ -232,7 +235,7 @@ Every code: [Errors](../../3.0_headless_client.md#errors).
   replaced it. `lucra.present.dismiss()` closes whatever screen shows, so it is wrong for that
   cleanup. A signal aborted already resolves `"aborted"` at once and shows nothing. A value
   that is not an `AbortSignal` rejects with `INVALID_ARGUMENT` and leaves any screen alone.
-- `login({ phoneNumber, signal })` fills in the form. `phoneNumber` must be exactly 10 digits:
+- `login({ phoneNumber, signal, presentation })` fills in the form. `phoneNumber` must be exactly 10 digits:
   omit it when you have none, since `""` rejects with `INVALID_ARGUMENT`. That error's `message`,
   "The phone number must be 10 digits", is safe to show next to a number the user typed.
 - Showing the login screen restarts Lucra. Calls still waiting follow the restart rule in
@@ -264,14 +267,14 @@ and `lucra.auth`, and have a human run login and Add Funds.
 
 ### Minigames
 
-- `lucra.present.minigame({ gameId, mode, amount, matchupId, signal })` starts a minigame
-  session, and Lucra shows the game in its own frame. `mode` is `"practice"`, `"1v1"`,
-  `"free_for_all"`, or `"tournament"`. Before it sends anything, the SDK checks the
-  shape and types: `gameId`, `mode`, an `amount` that is a number of 0 or more, a non empty
-  `matchupId` that is present for tournament mode and absent for the others, and `signal`. A
-  failed check rejects with `INVALID_ARGUMENT`. Lucra checks the rest, such as whether the amount
-  is one of the game's wager amounts, and refuses with one of the codes below, for example
-  `INVALID_AT_STAKE`. Nothing shows until the game has started.
+- `lucra.present.minigame({ gameId, mode, amount, matchupId, signal, presentation })` starts a
+  minigame session, and Lucra shows the game in its own frame. `mode` is `"practice"`, `"1v1"`,
+  `"free_for_all"`, or `"tournament"`. Before it sends anything, the SDK checks the shape and
+  types: `gameId`, `mode`, an `amount` that is a number of 0 or more, a non empty `matchupId`
+  that is present for tournament mode and absent for the others, `signal`, and `presentation`,
+  which is never sent to Lucra. A failed check rejects with `INVALID_ARGUMENT`. Lucra checks the
+  rest, such as whether the amount is one of the game's wager amounts, and refuses with one of
+  the codes below, for example `INVALID_AT_STAKE`. Nothing shows until the game has started.
 - **Tournament mode joins the tournament and takes its buy in. Never also call
   `lucra.tournaments.join()` for that play: the user would pay twice.** `matchupId` is the
   tournament id, required for `"tournament"` and refused with any other mode.

@@ -365,8 +365,8 @@ describe("createDomFrame: modal and sheet", () => {
   };
   const changeListeners = () =>
     dom.media.lists.reduce((sum, list) => sum + (list.get("change")?.size ?? 0), 0);
-  const mounted = (presentation: "fullScreen" | "modal" | "sheet") => {
-    const frame = createDomFrame(ORIGIN, undefined, presentation);
+  const mounted = () => {
+    const frame = createDomFrame(ORIGIN);
     frame.mount(URL_1);
     return frame;
   };
@@ -376,7 +376,7 @@ describe("createDomFrame: modal and sheet", () => {
     ["sheet", SHEET_WIDE, SHEET_NARROW],
   ] as const) {
     it(`shows a ${presentation} as a dialog that follows the window width`, () => {
-      mounted(presentation).openOverlay();
+      mounted().openOverlay(presentation);
       expect(dom.matchMedia).toHaveBeenCalledWith("(min-width: 640px)");
       expect(host().attributes.role).toBe("dialog");
       expect(host().attributes["aria-modal"]).toBe("true");
@@ -389,13 +389,13 @@ describe("createDomFrame: modal and sheet", () => {
 
     it(`opens a ${presentation} on a narrow window in its narrow shape`, () => {
       dom.media.matches = false;
-      mounted(presentation).openOverlay();
+      mounted().openOverlay(presentation);
       expect(styles()).toEqual(narrow);
     });
   }
 
   it("stops following the window once it closes", () => {
-    const overlay = mounted("sheet").openOverlay();
+    const overlay = mounted().openOverlay("sheet");
     expect(changeListeners()).toBe(1);
     overlay.close();
     expect(changeListeners()).toBe(0);
@@ -404,14 +404,14 @@ describe("createDomFrame: modal and sheet", () => {
   });
 
   it("stops following the window on destroy", () => {
-    const frame = mounted("modal");
-    frame.openOverlay();
+    const frame = mounted();
+    frame.openOverlay("modal");
     frame.destroy();
     expect(changeListeners()).toBe(0);
   });
 
   it("never moves or reloads the frame", () => {
-    const frame = mounted("sheet");
+    const frame = mounted();
     const firstHost = host();
     const firstFrame = iframe();
     const check = () => {
@@ -422,7 +422,7 @@ describe("createDomFrame: modal and sheet", () => {
       expect(firstFrame.src).toBe(URL_1);
       expect(firstFrame.contentWindow?.location.replace).toHaveBeenCalledTimes(0);
     };
-    const overlay = frame.openOverlay();
+    const overlay = frame.openOverlay("sheet");
     check();
     resize(false);
     check();
@@ -430,28 +430,35 @@ describe("createDomFrame: modal and sheet", () => {
     check();
     overlay.close();
     check();
-    frame.openOverlay();
+    frame.openOverlay("modal");
     check();
   });
 
-  it("a late close of an older overlay leaves the newer one showing", () => {
-    const frame = mounted("modal");
-    const first = frame.openOverlay();
-    frame.openOverlay();
+  it("shows each open in its own presentation, and a late close of an older one does nothing", () => {
+    const frame = mounted();
+    const first = frame.openOverlay("modal");
+    frame.openOverlay("sheet");
+    expect(styles()).toEqual(SHEET_WIDE);
     expect(changeListeners()).toBe(1);
     first.close();
-    expect(styles()).toEqual(MODAL_WIDE);
+    expect(styles()).toEqual(SHEET_WIDE);
     expect(changeListeners()).toBe(1);
     resize(false);
+    expect(styles()).toEqual(SHEET_NARROW);
+    frame.openOverlay();
     expect(styles()).toEqual(FULL_SCREEN);
+    expect(changeListeners()).toBe(0);
   });
 
-  it("full screen and a container never ask for the window width", () => {
-    mounted("fullScreen").openOverlay();
+  it("shows full screen by default, and a container ignores the presentation", () => {
+    mounted().openOverlay();
     expect(styles()).toEqual(FULL_SCREEN);
-    const contained = createDomFrame(ORIGIN, makeElement("section") as unknown as HTMLElement);
+    const container = makeElement("section");
+    const contained = createDomFrame(ORIGIN, container as unknown as HTMLElement);
     contained.mount(URL_1);
-    contained.openOverlay();
+    contained.openOverlay("sheet");
+    expect(container.children[0].style.cssText).toBe("display:block;width:100%;height:100%;");
+    expect(container.children[0].attributes).toEqual({});
     expect(dom.matchMedia).toHaveBeenCalledTimes(0);
   });
 });

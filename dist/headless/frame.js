@@ -22,6 +22,8 @@ export function createNullFrame() {
         destroy() { },
     };
 }
+// Every LucraPresentation, to check a value at run time.
+export const PRESENTATIONS = ["fullScreen", "modal", "sheet"];
 const HOST_ID = "lucra-headless-host";
 // Same permissions the existing client grants its frame. The last three are for
 // games shown inside Lucra.
@@ -82,10 +84,10 @@ function layout(presentation, wide) {
     return { host: OVERLAY_CSS, iframe: IFRAME_CSS };
 }
 // With a container, the frame lives and shows there. Without one, it lives in
-// the body and shows in `presentation`: full screen, or as a modal or sheet
-// over the dimmed page. Only styles change, never where the frame is, since
-// moving it would reload Lucra.
-export function createDomFrame(origin, container, presentation = "fullScreen") {
+// the body and each screen shows full screen, or as a modal or sheet over the
+// dimmed page. Only styles change, never where the frame is, since moving it
+// would reload Lucra.
+export function createDomFrame(origin, container) {
     let host = null;
     let iframe = null;
     let destroyed = false;
@@ -170,15 +172,16 @@ export function createDomFrame(origin, container, presentation = "fullScreen") {
                 listeners.delete(listener);
             };
         },
-        openOverlay() {
+        openOverlay(presentation = "fullScreen") {
             closeOverlay?.();
             if (!host || !iframe)
                 return { close() { } };
             const overlayHost = host;
             const overlayFrame = iframe;
             const previousFocus = document.activeElement;
-            // A modal and a sheet change shape with the window width. Full screen does not.
-            const media = presentation === "fullScreen" ? null : window.matchMedia(WIDE_QUERY);
+            // A modal and a sheet change shape with the window width. Full screen and
+            // a container do not.
+            const media = container || presentation === "fullScreen" ? null : window.matchMedia(WIDE_QUERY);
             const fit = () => {
                 const css = layout(presentation, media?.matches === true);
                 overlayHost.style.cssText = css.host;

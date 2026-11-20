@@ -81,7 +81,8 @@ export type LucraClientConfig = {
   // shown again. Call destroy() in the cleanup of whatever renders it, for
   // example a component's unmount, and create the client again after.
   container?: HTMLElement;
-  // Defaults to "fullScreen". Not allowed with a container, since a screen fills it.
+  // The default for lucra.present screens. Each call can pass its own. Defaults
+  // to "fullScreen". Not allowed with a container, since a screen fills it.
   presentation?: LucraPresentation;
 };
 
@@ -95,8 +96,10 @@ export type LucraAuthState = {
 };
 
 // Options every lucra.present screen takes. Aborting `signal` closes the
-// screen that call opened, and only while that call is pending.
-export type LucraPresentOptions = { signal?: AbortSignal };
+// screen that call opened, and only while that call is pending. `presentation`
+// shows this screen full screen, as a modal, or as a sheet, in place of the
+// client's. It is not allowed on a client with a container.
+export type LucraPresentOptions = { signal?: AbortSignal; presentation?: LucraPresentation };
 
 export type LucraLoginOptions = LucraPresentOptions & { phoneNumber?: string };
 
@@ -138,6 +141,8 @@ export type LucraMinigameInput = {
   // call lucra.tournaments.join() for that play.
   matchupId?: string;
   signal?: AbortSignal;
+  // As in LucraPresentOptions. Like the signal, it is not sent to Lucra.
+  presentation?: LucraPresentation;
 };
 
 // How a minigame ended. "completed": the game closed itself, which does not

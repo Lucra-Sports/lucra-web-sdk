@@ -3,6 +3,7 @@ import { createAuth } from "./auth.js";
 import { LucraError, LucraErrorCode, isLucraError } from "./errors.js";
 import { createEmitter } from "./events.js";
 import {
+  PRESENTATIONS,
   createDomFrame,
   createNullFrame,
   hasDom,
@@ -18,7 +19,6 @@ import type {
   LucraHeadlessEventMap,
   LucraMatchupWatch,
   LucraMatchupWatchHandlers,
-  LucraPresentation,
 } from "./types.js";
 import { HOME_PATH, buildUrl, lucraOrigin, type UrlContext } from "./url.js";
 import { createWatch } from "./watch.js";
@@ -96,6 +96,8 @@ export function createClient(
     activity,
     whenWriteSettled: api.whenWriteSettled,
     startMinigame: api.startMinigame,
+    presentation: config.presentation ?? "fullScreen",
+    contained: config.container !== undefined,
   });
   const events = createEmitter<LucraHeadlessEventMap>();
   for (const type of EVENTS) {
@@ -144,8 +146,6 @@ export function createClient(
     },
   };
 }
-
-const PRESENTATIONS: readonly LucraPresentation[] = ["fullScreen", "modal", "sheet"];
 
 // The one live client on this page, and the config it was made with.
 let live: {
@@ -222,7 +222,7 @@ function createLiveClient(config: LucraClientConfig): LucraHeadlessClient {
 
   const supported = hasDom();
   const client = createClient(config, {
-    frame: supported ? createDomFrame(origin, container, presentation) : createNullFrame(),
+    frame: supported ? createDomFrame(origin, container) : createNullFrame(),
     parentOrigin: supported ? pageOrigin() : "",
     unsupported: !supported,
     onDestroy: () => {

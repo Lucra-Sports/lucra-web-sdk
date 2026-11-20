@@ -1,12 +1,13 @@
 import { LUCRA_POPUP_MESSAGE_TYPE, LucraClientMessageType, MessageTypeToLucraClient, } from "../types/types.js";
 import { LucraError, LucraErrorCode, invalid, isLucraError } from "./errors.js";
 import { createEmitter } from "./events.js";
+import { PRESENTATIONS } from "./frame.js";
 import { HOME_PATH, buildUrl, navigateTarget } from "./url.js";
 const PHONE_NUMBER = /^[0-9]{10}$/;
 const MINIGAME_MODES = ["practice", "1v1", "free_for_all", "tournament"];
 const isText = (value) => typeof value === "string" && value !== "";
 export function createPresent(options) {
-    const { session, auth, frame, urls, activity, whenWriteSettled, startMinigame } = options;
+    const { session, auth, frame, urls, activity, whenWriteSettled, startMinigame, contained } = options;
     // The overlay screen on show, if any. Only one at a time.
     let current = null;
     // The Add Funds window, while it is open.
@@ -38,7 +39,9 @@ export function createPresent(options) {
         gameOutOfSight = false;
         navigate(HOME_PATH);
     };
-    const present = (screen, signal) => {
+    const present = (screen, callOptions) => {
+        const signal = callOptions?.signal;
+        const presentation = callOptions?.presentation;
         if (destroyed)
             return Promise.reject(new LucraError(LucraErrorCode.DESTROYED));
         // Checked before anything changes, so a bad value cannot leave a screen
@@ -50,6 +53,12 @@ export function createPresent(options) {
             return Promise.reject(new LucraError(LucraErrorCode.INVALID_ARGUMENT, undefined, {
                 hint: "signal must be an AbortSignal.",
             }));
+        }
+        if (presentation !== undefined && !PRESENTATIONS.includes(presentation)) {
+            return invalid('presentation must be "fullScreen", "modal", or "sheet".');
+        }
+        if (presentation !== undefined && contained) {
+            return invalid("presentation cannot be used on a client with a container. A screen fills the container.");
         }
         // Aborted already: show nothing, and leave any screen on show alone.
         if (signal?.aborted) {
@@ -153,7 +162,8 @@ export function createPresent(options) {
                         return;
                     }
                 }
-                overlay = frame.openOverlay();
+                // The call's own presentation, or the client's. A container has only one.
+                overlay = frame.openOverlay(contained ? undefined : (presentation ?? options.presentation));
                 // This screen takes over Lucra's page.
                 gameOutOfSight = false;
                 setScreen(screen.name);
@@ -203,7 +213,7 @@ export function createPresent(options) {
         completeOn,
         completed: () => ({ status: "completed" }),
         goHomeAfter: true,
-    }, pageOptions?.signal);
+    }, pageOptions);
     // An answer to a start that no longer waits for it, for example after a
     // timeout. The game it started shows nowhere.
     const unsubscribeLateStart = session.on(LucraClientMessageType.presentMinigameResponse, () => {
@@ -263,7 +273,7 @@ export function createPresent(options) {
                     user: (data ?? {}),
                 }),
                 goHomeAfter: false,
-            }, loginOptions?.signal);
+            }, loginOptions);
         },
         addFunds() {
             // No await before the popup opens: the browser only allows a popup
@@ -311,11 +321,11 @@ export function createPresent(options) {
         },
         minigame(input) {
             // Checked before anything changes, so a bad value leaves the screen on
-            // show alone. The signal is checked with the other screens'.
+            // show alone. The signal and presentation are checked with the other screens'.
             if (typeof input !== "object" || input === null) {
                 return invalid("lucra.present.minigame() takes { gameId, mode }.");
             }
-            const { gameId, mode, amount, matchupId, signal } = input;
+            const { gameId, mode, amount, matchupId, signal, presentation } = input;
             if (!isText(gameId))
                 return invalid("gameId must be a non empty string.");
             if (!MINIGAME_MODES.includes(mode)) {
@@ -334,7 +344,7 @@ export function createPresent(options) {
             if (mode !== "tournament" && matchupId !== undefined) {
                 return invalid('matchupId is only for mode "tournament". Leave it out for other modes.');
             }
-            // Only the fields given. The signal is not sent.
+            // Only the fields given. The signal and presentation are not sent.
             const body = { gameId, mode };
             if (amount !== undefined)
                 body.amount = amount;
@@ -380,7 +390,7 @@ export function createPresent(options) {
                 },
                 // So the game does not keep running out of sight.
                 goHomeAfter: true,
-            }, signal).then((result) => {
+            }, { signal, presentation }).then((result) => {
                 if (result.status === "completed")
                     return result;
                 return {

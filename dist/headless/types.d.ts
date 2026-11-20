@@ -20,6 +20,7 @@ export type LucraAuthState = {
 };
 export type LucraPresentOptions = {
     signal?: AbortSignal;
+    presentation?: LucraPresentation;
 };
 export type LucraLoginOptions = LucraPresentOptions & {
     phoneNumber?: string;
@@ -44,6 +45,7 @@ export type LucraMinigameInput = {
     amount?: number;
     matchupId?: string;
     signal?: AbortSignal;
+    presentation?: LucraPresentation;
 };
 export type LucraMinigameResult = {
     status: "completed";

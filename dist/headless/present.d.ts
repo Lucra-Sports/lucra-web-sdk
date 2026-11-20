@@ -1,9 +1,9 @@
 import { type LucraPresentMinigameBody, type LucraPresentMinigameResponse } from "../types/types.js";
 import type { Activity } from "./api.js";
 import type { Auth } from "./auth.js";
-import type { Frame } from "./frame.js";
+import { type Frame } from "./frame.js";
 import type { Session } from "./session.js";
-import type { LucraAddFundsResult, LucraLoginOptions, LucraLoginResult, LucraMinigameInput, LucraMinigameResult, LucraPresentOptions, LucraPresentResult } from "./types.js";
+import type { LucraAddFundsResult, LucraLoginOptions, LucraLoginResult, LucraMinigameInput, LucraMinigameResult, LucraPresentOptions, LucraPresentResult, LucraPresentation } from "./types.js";
 import { type UrlContext } from "./url.js";
 export type Present = {
     login(options?: LucraLoginOptions): Promise<LucraLoginResult>;
@@ -32,4 +32,6 @@ export declare function createPresent(options: {
     activity: Activity;
     whenWriteSettled: () => Promise<void>;
     startMinigame: (body: LucraPresentMinigameBody) => Promise<LucraPresentMinigameResponse>;
+    presentation: LucraPresentation;
+    contained: boolean;
 }): Present;

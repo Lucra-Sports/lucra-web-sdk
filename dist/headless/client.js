@@ -2,7 +2,7 @@ import { createApi } from "./api.js";
 import { createAuth } from "./auth.js";
 import { LucraError, LucraErrorCode, isLucraError } from "./errors.js";
 import { createEmitter } from "./events.js";
-import { createDomFrame, createNullFrame, hasDom, pageOrigin, } from "./frame.js";
+import { PRESENTATIONS, createDomFrame, createNullFrame, hasDom, pageOrigin, } from "./frame.js";
 import { createPresent } from "./present.js";
 import { createWithRemediation } from "./remediate.js";
 import { DEFAULT_TIMEOUTS, createSession } from "./session.js";
@@ -40,6 +40,8 @@ export function createClient(config, deps) {
         activity,
         whenWriteSettled: api.whenWriteSettled,
         startMinigame: api.startMinigame,
+        presentation: config.presentation ?? "fullScreen",
+        contained: config.container !== undefined,
     });
     const events = createEmitter();
     for (const type of EVENTS) {
@@ -88,7 +90,6 @@ export function createClient(config, deps) {
         },
     };
 }
-const PRESENTATIONS = ["fullScreen", "modal", "sheet"];
 // The one live client on this page, and the config it was made with.
 let live = null;
 export function createLucraClient(config) {
@@ -159,7 +160,7 @@ function createLiveClient(config) {
     }
     const supported = hasDom();
     const client = createClient(config, {
-        frame: supported ? createDomFrame(origin, container, presentation) : createNullFrame(),
+        frame: supported ? createDomFrame(origin, container) : createNullFrame(),
         parentOrigin: supported ? pageOrigin() : "",
         unsupported: !supported,
         onDestroy: () => {

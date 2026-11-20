@@ -77,6 +77,26 @@ describe("createClient", () => {
     );
   });
 
+  it("passes the config's presentation and container to the screens", async () => {
+    const frame = createFakeFrame();
+    const client = createClient({ ...config, presentation: "sheet" }, { frame, parentOrigin: "" });
+    await connectLoggedIn(frame);
+    void client.present.profile();
+    await tick();
+    void client.present.wallet({ presentation: "modal" });
+    await tick();
+    expect(frame.presentations).toEqual(["sheet", "modal"]);
+    client.destroy();
+
+    const contained = createClient(
+      { ...config, container: {} as HTMLElement },
+      { frame: createFakeFrame(), parentOrigin: "" }
+    );
+    const error = await caught(contained.present.wallet({ presentation: "modal" }));
+    expect(error.code).toBe("INVALID_ARGUMENT");
+    contained.destroy();
+  });
+
   it("withRemediation shows the location screen, then sends the write again", async () => {
     const { frame, client } = setup();
     await connectLoggedIn(frame);

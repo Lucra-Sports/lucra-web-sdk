@@ -59,10 +59,11 @@ describe("createFakeFrame", () => {
   it("keeps the newer overlay open when an older one is closed late", () => {
     const frame = createFakeFrame();
     const older = frame.openOverlay();
-    frame.openOverlay();
+    frame.openOverlay("sheet");
     older.close();
     expect(frame.overlayOpen).toBe(true);
     expect(frame.overlaysOpened).toBe(2);
+    expect(frame.presentations).toEqual([undefined, "sheet"]);
   });
 
   it("records popups and how each one ends", () => {
