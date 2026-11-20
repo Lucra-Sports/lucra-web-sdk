@@ -88,6 +88,7 @@ export function createClient(config, deps) {
         },
     };
 }
+const PRESENTATIONS = ["fullScreen", "modal", "sheet"];
 // The one live client on this page, and the config it was made with.
 let live = null;
 export function createLucraClient(config) {
@@ -109,7 +110,7 @@ function createLiveClient(config) {
             hint: "apiKey, tenantId, and env are required.",
         });
     }
-    const { container } = config;
+    const { container, presentation } = config;
     if (container !== undefined) {
         // 1 is an element node. Unlike instanceof, this also works for an element
         // from another window, such as a same origin iframe.
@@ -124,6 +125,18 @@ function createLiveClient(config) {
             });
         }
     }
+    if (presentation !== undefined) {
+        if (!PRESENTATIONS.includes(presentation)) {
+            throw new LucraError(LucraErrorCode.INVALID_CONFIG, undefined, {
+                hint: 'presentation must be "fullScreen", "modal", or "sheet".',
+            });
+        }
+        if (container !== undefined) {
+            throw new LucraError(LucraErrorCode.INVALID_CONFIG, undefined, {
+                hint: "presentation cannot be used with container. A screen fills the container.",
+            });
+        }
+    }
     // Throws INVALID_CONFIG before anything is added to the page.
     const origin = lucraOrigin(config);
     // The container is compared on its own: an element turns into {} as JSON.
@@ -133,6 +146,7 @@ function createLiveClient(config) {
         config.env,
         config.locationId ?? null,
         config.autoJoin ?? true,
+        presentation ?? "fullScreen",
     ]);
     if (live) {
         // The same config again returns the same client, so a hot reload or a
@@ -145,7 +159,7 @@ function createLiveClient(config) {
     }
     const supported = hasDom();
     const client = createClient(config, {
-        frame: supported ? createDomFrame(origin, container) : createNullFrame(),
+        frame: supported ? createDomFrame(origin, container, presentation) : createNullFrame(),
         parentOrigin: supported ? pageOrigin() : "",
         unsupported: !supported,
         onDestroy: () => {

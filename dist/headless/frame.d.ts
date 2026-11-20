@@ -1,5 +1,6 @@
 import { type LucraPopupHandle } from "../popup.js";
 import { type MessageTypeToLucraClient } from "../types/types.js";
+import type { LucraPresentation } from "./types.js";
 export type OutboundMessage = {
     type: MessageTypeToLucraClient;
     body: unknown;
@@ -28,4 +29,4 @@ export type Frame = {
 export declare function hasDom(): boolean;
 export declare function pageOrigin(): string;
 export declare function createNullFrame(): Frame;
-export declare function createDomFrame(origin: string, container?: HTMLElement): Frame;
+export declare function createDomFrame(origin: string, container?: HTMLElement, presentation?: LucraPresentation): Frame;

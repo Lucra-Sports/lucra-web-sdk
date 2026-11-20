@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## [v1.22.0]
+
+### Added
+
+- **Preview:** the `presentation` option of `createLucraClient` shows Lucra screens in a panel over the dimmed page instead of covering it. `"modal"` is a panel in the middle of the page, and covers the page on a narrow window. `"sheet"` is a panel at the right edge, or up from the bottom on a narrow window. The default, `"fullScreen"`, covers the page as before. It cannot be used with `container`. New type `LucraPresentation`. See [As a modal or a sheet](3.0_headless_client.md#as-a-modal-or-a-sheet).
+
 ## [v1.21.0]
 
 ### Added

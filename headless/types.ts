@@ -64,6 +64,11 @@ export type LucraUser = SDKLucraUser;
 // What lucra.auth.updateUser() sends.
 export type LucraUpdateUserInput = SDKClientUser;
 
+// How Lucra screens show when there is no container. "modal" is a panel in the
+// middle of the dimmed page, and full screen on a narrow window. "sheet" is a
+// panel at the right edge, or from the bottom on a narrow window.
+export type LucraPresentation = "fullScreen" | "modal" | "sheet";
+
 export type LucraClientConfig = {
   apiKey: string;
   tenantId: string;
@@ -76,6 +81,8 @@ export type LucraClientConfig = {
   // shown again. Call destroy() in the cleanup of whatever renders it, for
   // example a component's unmount, and create the client again after.
   container?: HTMLElement;
+  // Defaults to "fullScreen". Not allowed with a container, since a screen fills it.
+  presentation?: LucraPresentation;
 };
 
 // "loading" until Lucra has answered whether a user is logged in.

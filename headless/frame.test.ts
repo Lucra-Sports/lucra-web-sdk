@@ -83,6 +83,10 @@ type FakeDom = {
   windowListeners: Listeners;
   documentListeners: Listeners;
   document: { body: FakeElement | null; activeElement: FakeElement };
+  // The window width media query. `matches` is true on a wide window. Each
+  // list matchMedia returned keeps its own listeners, as in a browser.
+  media: { matches: boolean; lists: Listeners[] };
+  matchMedia: ReturnType<typeof mock>;
 };
 
 const saved = {
@@ -102,13 +106,26 @@ beforeEach(() => {
     createElement: makeElement,
     addEventListener: add(documentListeners),
   };
+  const media = { matches: true, lists: [] as Listeners[] };
+  const matchMedia = mock((_query: string) => {
+    const listeners: Listeners = new Map();
+    media.lists.push(listeners);
+    return {
+      get matches() {
+        return media.matches;
+      },
+      addEventListener: add(listeners),
+      removeEventListener: remove(listeners),
+    };
+  });
   (globalThis as { window?: unknown }).window = {
     location: { origin: "https://host.example" },
     addEventListener: add(windowListeners),
     removeEventListener: remove(windowListeners),
+    matchMedia,
   };
   (globalThis as { document?: unknown }).document = document;
-  dom = { body, focused, windowListeners, documentListeners, document };
+  dom = { body, focused, windowListeners, documentListeners, document, media, matchMedia };
 });
 
 afterEach(() => {
@@ -303,6 +320,139 @@ describe("createDomFrame: overlay", () => {
     const frame = createDomFrame(ORIGIN);
     frame.openOverlay().close();
     expect(dom.body.children.length).toBe(0);
+  });
+});
+
+describe("createDomFrame: modal and sheet", () => {
+  const SAFE_AREA =
+    "padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);";
+  const FULL_SCREEN = {
+    host:
+      "position:fixed;inset:0;z-index:2147483647;display:flex;flex-direction:column;background:#000;" +
+      SAFE_AREA +
+      "box-sizing:border-box;",
+    iframe: "display:block;flex:1 1 auto;width:100%;height:100%;border:0;",
+  };
+  const BACKDROP =
+    "position:fixed;inset:0;z-index:2147483647;display:flex;box-sizing:border-box;background:rgba(0,0,0,.5);";
+  const PANEL = "display:block;flex:none;border:0;background:#000;";
+  const MODAL_WIDE = {
+    host: BACKDROP + SAFE_AREA + "align-items:center;justify-content:center;",
+    iframe: PANEL + "width:min(430px,100%);height:min(800px,100%);",
+  };
+  const SHEET_WIDE = {
+    host: BACKDROP + "justify-content:flex-end;",
+    iframe:
+      PANEL +
+      "box-sizing:border-box;width:min(430px,100%);height:100%;" +
+      "padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) 0;",
+  };
+  const SHEET_NARROW = {
+    host:
+      BACKDROP +
+      "flex-direction:column;justify-content:flex-end;" +
+      "padding:env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);",
+    iframe:
+      PANEL +
+      "box-sizing:border-box;width:100%;height:calc(100% - 96px);padding-bottom:env(safe-area-inset-bottom);",
+  };
+  const HIDDEN = { host: "display:none;", iframe: FULL_SCREEN.iframe };
+
+  const styles = () => ({ host: host().style.cssText, iframe: iframe().style.cssText });
+  const resize = (wide: boolean) => {
+    dom.media.matches = wide;
+    for (const list of dom.media.lists) fire(list, "change", { matches: wide });
+  };
+  const changeListeners = () =>
+    dom.media.lists.reduce((sum, list) => sum + (list.get("change")?.size ?? 0), 0);
+  const mounted = (presentation: "fullScreen" | "modal" | "sheet") => {
+    const frame = createDomFrame(ORIGIN, undefined, presentation);
+    frame.mount(URL_1);
+    return frame;
+  };
+
+  for (const [presentation, wide, narrow] of [
+    ["modal", MODAL_WIDE, FULL_SCREEN],
+    ["sheet", SHEET_WIDE, SHEET_NARROW],
+  ] as const) {
+    it(`shows a ${presentation} as a dialog that follows the window width`, () => {
+      mounted(presentation).openOverlay();
+      expect(dom.matchMedia).toHaveBeenCalledWith("(min-width: 640px)");
+      expect(host().attributes.role).toBe("dialog");
+      expect(host().attributes["aria-modal"]).toBe("true");
+      expect(styles()).toEqual(wide);
+      resize(false);
+      expect(styles()).toEqual(narrow);
+      resize(true);
+      expect(styles()).toEqual(wide);
+    });
+
+    it(`opens a ${presentation} on a narrow window in its narrow shape`, () => {
+      dom.media.matches = false;
+      mounted(presentation).openOverlay();
+      expect(styles()).toEqual(narrow);
+    });
+  }
+
+  it("stops following the window once it closes", () => {
+    const overlay = mounted("sheet").openOverlay();
+    expect(changeListeners()).toBe(1);
+    overlay.close();
+    expect(changeListeners()).toBe(0);
+    resize(false);
+    expect(styles()).toEqual(HIDDEN);
+  });
+
+  it("stops following the window on destroy", () => {
+    const frame = mounted("modal");
+    frame.openOverlay();
+    frame.destroy();
+    expect(changeListeners()).toBe(0);
+  });
+
+  it("never moves or reloads the frame", () => {
+    const frame = mounted("sheet");
+    const firstHost = host();
+    const firstFrame = iframe();
+    const check = () => {
+      expect(dom.body.children).toEqual([firstHost]);
+      expect(firstHost.parent).toBe(dom.body);
+      expect(firstHost.children).toEqual([firstFrame]);
+      expect(firstFrame.parent).toBe(firstHost);
+      expect(firstFrame.src).toBe(URL_1);
+      expect(firstFrame.contentWindow?.location.replace).toHaveBeenCalledTimes(0);
+    };
+    const overlay = frame.openOverlay();
+    check();
+    resize(false);
+    check();
+    resize(true);
+    check();
+    overlay.close();
+    check();
+    frame.openOverlay();
+    check();
+  });
+
+  it("a late close of an older overlay leaves the newer one showing", () => {
+    const frame = mounted("modal");
+    const first = frame.openOverlay();
+    frame.openOverlay();
+    expect(changeListeners()).toBe(1);
+    first.close();
+    expect(styles()).toEqual(MODAL_WIDE);
+    expect(changeListeners()).toBe(1);
+    resize(false);
+    expect(styles()).toEqual(FULL_SCREEN);
+  });
+
+  it("full screen and a container never ask for the window width", () => {
+    mounted("fullScreen").openOverlay();
+    expect(styles()).toEqual(FULL_SCREEN);
+    const contained = createDomFrame(ORIGIN, makeElement("section") as unknown as HTMLElement);
+    contained.mount(URL_1);
+    contained.openOverlay();
+    expect(dom.matchMedia).toHaveBeenCalledTimes(0);
   });
 });
 

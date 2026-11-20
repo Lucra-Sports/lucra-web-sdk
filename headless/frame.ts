@@ -1,5 +1,12 @@
-import { openPopupWindow, trackPopup, type LucraPopupHandle } from "../popup.js";
+import {
+  POPUP_HEIGHT,
+  POPUP_WIDTH,
+  openPopupWindow,
+  trackPopup,
+  type LucraPopupHandle,
+} from "../popup.js";
 import { LUCRA_POPUP_MESSAGE_TYPE, type MessageTypeToLucraClient } from "../types/types.js";
+import type { LucraPresentation } from "./types.js";
 
 // A message the SDK sends to the Lucra app.
 export type OutboundMessage = {
@@ -31,7 +38,7 @@ export type Frame = {
   reload(url: string): void;
   post(message: OutboundMessage): void;
   onMessage(listener: (message: InboundMessage) => void): () => void;
-  // Shows the frame full screen, or filling the app's container. It draws no
+  // Shows the frame over the page, or filling the app's container. It draws no
   // exit: Lucra shows its own, and the app can call present.dismiss().
   openOverlay(): Overlay;
   // Opens a real popup window. Throws when the browser blocks it.
@@ -71,16 +78,76 @@ const FRAME_ALLOW =
   "geolocation *; web-share; accelerometer *; bluetooth *; gyroscope *; clipboard-write *; payment; " +
   "fullscreen *; autoplay *; encrypted-media *;";
 const HIDDEN_CSS = "display:none;";
+// Above everything on the host page.
+const COVER_CSS = "position:fixed;inset:0;z-index:2147483647;display:flex;";
 // Padded so iOS bars and the notch do not cover Lucra's own controls.
+const SAFE_AREA_CSS =
+  "padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);";
 const OVERLAY_CSS =
-  "position:fixed;inset:0;z-index:2147483647;display:flex;flex-direction:column;background:#000;" +
-  "padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);box-sizing:border-box;";
+  COVER_CSS + "flex-direction:column;background:#000;" + SAFE_AREA_CSS + "box-sizing:border-box;";
 const CONTAINED_CSS = "display:block;width:100%;height:100%;";
 // Block, so an inline frame's baseline gap cannot overflow the container.
 const IFRAME_CSS = "display:block;flex:1 1 auto;width:100%;height:100%;border:0;";
+
+// 640px is Tailwind's sm, where Lucra's web app switches its own dialogs.
+const WIDE_QUERY = "(min-width: 640px)";
+// Half black, the backdrop of the drawer in Lucra's web app (bg-black/50).
+const BACKDROP_CSS = COVER_CSS + "box-sizing:border-box;background:rgba(0,0,0,.5);";
+// Black like full screen, so the dimmed page never shows through the panel.
+const PANEL_CSS = "display:block;flex:none;border:0;background:#000;";
+// The width of the Add Funds window, a size Lucra screens already show at.
+const PANEL_WIDTH = `width:min(${POPUP_WIDTH}px,100%);`;
+
+// The host and frame styles for a presentation on a wide or a narrow window.
+function layout(presentation: LucraPresentation, wide: boolean) {
+  if (presentation === "modal" && wide) {
+    return {
+      host: BACKDROP_CSS + SAFE_AREA_CSS + "align-items:center;justify-content:center;",
+      // The height of the Add Funds window.
+      iframe: PANEL_CSS + PANEL_WIDTH + `height:min(${POPUP_HEIGHT}px,100%);`,
+    };
+  }
+  if (presentation === "sheet" && wide) {
+    // The panel reaches the top, right, and bottom edges. Its own padding keeps
+    // Lucra clear of the notch and the iOS home indicator.
+    return {
+      host: BACKDROP_CSS + "justify-content:flex-end;",
+      iframe:
+        PANEL_CSS +
+        "box-sizing:border-box;" +
+        PANEL_WIDTH +
+        "height:100%;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) 0;",
+    };
+  }
+  if (presentation === "sheet") {
+    // The panel reaches the bottom edge. Its own padding keeps Lucra above the
+    // iOS home indicator.
+    return {
+      host:
+        BACKDROP_CSS +
+        "flex-direction:column;justify-content:flex-end;" +
+        "padding:env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);",
+      iframe:
+        PANEL_CSS +
+        // 96px is the gap the bottom drawer in Lucra's web app leaves above it
+        // (6rem there). Pixels, because rem would follow the host page's font size.
+        "box-sizing:border-box;width:100%;height:calc(100% - 96px);" +
+        "padding-bottom:env(safe-area-inset-bottom);",
+    };
+  }
+  // Full screen, and a modal on a narrow window.
+  return { host: OVERLAY_CSS, iframe: IFRAME_CSS };
+}
+
 // With a container, the frame lives and shows there. Without one, it lives in
-// the body and shows full screen.
-export function createDomFrame(origin: string, container?: HTMLElement): Frame {
+// the body and shows in `presentation`: full screen, or as a modal or sheet
+// over the dimmed page. Only styles change, never where the frame is, since
+// moving it would reload Lucra.
+export function createDomFrame(
+  origin: string,
+  container?: HTMLElement,
+  presentation: LucraPresentation = "fullScreen"
+): Frame {
   let host: HTMLDivElement | null = null;
   let iframe: HTMLIFrameElement | null = null;
   let destroyed = false;
@@ -168,25 +235,36 @@ export function createDomFrame(origin: string, container?: HTMLElement): Frame {
       closeOverlay?.();
       if (!host || !iframe) return { close() {} };
       const overlayHost = host;
+      const overlayFrame = iframe;
       const previousFocus = document.activeElement as HTMLElement | null;
+      // A modal and a sheet change shape with the window width. Full screen does not.
+      const media = presentation === "fullScreen" ? null : window.matchMedia(WIDE_QUERY);
+      const fit = () => {
+        const css = layout(presentation, media?.matches === true);
+        overlayHost.style.cssText = css.host;
+        overlayFrame.style.cssText = css.iframe;
+      };
 
       if (container) {
         // A div with no role cannot be named. The frame's own title names it.
         overlayHost.style.cssText = CONTAINED_CSS;
       } else {
-        // Full screen covers the page, so it is a modal dialog.
-        overlayHost.style.cssText = OVERLAY_CSS;
+        // It covers the page, or dims it behind a panel, so it is a modal dialog.
+        fit();
+        media?.addEventListener("change", fit);
         overlayHost.setAttribute("role", "dialog");
         overlayHost.setAttribute("aria-modal", "true");
         overlayHost.setAttribute("aria-label", "Lucra");
       }
-      iframe.focus();
+      overlayFrame.focus();
 
       const close = () => {
         // Only the overlay on show can close. A late close of an older one does nothing.
         if (closeOverlay !== close) return;
         closeOverlay = null;
+        media?.removeEventListener("change", fit);
         overlayHost.style.cssText = HIDDEN_CSS;
+        overlayFrame.style.cssText = IFRAME_CSS;
         overlayHost.removeAttribute("role");
         overlayHost.removeAttribute("aria-modal");
         overlayHost.removeAttribute("aria-label");

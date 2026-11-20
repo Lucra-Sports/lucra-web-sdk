@@ -8,8 +8,8 @@ export type LucraPopupHandle = LucraPopup & {
 
 // Name reused for the popup so a second popup() reuses the same window slot.
 const POPUP_WINDOW_NAME = "lucrasports:deposit:popup";
-const POPUP_WIDTH = 430;
-const POPUP_HEIGHT = 800;
+export const POPUP_WIDTH = 430;
+export const POPUP_HEIGHT = 800;
 
 // Centered popup window features, mirroring lucra-web-app's openAddFundsPopup.
 function popupFeatures(): string {

@@ -466,6 +466,42 @@ describe("createLucraClient", () => {
       first.destroy();
     });
 
+    it("throws INVALID_CONFIG for an unknown presentation, or one with a container", () => {
+      for (const [bad, hint] of [
+        [{ ...config, presentation: "popup" }, "presentation must be"],
+        [{ ...config, presentation: null }, "presentation must be"],
+        [{ ...config, presentation: "modal", container: element() }, "container"],
+        // A screen fills the container, so even the default is refused.
+        [{ ...config, presentation: "fullScreen", container: element() }, "container"],
+      ] as const) {
+        const error = thrown(() => createLucraClient(bad as never));
+        expect(error.code).toBe("INVALID_CONFIG");
+        expect(error.hint).toContain(hint);
+        expect(error.hint).not.toContain("popup");
+      }
+      // Nothing was remembered, so a good config still makes a client.
+      createLucraClient(config).destroy();
+    });
+
+    it("returns the same client for the same presentation, and throws for another", () => {
+      const first = createLucraClient({ ...config, presentation: "sheet" });
+      expect(createLucraClient({ ...config, presentation: "sheet" })).toBe(first);
+      for (const other of [
+        config,
+        { ...config, presentation: "fullScreen" as const },
+        { ...config, presentation: "modal" as const },
+      ]) {
+        expect(thrown(() => createLucraClient(other)).code).toBe("INVALID_CONFIG");
+      }
+      first.destroy();
+    });
+
+    it("counts an omitted presentation as fullScreen", () => {
+      const first = createLucraClient(config);
+      expect(createLucraClient({ ...config, presentation: "fullScreen" })).toBe(first);
+      first.destroy();
+    });
+
     it("puts Lucra in the container instead of the body", () => {
       const added = { body: 0, container: 0 };
       const doc = (globalThis as unknown as { document: { body: { appendChild(): void } } })
