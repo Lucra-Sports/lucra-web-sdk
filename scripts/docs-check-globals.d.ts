@@ -32,3 +32,6 @@ declare const statusText: HTMLElement;
 
 // The headless client, as created in docs/3.0_headless_client.md.
 declare const lucra: import("lucra-web-sdk/headless").LucraHeadlessClient;
+
+// The integrator's router, which the React examples leave a route with.
+declare function navigate(to: string): void;

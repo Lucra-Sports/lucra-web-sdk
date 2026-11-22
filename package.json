@@ -16,6 +16,11 @@
       "types": "./dist/headless/index.d.ts",
       "import": "./dist/headless/index.js",
       "default": "./dist/headless/index.js"
+    },
+    "./react": {
+      "types": "./dist/react/index.d.ts",
+      "import": "./dist/react/index.js",
+      "default": "./dist/react/index.js"
     }
   },
   "type": "module",
@@ -26,12 +31,24 @@
     "evals": "claude plugin eval . --trust-plugin --scaffold --allow-tools Write Edit --model sonnet -j 4 --no-publish --max-cost-usd 5"
   },
   "devDependencies": {
+    "@happy-dom/global-registrator": "^21.0.4",
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/react": "^16.3.3",
     "@types/bun": "latest",
+    "@types/react": "^19.3.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
     "remark-cli": "^12.0.1",
     "remark-validate-links": "^13.1.0",
     "typescript-docs-verifier": "^3.0.2"
   },
   "peerDependencies": {
+    "react": ">=19",
     "typescript": "^5.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
   }
 }

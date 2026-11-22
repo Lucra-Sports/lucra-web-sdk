@@ -48,6 +48,7 @@ function writeGlobals() {
         module: "ESNext",
         moduleResolution: "bundler",
         moduleDetection: "force", // snippets use top-level await
+        jsx: "react-jsx", // tsx blocks in the React docs
         strict: true,
         noEmit: true,
         skipLibCheck: true,

@@ -322,13 +322,19 @@ their calls are `LucraClient` calls.
 
 ## 8. React
 
+- **Use `lucra-web-sdk/react` in a React app.** Wrap the app in `<LucraProvider client={lucra}>`
+  and use `useLucra`, `useLucraAuth`, `useLucraPresentState`, `useLucraScreen`, and
+  `useMatchupWatch`. See [React (preview)](../../3.1_headless_react.md). The
+  `useSyncExternalStore` and `signal` bullets below are for apps that do not use it.
 - **Read auth with `useSyncExternalStore`.** For a client created at module scope, define these
   at module scope too:
-  `const subscribeAuth = (onChange: () => void) => lucra.auth.subscribe(onChange);` and
-  `const getAuth = () => lucra.auth.getState();`. Then call
-  `useSyncExternalStore(subscribeAuth, getAuth, getAuth)`, where the third argument serves server
-  rendering and hydration. Keep the wrappers: `subscribe` and `getState` are typed as methods,
-  so the `@typescript-eslint/unbound-method` lint rule flags passing them bare.
+  `const subscribeAuth = (onChange: () => void) => lucra.auth.subscribe(onChange);`,
+  `const getAuth = () => lucra.auth.getState();`, and
+  `const serverAuth = { status: "loading", user: null } as const;`. Then call
+  `useSyncExternalStore(subscribeAuth, getAuth, () => serverAuth)`: the server renders
+  `"loading"`, so hydration must render it too, or React reports a mismatch. Keep the wrappers:
+  `subscribe` and `getState` are typed as methods, so the `@typescript-eslint/unbound-method`
+  lint rule flags passing them bare.
 - **Read the screen on show the same way**, with module scope wrappers around
   `lucra.present.subscribe` and `lucra.present.getState`. React to it, for example pause your own
   media, while `screen` is not `null`.
