@@ -5,6 +5,7 @@
 ### Added
 
 - **Preview:** `lucra.minigames.list()` on the headless client lists the tenant's minigames, each with the modes and amounts `lucra.present.minigame()` accepts for it. It works logged out. New message types `minigamesRequest` and `minigamesResponse`. New types `LucraMinigame` and `LucraMinigameOption`. Where Lucra does not answer it yet, it rejects with `TIMEOUT`. See [Minigames](3.0_headless_client.md#minigames).
+- **Preview:** `lucra-web-sdk/react` connects the headless client to React: `LucraProvider`, `useLucra`, `useLucraAuth`, `useLucraPresentState`, `useLucraScreen`, and `useMatchupWatch`. React 18 or later is an optional peer dependency. With npm, an app that has React 17 or older installed now gets a peer dependency conflict when it installs the SDK. See [React](3.1_headless_react.md).
 
 ### Changed
 
