@@ -2,6 +2,10 @@
 
 ## [v1.23.0]
 
+### Added
+
+- **Preview:** `lucra.minigames.list()` on the headless client lists the tenant's minigames, each with the modes and amounts `lucra.present.minigame()` accepts for it. It works logged out. New message types `minigamesRequest` and `minigamesResponse`. New types `LucraMinigame` and `LucraMinigameOption`. Where Lucra does not answer it yet, it rejects with `TIMEOUT`. See [Minigames](3.0_headless_client.md#minigames).
+
 ### Changed
 
 - **Preview:** the headless client now tells Lucra it is the headless client, with `sdkClient=headless` on every URL it loads. Lucra uses it to give the screens it presents their own exit, and to report closing KYC or demographics as dismissed. `LucraClient` sends nothing and is unchanged.

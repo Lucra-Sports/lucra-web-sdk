@@ -1,4 +1,4 @@
-import { type LucraAchievement, type LucraAutoJoinedTournamentsBody, type LucraCancelRecreationalGameResult, type LucraCreateRecreationalGameInput, type LucraJoinTournamentResponse, type LucraMatchup, type LucraMatchupDetails, type LucraPresentMinigameBody, type LucraPresentMinigameResponse, type LucraRecreationalGameResult, type LucraSearchMatchupsByMetadataInput, type LucraTournament, type LucraTournamentDetail, type LucraUserMatchups, type LucraUserMatchupsInput, type LucraUserMatchupsByTypeStatusInput, type LucraUserMatchupsPage, type LucraUserTournamentReward } from "../types/types.js";
+import { type LucraAchievement, type LucraAutoJoinedTournamentsBody, type LucraCancelRecreationalGameResult, type LucraCreateRecreationalGameInput, type LucraJoinTournamentResponse, type LucraMatchup, type LucraMatchupDetails, type LucraMinigame, type LucraPresentMinigameBody, type LucraPresentMinigameResponse, type LucraRecreationalGameResult, type LucraSearchMatchupsByMetadataInput, type LucraTournament, type LucraTournamentDetail, type LucraUserMatchups, type LucraUserMatchupsInput, type LucraUserMatchupsByTypeStatusInput, type LucraUserMatchupsPage, type LucraUserTournamentReward } from "../types/types.js";
 import type { Auth } from "./auth.js";
 import type { Session } from "./session.js";
 import type { LucraUpdateUserInput } from "./types.js";
@@ -43,6 +43,9 @@ export type Api = {
             claimed?: boolean;
         }): Promise<LucraUserTournamentReward[]>;
         claim(rewardId: string): Promise<void>;
+    };
+    minigames: {
+        list(): Promise<LucraMinigame[]>;
     };
     whenWriteSettled(): Promise<void>;
     startMinigame(body: LucraPresentMinigameBody): Promise<LucraPresentMinigameResponse>;

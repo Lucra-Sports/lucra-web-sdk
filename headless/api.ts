@@ -15,6 +15,8 @@ import {
   type LucraMarkAchievementViewedResult,
   type LucraMatchup,
   type LucraMatchupDetails,
+  type LucraMinigame,
+  type LucraMinigamesResponse,
   type LucraPresentMinigameBody,
   type LucraPresentMinigameResponse,
   type LucraRecreationalGameResult,
@@ -139,6 +141,10 @@ const SPECS = {
     MessageTypeToLucraClient.userTournamentRewardsRequest,
     LucraClientMessageType.userTournamentRewardsResponse
   ),
+  minigamesList: read<LucraMinigamesResponse>(
+    MessageTypeToLucraClient.minigamesRequest,
+    LucraClientMessageType.minigamesResponse
+  ),
   // For these two a plain API_ERROR may mean the claim still went through.
   achievementsClaim: write<LucraClaimAchievementResult>(
     MessageTypeToLucraClient.claimAchievementRequest,
@@ -219,6 +225,9 @@ export type Api = {
       claimed?: boolean;
     }): Promise<LucraUserTournamentReward[]>;
     claim(rewardId: string): Promise<void>;
+  };
+  minigames: {
+    list(): Promise<LucraMinigame[]>;
   };
   // Resolves when no write is pending. Never rejects.
   whenWriteSettled(): Promise<void>;
@@ -429,6 +438,10 @@ export function createApi(options: {
         ).then((r) => r.rewards),
       claim: (rewardId) =>
         sendWrite(SPECS.rewardsClaim, { rewardId } satisfies LucraClaimTournamentRewardBody).then(() => undefined),
+    },
+    minigames: {
+      list: () =>
+        send(SPECS.minigamesList, null, false).then((r) => r.minigames),
     },
     whenWriteSettled: () => writeSettled ?? Promise.resolve(),
     startMinigame: (body) => sendWrite(SPECS.presentMinigame, body, true),
