@@ -17,8 +17,12 @@
         "typescript-docs-verifier": "^3.0.2",
       },
       "peerDependencies": {
+        "react": ">=19",
         "typescript": "^5.0.0",
       },
+      "optionalPeers": [
+        "react",
+      ],
     },
   },
   "packages": {

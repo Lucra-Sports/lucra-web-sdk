@@ -43,7 +43,7 @@
     "typescript-docs-verifier": "^3.0.2"
   },
   "peerDependencies": {
-    "react": ">=18",
+    "react": ">=19",
     "typescript": "^5.0.0"
   },
   "peerDependenciesMeta": {

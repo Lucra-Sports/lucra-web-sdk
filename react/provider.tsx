@@ -1,4 +1,4 @@
-import { createContext, useContext, type ReactElement, type ReactNode } from "react";
+import { createContext, useContext, type ReactNode } from "react";
 import type { LucraHeadlessClient } from "../headless/index.js";
 
 const LucraContext = createContext<LucraHeadlessClient | null>(null);
@@ -11,8 +11,8 @@ export function LucraProvider({
 }: {
   client: LucraHeadlessClient;
   children?: ReactNode;
-}): ReactElement {
-  return <LucraContext.Provider value={client}>{children}</LucraContext.Provider>;
+}) {
+  return <LucraContext value={client}>{children}</LucraContext>;
 }
 
 // The client from the nearest LucraProvider.

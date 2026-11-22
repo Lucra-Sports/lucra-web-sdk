@@ -4,7 +4,7 @@ const LucraContext = createContext(null);
 // Gives the hooks below it the client, from createLucraClient. The provider
 // never creates or destroys it.
 export function LucraProvider({ client, children, }) {
-    return _jsx(LucraContext.Provider, { value: client, children: children });
+    return _jsx(LucraContext, { value: client, children: children });
 }
 // The client from the nearest LucraProvider.
 export function useLucra() {
