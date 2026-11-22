@@ -1,2 +1,2 @@
 // Rewritten by .github/workflows/create-release-pr.yml on each release. Never edit by hand.
-export const SDK_VERSION = "1.22.0";
+export const SDK_VERSION = "1.23.0";
