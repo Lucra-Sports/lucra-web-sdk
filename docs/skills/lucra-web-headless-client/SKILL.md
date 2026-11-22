@@ -326,6 +326,9 @@ their calls are `LucraClient` calls.
   and use `useLucra`, `useLucraAuth`, `useLucraPresentState`, `useLucraScreen`, and
   `useMatchupWatch`. See [React (preview)](../../3.1_headless_react.md). The
   `useSyncExternalStore` and `signal` bullets below are for apps that do not use it.
+- **Feed your data library from `useMatchupWatch`'s `onUpdate`**, writing each update into the
+  cache the page reads. No refetch is needed after `accept` or `cancel` while the watch is live:
+  they arrive as updates too.
 - **Read auth with `useSyncExternalStore`.** For a client created at module scope, define these
   at module scope too:
   `const subscribeAuth = (onChange: () => void) => lucra.auth.subscribe(onChange);`,

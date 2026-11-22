@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## [v1.24.0]
+
+### Added
+
+- **Preview:** `useMatchupWatch(matchupId, { onUpdate, onError })` calls `onUpdate` with each update, the first included, and `onError` when the watch fails, so an app can write the details into its own data library as they arrive. New functions on each render do not start the watch again. Calls without options work as before. New type `LucraMatchupWatchOptions`. See [useMatchupWatch](3.1_headless_react.md#usematchupwatch).
+
 ## [v1.23.0]
 
 ### Added
