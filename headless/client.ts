@@ -38,6 +38,7 @@ export type LucraHeadlessClient = {
   };
   achievements: Api["achievements"];
   rewards: Api["rewards"];
+  minigames: Api["minigames"];
   present: Omit<Present, "destroy">;
   on<K extends keyof LucraHeadlessEventMap>(
     event: K,
@@ -116,6 +117,7 @@ export function createClient(
     matchups: { ...api.matchups, watch: watch.watch },
     achievements: api.achievements,
     rewards: api.rewards,
+    minigames: api.minigames,
     present: {
       login: present.login,
       addFunds: present.addFunds,

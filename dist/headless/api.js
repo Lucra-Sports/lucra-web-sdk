@@ -26,6 +26,7 @@ const SPECS = {
     // for or block a write, and it is not refused while a Lucra screen shows.
     authUpdateUser: read(MessageTypeToLucraClient.updateUserRequest, LucraClientMessageType.updateUserResponse),
     rewardsList: read(MessageTypeToLucraClient.userTournamentRewardsRequest, LucraClientMessageType.userTournamentRewardsResponse),
+    minigamesList: read(MessageTypeToLucraClient.minigamesRequest, LucraClientMessageType.minigamesResponse),
     // For these two a plain API_ERROR may mean the claim still went through.
     achievementsClaim: write(MessageTypeToLucraClient.claimAchievementRequest, LucraClientMessageType.claimAchievementResponse, true),
     rewardsClaim: write(MessageTypeToLucraClient.claimTournamentRewardRequest, LucraClientMessageType.claimTournamentRewardResponse, true),
@@ -191,6 +192,9 @@ export function createApi(options) {
                 claimed: filters?.claimed,
             }, true).then((r) => r.rewards),
             claim: (rewardId) => sendWrite(SPECS.rewardsClaim, { rewardId }).then(() => undefined),
+        },
+        minigames: {
+            list: () => send(SPECS.minigamesList, null, false).then((r) => r.minigames),
         },
         whenWriteSettled: () => writeSettled ?? Promise.resolve(),
         startMinigame: (body) => sendWrite(SPECS.presentMinigame, body, true),

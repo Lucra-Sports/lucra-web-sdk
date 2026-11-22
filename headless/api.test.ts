@@ -80,13 +80,16 @@ describe("createApi: reads", () => {
     await connectLoggedOut(frame);
     const matchup = api.matchups.get("m1");
     const details = api.matchups.getDetails("m1");
+    const minigames = api.minigames.list();
     await tick();
     expect(frame.lastPosted("matchupRequest")?.body).toEqual({ matchupId: "m1" });
     expect(frame.lastPosted("matchupDetailsRequest")?.body).toEqual({ matchupId: "m1" });
     frame.answer("matchupRequest", "matchupResponse", { id: "m1" });
     frame.answer("matchupDetailsRequest", "matchupDetailsResponse", { matchup: { id: "m1" } });
+    frame.answer("minigamesRequest", "minigamesResponse", { minigames: [] });
     expect<unknown>(await matchup).toEqual({ id: "m1" });
     expect<unknown>(await details).toEqual({ matchup: { id: "m1" } });
+    expect(await minigames).toEqual([]);
   });
 
   it("rejects reads that need login with NOT_LOGGED_IN and sends nothing", async () => {
@@ -153,6 +156,31 @@ describe("createApi: reads", () => {
     expect<unknown>(await get).toEqual({ title: "Cup" });
     expect<unknown>(await board).toEqual({ title: "Cup", leaderboard: { rows: [] } });
     expect<unknown>(await achievements).toEqual([{ id: "a1" }]);
+  });
+
+  it("lists minigames, sending a null body and returning the array", async () => {
+    const { frame, api } = setup();
+    await connectLoggedIn(frame);
+    const list = api.minigames.list();
+    await tick();
+    expect(frame.lastPosted("minigamesRequest")?.body).toBeNull();
+    const minigames = [
+      {
+        gameId: "game-1",
+        name: "Runaway",
+        description: null,
+        imageUrl: "https://example.com/runaway.png",
+        videoUrl: null,
+        options: [
+          { mode: "practice", amount: null, groupSize: null },
+          { mode: "1v1", amount: 5, groupSize: null },
+          { mode: "free_for_all", amount: 10, groupSize: 4 },
+          { mode: "tournament", amount: null, groupSize: null },
+        ],
+      },
+    ];
+    frame.answer("minigamesRequest", "minigamesResponse", { minigames });
+    expect<unknown>(await list).toEqual(minigames);
   });
 
   it("runs reads side by side, even during a write", async () => {

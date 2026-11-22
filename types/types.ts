@@ -57,6 +57,7 @@ export enum LucraClientMessageType {
   updateUserResponse = "updateUserResponse",
   userMatchupsResponse = "userMatchupsResponse",
   userMatchupsByTypeStatusResponse = "userMatchupsByTypeStatusResponse",
+  minigamesResponse = "minigamesResponse",
   presentMinigameResponse = "presentMinigameResponse",
   minigameClosed = "minigameClosed",
 }
@@ -90,6 +91,7 @@ export enum MessageTypeToLucraClient {
   updateUserRequest = "updateUserRequest",
   userMatchupsRequest = "userMatchupsRequest",
   userMatchupsByTypeStatusRequest = "userMatchupsByTypeStatusRequest",
+  minigamesRequest = "minigamesRequest",
   sdkDiagnostic = "sdkDiagnostic",
   presentMinigameRequest = "presentMinigameRequest",
 }
@@ -922,6 +924,31 @@ export type LucraMinigamesTriggerInput = {
 };
 
 export type LucraMinigameMode = LucraMinigamesTriggerInput["game_mode"];
+
+// One way to start a minigame: a mode, with the amount for "1v1" and "free_for_all".
+export type LucraMinigameOption = {
+  mode: LucraMinigameMode;
+  // The stake to pass as `amount`. null for "practice" and "tournament".
+  amount: number | null;
+  // How many players a "free_for_all" battle has. null for the other modes.
+  groupSize: number | null;
+};
+
+// A minigame the tenant offers. It is the same for every user.
+export type LucraMinigame = {
+  gameId: string;
+  name: string;
+  description: string | null;
+  imageUrl: string | null;
+  videoUrl: string | null;
+  // What lucra.present.minigame() accepts for this game, in the order Lucra shows
+  // them: practice first, then each mode with its amounts from lowest to highest.
+  options: LucraMinigameOption[];
+};
+
+export type LucraMinigamesResponse = {
+  minigames: LucraMinigame[];
+};
 
 // Asks Lucra to start a minigame session and show the game on its own page.
 export type LucraPresentMinigameBody = {
