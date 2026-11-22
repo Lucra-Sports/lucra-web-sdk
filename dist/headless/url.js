@@ -54,6 +54,7 @@ export function buildUrl(context, path, params = {}) {
     url.searchParams.set("autoJoin", String(config.autoJoin ?? true));
     url.searchParams.set("parentUrl", parentOrigin);
     url.searchParams.set("sdkVersion", SDK_VERSION);
+    url.searchParams.set("sdkClient", "headless");
     return url.toString();
 }
 // The `pathname` of a navigate message: a path inside the Lucra app. The app

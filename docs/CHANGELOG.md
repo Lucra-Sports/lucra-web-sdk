@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## [v1.23.0]
+
+### Changed
+
+- **Preview:** the headless client now tells Lucra it is the headless client, with `sdkClient=headless` on every URL it loads. Lucra uses it to give the screens it presents their own exit, and to report closing KYC or demographics as dismissed. `LucraClient` sends nothing and is unchanged.
+
 ## [v1.22.0]
 
 ### Added

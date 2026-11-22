@@ -68,6 +68,7 @@ export function buildUrl(
   url.searchParams.set("autoJoin", String(config.autoJoin ?? true));
   url.searchParams.set("parentUrl", parentOrigin);
   url.searchParams.set("sdkVersion", SDK_VERSION);
+  url.searchParams.set("sdkClient", "headless");
   return url.toString();
 }
 
