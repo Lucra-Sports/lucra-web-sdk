@@ -58,6 +58,7 @@ describe("buildUrl", () => {
     expect(url.searchParams.get("autoJoin")).toBe("true");
     expect(url.searchParams.get("parentUrl")).toBe("https://host.example");
     expect(url.searchParams.get("sdkVersion")).toBe(SDK_VERSION);
+    expect(url.searchParams.get("sdkClient")).toBe("headless");
     expect(url.searchParams.has("locationId")).toBe(false);
     expect(url.searchParams.has("phoneNumber")).toBe(false);
   });
