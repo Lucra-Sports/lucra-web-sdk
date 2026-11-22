@@ -4,6 +4,7 @@ import type {
   LucraError,
   LucraLoginResult,
   LucraMatchupDetails,
+  LucraMatchupWatchHandlers,
   LucraPresentation,
   LucraPresentResult,
   LucraPresentState,
@@ -96,9 +97,20 @@ export type LucraMatchupWatchState = {
 
 const WAITING: LucraMatchupWatchState = { details: null, error: null };
 
+// The watch's handlers. They run after the hook's state changes.
+export type LucraMatchupWatchOptions = Partial<LucraMatchupWatchHandlers>;
+
 // Watches a matchup while the component is mounted.
-export function useMatchupWatch(matchupId: string): LucraMatchupWatchState {
+export function useMatchupWatch(
+  matchupId: string,
+  options: LucraMatchupWatchOptions = {}
+): LucraMatchupWatchState {
   const { matchups } = useLucra();
+  // The latest callbacks, so new functions on each render do not start the watch again.
+  const callbacks = useRef(options);
+  useEffect(() => {
+    callbacks.current = options;
+  });
   const store = useMemo(() => {
     let state = WAITING;
     return {
@@ -108,10 +120,12 @@ export function useMatchupWatch(matchupId: string): LucraMatchupWatchState {
           onUpdate(details) {
             state = { details, error: null };
             onChange();
+            callbacks.current.onUpdate?.(details);
           },
           onError(error) {
             state = { details: state.details, error };
             onChange();
+            callbacks.current.onError?.(error);
           },
         });
         return () => watch.stop();
