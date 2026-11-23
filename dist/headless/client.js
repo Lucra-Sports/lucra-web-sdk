@@ -17,6 +17,7 @@ const EVENTS = [
     "activeMatchupStarted",
     "tournamentJoined",
     "autoJoinedTournaments",
+    "claimReward",
 ];
 // Builds a client on top of the given frame. Tests call this with a fake frame.
 export function createClient(config, deps) {

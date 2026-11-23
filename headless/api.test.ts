@@ -443,6 +443,34 @@ describe("createApi: writes", () => {
     expect(await first).toEqual({ matchupId: "m1", matchup: null });
   });
 
+  it("sends a reward stake to Lucra unchanged", async () => {
+    const { frame, api } = setup();
+    await connectLoggedIn(frame);
+    const input = {
+      ...CREATE_INPUT,
+      atStake: {
+        type: "TENANT_REWARD" as const,
+        reward: {
+          rewardId: "r1",
+          title: "Free drink",
+          descriptor: "One drink",
+          iconUrl: "https://host.example/icon.png",
+          bannerIconUrl: "https://host.example/banner.png",
+          disclaimer: "",
+          metadata: { sku: "drink" },
+        },
+      },
+    };
+    const create = api.matchups.create(input);
+    await tick();
+    expect(frame.lastPosted("createRecreationalGameRequest")?.body).toEqual(input);
+    frame.answer("createRecreationalGameRequest", "createRecreationalGameResponse", {
+      matchupId: "m1",
+      matchup: null,
+    });
+    expect(await create).toEqual({ matchupId: "m1", matchup: null });
+  });
+
   it("frees the slot when a gate rejects the write", async () => {
     const { frame, api } = setup();
     await connectLoggedOut(frame);
