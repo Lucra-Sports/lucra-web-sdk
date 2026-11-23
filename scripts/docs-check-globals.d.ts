@@ -35,3 +35,6 @@ declare const lucra: import("lucra-web-sdk/headless").LucraHeadlessClient;
 
 // The integrator's router, which the React examples leave a route with.
 declare function navigate(to: string): void;
+
+// The integrator's TanStack Query client, which the React docs feed from a watch.
+declare const queryClient: { setQueryData(queryKey: readonly unknown[], data: unknown): unknown };

@@ -5,9 +5,10 @@ description: >
   from lucra-web-sdk/headless, uses its client (lucra.auth, lucra.tournaments, lucra.matchups,
   lucra.present, LucraError), or migrates LucraClient code to it. Covers the preview status,
   setup and config, how calls wait and fail, showing Lucra screens full screen, as a modal, or
-  as a sheet, Add Funds, Games You Play create, accept, and cancel, React usage, and
-  troubleshooting codes such as INVALID_CONFIG, CONNECTION_TIMEOUT, NOT_LOGGED_IN, IN_PROGRESS,
-  SCREEN_OPEN, POPUP_BLOCKED, and TIMEOUT. Not for LucraClient (LucraClient.initialize,
+  as a sheet, Add Funds, Games You Play create, accept, and cancel, and troubleshooting codes
+  such as INVALID_CONFIG, CONNECTION_TIMEOUT, NOT_LOGGED_IN, IN_PROGRESS, SCREEN_OPEN,
+  POPUP_BLOCKED, and TIMEOUT. A React app that uses lucra-web-sdk/react also loads
+  lucra-web-react. Not for LucraClient (LucraClient.initialize,
   client.open, client.ready, client.api.*): load lucra-web-starting-point or lucra-web-headless
   for that.
 ---
@@ -312,7 +313,8 @@ and `lucra.auth`, and have a human run login and Add Funds.
 - **Live updates:** `lucra.matchups.watch(matchupId, { onUpdate, onError })` returns `{ stop }`.
   It watches one matchup at a time: a watch on another matchup replaces it, and the old one gets
   `onError` with `CANCELLED`. Never call `watch()` once per card in a list: only the last one
-  stays live.
+  stays live. The user's own `accept` and `cancel` arrive as updates too, so no refetch is needed
+  while the watch is live.
 - Matchup data names other users, and `lucra.auth` holds the user's own personal details. Do not
   log either or send it to analytics.
 
@@ -322,10 +324,9 @@ their calls are `LucraClient` calls.
 
 ## 8. React
 
-- **Use `lucra-web-sdk/react` in a React app.** Wrap the app in `<LucraProvider client={lucra}>`
-  and use `useLucra`, `useLucraAuth`, `useLucraPresentState`, `useLucraScreen`, and
-  `useMatchupWatch`. See [React (preview)](../../3.1_headless_react.md). The
-  `useSyncExternalStore` and `signal` bullets below are for apps that do not use it.
+- **Use `lucra-web-sdk/react` in a React app, and load the skill `lucra-web-react` for it.** See
+  [React (preview)](../../3.1_headless_react.md). The `useSyncExternalStore` and `signal` bullets
+  below are for apps that do not use it.
 - **Read auth with `useSyncExternalStore`.** For a client created at module scope, define these
   at module scope too:
   `const subscribeAuth = (onChange: () => void) => lucra.auth.subscribe(onChange);`,

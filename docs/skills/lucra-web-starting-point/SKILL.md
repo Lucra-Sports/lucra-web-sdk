@@ -4,7 +4,8 @@ description: >
   Start here for any Lucra Web/JavaScript SDK integration task that uses LucraClient. For a new
   integration, use LucraClient unless the user asks for the preview headless client. For the
   preview headless client (createLucraClient from lucra-web-sdk/headless), load
-  lucra-web-headless-client instead. Covers setting up the SDK, initializing
+  lucra-web-headless-client instead, and lucra-web-react for its React wrapper
+  (lucra-web-sdk/react). Covers setting up the SDK, initializing
   LucraClient, logging users in, opening Lucra flows (profile, wallet, deposit, matchups,
   tournaments), listening to Lucra events, fetching data headlessly, or troubleshooting
   a web integration that won't initialize, won't log in, or silently does nothing. Routes you to
@@ -35,6 +36,7 @@ You are integrating Lucra's Web SDK (`lucra-web-sdk`): an iframe-embedding JavaS
 | You want to… | Go to |
 |---|---|
 | Use the preview headless client (`createLucraClient` from `lucra-web-sdk/headless`) | Load the skill `lucra-web-headless-client` and see [Headless client (preview)](../../3.0_headless_client.md). It is a separate client: it cannot share a page with `LucraClient`, and the rest of this skill does not apply to it |
+| Build a React app on the preview headless client with `lucra-web-sdk/react` | Load the skill `lucra-web-react` and see [React (preview)](../../3.1_headless_react.md). It needs React 19 or later. The rest of this skill does not apply to it either |
 | Install / project setup | [Project Setup](../../1.0_project_setup.md) |
 | Initialize the client | [Initialize LucraClient](../../1.2_initialize_client.md) |
 | Open Lucra screens (flows) | [Lucra Flows](../../1.3_lucraflows.md) |

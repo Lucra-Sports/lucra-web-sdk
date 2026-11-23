@@ -46,8 +46,13 @@ export function useLucraScreen(screen, options = {}) {
 }
 const WAITING = { details: null, error: null };
 // Watches a matchup while the component is mounted.
-export function useMatchupWatch(matchupId) {
+export function useMatchupWatch(matchupId, options = {}) {
     const { matchups } = useLucra();
+    // The latest callbacks, so new functions on each render do not start the watch again.
+    const callbacks = useRef(options);
+    useEffect(() => {
+        callbacks.current = options;
+    });
     const store = useMemo(() => {
         let state = WAITING;
         return {
@@ -57,10 +62,12 @@ export function useMatchupWatch(matchupId) {
                     onUpdate(details) {
                         state = { details, error: null };
                         onChange();
+                        callbacks.current.onUpdate?.(details);
                     },
                     onError(error) {
                         state = { details: state.details, error };
                         onChange();
+                        callbacks.current.onError?.(error);
                     },
                 });
                 return () => watch.stop();

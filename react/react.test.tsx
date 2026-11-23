@@ -8,6 +8,7 @@ import { renderToString } from "react-dom/server";
 import { createClient, type LucraHeadlessClient } from "../headless/client.ts";
 import { LucraErrorCode, type LucraError } from "../headless/errors.ts";
 import { createNullFrame } from "../headless/frame.ts";
+import * as headless from "../headless/index.ts";
 import type { LucraScreen } from "../headless/present.ts";
 import { createFakeFrame, type FakeFrame } from "../headless/testing.ts";
 import type { LucraPresentResult } from "../headless/types.ts";
@@ -84,15 +85,23 @@ afterAll(async () => {
 });
 
 describe("lucra-web-sdk/react exports", () => {
-  it("exports the provider and the hooks, and nothing internal", () => {
-    expect(Object.keys(react).sort()).toEqual([
-      "LucraProvider",
-      "useLucra",
-      "useLucraAuth",
-      "useLucraPresentState",
-      "useLucraScreen",
-      "useMatchupWatch",
-    ]);
+  it("exports everything from lucra-web-sdk/headless, the provider and the hooks, and nothing internal", () => {
+    expect(Object.keys(react).sort()).toEqual(
+      [
+        ...Object.keys(headless),
+        "LucraProvider",
+        "useLucra",
+        "useLucraAuth",
+        "useLucraPresentState",
+        "useLucraScreen",
+        "useMatchupWatch",
+      ].sort()
+    );
+  });
+
+  it("shares the client and LucraError with lucra-web-sdk/headless", () => {
+    expect(react.createLucraClient).toBe(headless.createLucraClient);
+    expect(react.LucraError).toBe(headless.LucraError);
   });
 });
 
@@ -287,10 +296,11 @@ describe("useMatchupWatch", () => {
     expect(result.current).toEqual({ details: details("m1", "CONFIRMED"), error: null });
   });
 
-  it("sets error and keeps the last details when the watch fails", async () => {
+  it("sets error, keeps the last details, and calls onError when the watch fails", async () => {
     const { frame, client, wrapper } = setup();
     frame.deliver("initialized", { success: true });
-    const { result } = renderHook(() => useMatchupWatch("m1"), { wrapper });
+    const onError = mock((_error: LucraError) => {});
+    const { result } = renderHook(() => useMatchupWatch("m1", { onError }), { wrapper });
     await settle();
     answerSubscribe(frame, "m1");
     await settle();
@@ -300,18 +310,23 @@ describe("useMatchupWatch", () => {
     });
     expect(result.current.details).toEqual(details("m1"));
     expect(result.current.error?.code).toBe(LucraErrorCode.CANCELLED);
+    expect(onError.mock.calls).toEqual([[result.current.error!]]);
   });
 
-  it("stops the watch on unmount", async () => {
-    const { frame, wrapper } = setup();
+  it("stops the watch on unmount without calling onError", async () => {
+    const { frame, client, wrapper } = setup();
     frame.deliver("initialized", { success: true });
-    const { unmount } = renderHook(() => useMatchupWatch("m1"), { wrapper });
+    const onError = mock(() => {});
+    const { unmount } = renderHook(() => useMatchupWatch("m1", { onError }), { wrapper });
     await settle();
     answerSubscribe(frame, "m1");
     await settle();
     expect(frame.lastPosted("cancelMatchupDetailsSubscription")).toBeUndefined();
     unmount();
     expect(frame.lastPosted("cancelMatchupDetailsSubscription")).toBeDefined();
+    // This would cancel the watch had it still been live.
+    client.matchups.watch("m2", { onUpdate() {} });
+    expect(onError).not.toHaveBeenCalled();
   });
 
   it("starts over with null details when the matchup id changes", async () => {
@@ -332,6 +347,28 @@ describe("useMatchupWatch", () => {
     answerSubscribe(frame, "m2");
     await settle();
     expect(result.current).toEqual({ details: details("m2"), error: null });
+  });
+
+  it("calls the latest onUpdate without starting the watch again", async () => {
+    const { frame, wrapper } = setup();
+    frame.deliver("initialized", { success: true });
+    const first = mock((_details: unknown) => {});
+    const latest = mock((_details: unknown) => {});
+    const { rerender } = renderHook(({ onUpdate }) => useMatchupWatch("m1", { onUpdate }), {
+      wrapper,
+      initialProps: { onUpdate: first },
+    });
+    await settle();
+    answerSubscribe(frame, "m1");
+    await settle();
+    rerender({ onUpdate: latest });
+    await settle();
+    act(() => frame.deliver("matchupDetailsUpdated", details("m1", "CONFIRMED")));
+    expect(
+      frame.posted.filter(({ type }) => type === "subscribeMatchupDetailsRequest")
+    ).toHaveLength(1);
+    expect(first.mock.calls).toEqual([[details("m1")]]);
+    expect(latest.mock.calls).toEqual([[details("m1", "CONFIRMED")]]);
   });
 });
 

@@ -1,4 +1,4 @@
-import type { LucraAuthState, LucraError, LucraLoginResult, LucraMatchupDetails, LucraPresentation, LucraPresentResult, LucraPresentState, LucraScreen } from "../headless/index.js";
+import type { LucraAuthState, LucraError, LucraLoginResult, LucraMatchupDetails, LucraMatchupWatchHandlers, LucraPresentation, LucraPresentResult, LucraPresentState, LucraScreen } from "../headless/index.js";
 export declare function useLucraAuth(): LucraAuthState;
 export declare function useLucraPresentState(): LucraPresentState;
 export type LucraScreenOptions<TResult> = {
@@ -15,4 +15,5 @@ export type LucraMatchupWatchState = {
     readonly details: LucraMatchupDetails | null;
     readonly error: LucraError | null;
 };
-export declare function useMatchupWatch(matchupId: string): LucraMatchupWatchState;
+export type LucraMatchupWatchOptions = Partial<LucraMatchupWatchHandlers>;
+export declare function useMatchupWatch(matchupId: string, options?: LucraMatchupWatchOptions): LucraMatchupWatchState;
