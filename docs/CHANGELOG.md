@@ -6,6 +6,7 @@
 
 - **Preview:** `useMatchupWatch(matchupId, { onUpdate, onError })` calls `onUpdate` with each update, the first included, and `onError` when the watch fails, so an app can write the details into its own data library as they arrive. New functions on each render do not start the watch again. Calls without options work as before. New type `LucraMatchupWatchOptions`. See [useMatchupWatch](3.1_headless_react.md#usematchupwatch).
 - **Preview:** `lucra-web-sdk/react` also exports everything from `lucra-web-sdk/headless`, so a React app imports `createLucraClient`, `isLucraError`, and the types from the same place as the hooks. Both entry points share one client and one `LucraError`. `lucra-web-sdk/headless` is unchanged, and React Server Components code keeps importing it. See [React](3.1_headless_react.md#setup).
+- **Preview:** a new agent skill, `lucra-web-react`, covers React apps on `lucra-web-sdk/react`. The starting point and headless client skills route to it. See [Agent Skills](0.0_README.md#agent-skills).
 ## [v1.23.0]
 
 ### Added
