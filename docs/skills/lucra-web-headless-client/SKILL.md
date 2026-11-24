@@ -232,9 +232,12 @@ Every code: [Errors](../../3.0_headless_client.md#errors).
 - `login({ phoneNumber, signal, presentation })` fills in the form. `phoneNumber` must be exactly 10 digits:
   omit it when you have none, since `""` rejects with `INVALID_ARGUMENT`. That error's `message`,
   "The phone number must be 10 digits", is safe to show next to a number the user typed.
-- Showing the login screen restarts Lucra. Calls still waiting follow the restart rule in
-  Errors above. If Lucra cannot start again while any screen shows, the screen closes and
-  rejects with `CONNECTION_FAILED` or `CONNECTION_TIMEOUT`. A game closes on any restart, with
+- `login()` restarts Lucra at its login page, and its screen shows once Lucra has started
+  there. Nothing shows while the page loads, so keep the button disabled until `login()`
+  settles: a second call reloads the page again. Calls still waiting follow the restart rule in
+  Errors above. A login page that cannot load rejects with `CONNECTION_FAILED` or
+  `CONNECTION_TIMEOUT` without showing. If Lucra cannot start again while any screen shows, the
+  screen closes and rejects with `CONNECTION_FAILED`. A game closes on any restart, with
   `"restarted"`.
 - **Events:** `lucra.on(event, listener)` reports what the user did inside a Lucra screen, for
   example `matchupCreated`. It never fires for your own calls: the resolved promise is your
