@@ -238,9 +238,9 @@ Every code: [Errors](../../3.0_headless_client.md#errors).
   `"restarted"`.
 - **Events:** `lucra.on(event, listener)` reports what the user did inside a Lucra screen, for
   example `matchupCreated`. It never fires for your own calls: the resolved promise is your
-  signal. `claimReward` (`{ reward }`) means the user tapped Redeem on a reward they won. The
-  reward is the tenant's, so how the app gives it, matches it to a win, and handles a repeat is
-  up to the app.
+  signal. `claimReward` (`{ reward }`) means the user tapped Redeem on a reward they won.
+  `reward` is the one the matchup was created with, `rewardId` included. The reward is the
+  tenant's, so how the app gives it, matches it to a win, and handles a repeat is up to the app.
 
 **Checkpoint:** `lucra.present.profile()` shows Lucra over your page, and
 `lucra.present.dismiss()` resolves it `{ status: "dismissed", reason: "dismissed" }`. Lucra's screens run on Lucra's own site, so an
