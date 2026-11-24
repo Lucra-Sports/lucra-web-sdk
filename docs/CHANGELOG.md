@@ -4,7 +4,7 @@
 
 ### Added
 
-- **Preview:** Lucra screens can show as a bottom sheet, `presentation: "bottomSheet"`: a panel anchored to the bottom edge at every width, up to 430px wide, as tall as the height Lucra reports for the screen, and never closer than 96px to the top. Screens Lucra has not laid out for a bottom sheet fill that maximum height, as does any screen whose height does not arrive within a second. Set it on the client or pass it to one `lucra.present` call, like the other presentations. `LucraPresentation` has the new value. New message types `presentation`, which the SDK sends each time a screen opens and again after Lucra restarts, and `contentHeight`, which Lucra sends while a screen shows as a bottom sheet. New types `LucraPresentationBody` and `LucraContentHeightBody`. See [As a modal or a sheet](3.0_headless_client.md#as-a-modal-or-a-sheet).
+- **Preview:** Lucra screens can show as a bottom sheet, `presentation: "bottomSheet"`: a panel anchored to the bottom edge at every width, up to 430px wide, as tall as the height Lucra reports for the screen, and never closer than 96px to the top. If no height arrives within a second, it shows at that maximum, and a later height still resizes it. Set it on the client or pass it to one `lucra.present` call, like the other presentations. `LucraPresentation` has the new value. New message types `presentation`, which the SDK sends each time a screen opens, before a game starts, and again after Lucra restarts, and `contentHeight`, which Lucra sends while a screen shows as a bottom sheet. New types `LucraPresentationBody` and `LucraContentHeightBody`. See [As a modal or a sheet](3.0_headless_client.md#as-a-modal-or-a-sheet).
 
 ## [v1.26.0]
 

@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, mock, spyOn } from "bun:test";
 import { createClient, createLucraClient } from "./client.ts";
 import { LucraError } from "./errors.ts";
+import { PRESENTATIONS, PRESENTATION_HINT } from "./frame.ts";
 import { createFakeFrame, type FakeFrame } from "./testing.ts";
 
 const config = { apiKey: "key-1", tenantId: "test-tenant", env: "sandbox" as const };
@@ -482,34 +483,22 @@ describe("createLucraClient", () => {
       for (const presentation of ["popup", null]) {
         const error = thrown(() => createLucraClient({ ...config, presentation } as never));
         expect(error.code).toBe("INVALID_CONFIG");
-        expect(error.hint).toBe(
-          'presentation must be "fullScreen", "modal", "sheet", or "bottomSheet".'
-        );
+        expect(error.hint).toBe(PRESENTATION_HINT);
       }
       // Nothing was remembered, so a good config still makes a client.
       createLucraClient(config).destroy();
     });
 
     it("returns the same client for the same presentation, and throws for another", () => {
-      const first = createLucraClient({ ...config, presentation: "sheet" });
-      expect(createLucraClient({ ...config, presentation: "sheet" })).toBe(first);
-      for (const other of [
-        config,
-        { ...config, presentation: "fullScreen" as const },
-        { ...config, presentation: "modal" as const },
-      ]) {
-        expect(thrown(() => createLucraClient(other)).code).toBe("INVALID_CONFIG");
+      for (const presentation of ["sheet", "bottomSheet"] as const) {
+        const first = createLucraClient({ ...config, presentation });
+        expect(createLucraClient({ ...config, presentation })).toBe(first);
+        const others = PRESENTATIONS.filter((other) => other !== presentation);
+        for (const other of [config, ...others.map((value) => ({ ...config, presentation: value }))]) {
+          expect(thrown(() => createLucraClient(other)).code).toBe("INVALID_CONFIG");
+        }
+        first.destroy();
       }
-      first.destroy();
-    });
-
-    it("takes bottomSheet as the client's presentation", () => {
-      const first = createLucraClient({ ...config, presentation: "bottomSheet" });
-      expect(createLucraClient({ ...config, presentation: "bottomSheet" })).toBe(first);
-      expect(thrown(() => createLucraClient({ ...config, presentation: "sheet" })).code).toBe(
-        "INVALID_CONFIG"
-      );
-      first.destroy();
     });
 
     it("counts an omitted presentation as fullScreen", () => {

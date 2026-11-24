@@ -468,7 +468,7 @@ describe("createDomFrame: modal and sheet", () => {
       "padding-bottom:env(safe-area-inset-bottom);border-radius:24px 24px 0 0;";
     const WAITING = {
       host: BOTTOM_SHEET_HOST,
-      iframe: BOTTOM_SHEET_PANEL + "height:calc(100% - 96px);visibility:hidden;",
+      iframe: BOTTOM_SHEET_PANEL + "height:calc(100% - 96px);opacity:0;pointer-events:none;",
     };
     const FALLBACK = {
       host: BOTTOM_SHEET_HOST,
@@ -486,7 +486,8 @@ describe("createDomFrame: modal and sheet", () => {
       return frame;
     };
 
-    it("waits hidden at its real width, then fits each height Lucra sends", () => {
+    it("focuses at once, waits unseen at its real size, then fits each height Lucra sends", () => {
+      dom.media.matches = false;
       const overlay = sheetFrame().openOverlay("bottomSheet");
       expect(styles()).toEqual(WAITING);
       expect(host().attributes).toEqual({
@@ -494,22 +495,13 @@ describe("createDomFrame: modal and sheet", () => {
         "aria-modal": "true",
         "aria-label": "Lucra",
       });
-      // A hidden frame cannot take focus.
-      expect(iframe().focus).toHaveBeenCalledTimes(0);
+      expect(iframe().focus).toHaveBeenCalledTimes(1);
       overlay.setContentHeight(412);
       expect(styles()).toEqual(sized(412));
-      expect(iframe().focus).toHaveBeenCalledTimes(1);
       overlay.setContentHeight(500.5);
       expect(styles()).toEqual(sized(500.5));
       expect(iframe().focus).toHaveBeenCalledTimes(1);
-    });
-
-    it("is the same at every width and never asks for it", () => {
-      dom.media.matches = false;
-      const overlay = sheetFrame().openOverlay("bottomSheet");
-      expect(styles()).toEqual(WAITING);
-      overlay.setContentHeight(412);
-      expect(styles()).toEqual(sized(412));
+      // The same at every width.
       expect(dom.matchMedia).toHaveBeenCalledTimes(0);
     });
 
@@ -517,10 +509,8 @@ describe("createDomFrame: modal and sheet", () => {
       const overlay = sheetFrame().openOverlay("bottomSheet");
       await afterFallback();
       expect(styles()).toEqual(FALLBACK);
-      expect(iframe().focus).toHaveBeenCalledTimes(1);
       overlay.setContentHeight(300);
       expect(styles()).toEqual(sized(300));
-      expect(iframe().focus).toHaveBeenCalledTimes(1);
     });
 
     it("keeps Lucra's height once one arrives before the wait ends", async () => {
@@ -528,7 +518,6 @@ describe("createDomFrame: modal and sheet", () => {
       overlay.setContentHeight(412);
       await afterFallback();
       expect(styles()).toEqual(sized(412));
-      expect(iframe().focus).toHaveBeenCalledTimes(1);
     });
 
     it("hides on close and gives focus back, and a late height or wait does nothing", async () => {
@@ -540,7 +529,6 @@ describe("createDomFrame: modal and sheet", () => {
       overlay.setContentHeight(412);
       await afterFallback();
       expect(styles()).toEqual(HIDDEN);
-      expect(iframe().focus).toHaveBeenCalledTimes(0);
     });
 
     it("stops waiting when another overlay replaces it or the frame is destroyed", async () => {
@@ -556,7 +544,25 @@ describe("createDomFrame: modal and sheet", () => {
       const secondFrame = dom.body.children[1].children[0];
       second.destroy();
       await afterFallback();
-      expect(secondFrame.focus).toHaveBeenCalledTimes(0);
+      expect(secondFrame.style.cssText).toBe(FULL_SCREEN.iframe);
+    });
+
+    it("a bottom sheet that replaces a waiting one waits its own full time", async () => {
+      const waitMs = 200;
+      const frame = createDomFrame(ORIGIN, waitMs);
+      frame.mount(URL_1);
+      const first = frame.openOverlay("bottomSheet");
+      await sleep(waitMs * 0.6);
+      const second = frame.openOverlay("bottomSheet");
+      // Past the first one's wait, before the second one's.
+      await sleep(waitMs * 0.6);
+      expect(styles()).toEqual(WAITING);
+      first.setContentHeight(412);
+      expect(styles()).toEqual(WAITING);
+      await sleep(waitMs * 0.8);
+      expect(styles()).toEqual(FALLBACK);
+      second.setContentHeight(412);
+      expect(styles()).toEqual(sized(412));
     });
 
     it("other presentations ignore a height", () => {

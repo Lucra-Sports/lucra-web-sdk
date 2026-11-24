@@ -104,10 +104,10 @@ export type LucraDeepLinkResponse = {
 export type LucraNavigateRequest = {
   pathname: string;
 };
-// Sent by the headless client each time a screen opens, and again after Lucra
-// restarts while it shows: how the screen shows, so Lucra can lay it out for
-// it. As a bottom sheet, Lucra sends contentHeight. The values of the headless
-// LucraPresentation.
+// Sent by the headless client each time a screen opens, before a game starts,
+// and again after Lucra restarts while a screen shows: how the screen shows, so
+// Lucra can lay it out for it. As a bottom sheet, Lucra sends contentHeight.
+// The headless LucraPresentation is this union.
 export type LucraPresentationBody = {
   presentation: "fullScreen" | "modal" | "sheet" | "bottomSheet";
 };

@@ -204,10 +204,9 @@ Every code: [Errors](../../3.0_headless_client.md#errors).
   with `"sheet"` a panel up to 430px wide at the right edge. Under 640px wide a modal covers the
   page and a sheet comes up from the bottom, leaving 96px of the page above it. With
   `"bottomSheet"` it is a panel up to 430px wide at the bottom edge at every width, as tall as
-  the height Lucra reports for the screen and never closer than 96px to the top. Screens Lucra
-  has not laid out for it fill that maximum, as does any screen whose height does not arrive
-  within a second. The dimmed page takes no clicks, and neither a click on it nor Escape closes
-  the screen. Every screen but `addFunds()` takes `{ presentation }` for that screen only; the
+  the height Lucra reports for the screen and never closer than 96px to the top. If no height
+  arrives within a second, it shows at that maximum, and a later height still resizes it. The
+  dimmed page takes no clicks, and neither a click on it nor Escape closes the screen. Every screen but `addFunds()` takes `{ presentation }` for that screen only; the
   client's is the default, also for screens `withRemediation()` shows. Lucra never shows inside
   your own element. It is hidden before a screen shows and after it ends. See
   [As a modal or a sheet](../../3.0_headless_client.md#as-a-modal-or-a-sheet).
@@ -217,8 +216,9 @@ Every code: [Errors](../../3.0_headless_client.md#errors).
   `lucra.present.subscribe(listener)` calls the listener now and on every change. They behave
   like `lucra.auth.getState()` and `subscribe()`. `screen` is set only while a screen is on
   show: not while it waits to connect, for a login, or for a write, and never for Add Funds. A
-  replacement goes to `null` and then to the new screen, in the same task when nothing has to
-  wait. Do not count open screens.
+  bottom sheet counts as on show while it waits for its height. A replacement goes to `null`
+  and then to the new screen, in the same task when nothing has to wait. Do not count open
+  screens.
 - **The SDK draws no close control.** A screen ends with Lucra's own exit control,
   `lucra.present.dismiss()`, another `present.*` call other than `addFunds()` replacing it, the
   user logging out inside it, `lucra.destroy()`, its own `signal` being aborted, Lucra

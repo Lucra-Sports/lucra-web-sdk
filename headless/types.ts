@@ -2,6 +2,7 @@ import type {
   LucraEnvironment,
   LucraMatchupDetails,
   LucraMinigameMode,
+  LucraPresentationBody,
   LucraReward,
   SDKClientUser,
   SDKLucraUser,
@@ -72,7 +73,7 @@ export type LucraUpdateUserInput = SDKClientUser;
 // a panel at the right edge, or from the bottom on a narrow window.
 // "bottomSheet" is a panel up from the bottom at every width, sized to the
 // height Lucra reports for the screen.
-export type LucraPresentation = "fullScreen" | "modal" | "sheet" | "bottomSheet";
+export type LucraPresentation = LucraPresentationBody["presentation"];
 
 export type LucraClientConfig = {
   apiKey: string;

@@ -1,7 +1,7 @@
 import { LUCRA_POPUP_MESSAGE_TYPE, LucraClientMessageType, MessageTypeToLucraClient, } from "../types/types.js";
 import { LucraError, LucraErrorCode, invalid, isLucraError } from "./errors.js";
 import { createEmitter } from "./events.js";
-import { PRESENTATIONS } from "./frame.js";
+import { PRESENTATIONS, PRESENTATION_HINT, } from "./frame.js";
 import { HOME_PATH, buildUrl, navigateTarget } from "./url.js";
 const PHONE_NUMBER = /^[0-9]{10}$/;
 const MINIGAME_MODES = ["practice", "1v1", "free_for_all", "tournament"];
@@ -55,7 +55,7 @@ export function createPresent(options) {
             }));
         }
         if (presentation !== undefined && !PRESENTATIONS.includes(presentation)) {
-            return invalid('presentation must be "fullScreen", "modal", "sheet", or "bottomSheet".');
+            return invalid(PRESENTATION_HINT);
         }
         // Aborted already: show nothing, and leave any screen on show alone.
         if (signal?.aborted) {
@@ -142,7 +142,16 @@ export function createPresent(options) {
                     if (done)
                         return;
                 }
+                // The call's own presentation, or the client's.
+                const shownAs = presentation ?? options.presentation;
+                // Lucra lays the screen out for its presentation.
+                const tellPresentation = () => {
+                    const body = { presentation: shownAs };
+                    session.post(MessageTypeToLucraClient.presentation, body);
+                };
                 if (screen.start) {
+                    // Before Lucra puts the screen on its page.
+                    tellPresentation();
                     starting = true;
                     try {
                         await screen.start();
@@ -165,8 +174,6 @@ export function createPresent(options) {
                         return;
                     }
                 }
-                // The call's own presentation, or the client's.
-                const shownAs = presentation ?? options.presentation;
                 const opened = frame.openOverlay(shownAs);
                 overlay = opened;
                 // This screen takes over Lucra's page.
@@ -189,20 +196,18 @@ export function createPresent(options) {
                             finish({ result });
                     }));
                 }
-                if (shownAs === "bottomSheet") {
-                    // Lucra sends its content's height each time it changes.
-                    cleanups.push(session.on(LucraClientMessageType.contentHeight, (data) => {
-                        const height = data?.height;
-                        if (typeof height === "number" && Number.isFinite(height) && height > 0) {
-                            opened.setContentHeight(height);
-                        }
-                    }));
-                }
-                // Lucra lays the screen out for its presentation, and shows its exit
-                // control. It forgets both each time it restarts.
+                // Lucra sends its content's height each time it changes. Only a bottom
+                // sheet uses it.
+                cleanups.push(session.on(LucraClientMessageType.contentHeight, (data) => {
+                    const height = data?.height;
+                    if (typeof height === "number" && Number.isFinite(height) && height > 0) {
+                        opened.setContentHeight(height);
+                    }
+                }));
+                // Lucra forgets the presentation and its exit control each time it
+                // restarts.
                 const tellLucra = () => {
-                    const body = { presentation: shownAs };
-                    session.post(MessageTypeToLucraClient.presentation, body);
+                    tellPresentation();
                     session.post(MessageTypeToLucraClient.enableExitLucra, true);
                 };
                 cleanups.push(session.onConnected(tellLucra));

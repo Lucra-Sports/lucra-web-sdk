@@ -4,6 +4,7 @@ import { LucraError, LucraErrorCode, isLucraError } from "./errors.js";
 import { createEmitter } from "./events.js";
 import {
   PRESENTATIONS,
+  PRESENTATION_HINT,
   createDomFrame,
   createNullFrame,
   hasDom,
@@ -174,7 +175,7 @@ function createLiveClient(config: LucraClientConfig): LucraHeadlessClient {
   const { presentation } = config;
   if (presentation !== undefined && !PRESENTATIONS.includes(presentation)) {
     throw new LucraError(LucraErrorCode.INVALID_CONFIG, undefined, {
-      hint: 'presentation must be "fullScreen", "modal", "sheet", or "bottomSheet".',
+      hint: PRESENTATION_HINT,
     });
   }
   // Throws INVALID_CONFIG before anything is added to the page.

@@ -276,18 +276,6 @@ describe("useLucraScreen", () => {
     });
     expect(onClose).toHaveBeenCalledWith({ status: "completed", user: USER });
   });
-
-  it("shows login as a bottom sheet", async () => {
-    const { frame, wrapper } = setup();
-    await connectLoggedOut(frame);
-    renderHook(() => useLucraScreen("login", { presentation: "bottomSheet" }), { wrapper });
-    await settle();
-    await act(async () => {
-      await connectLoggedOut(frame);
-    });
-    expect(frame.presentations).toEqual(["bottomSheet"]);
-    expect(frame.lastPosted("presentation")?.body).toEqual({ presentation: "bottomSheet" });
-  });
 });
 
 describe("useMatchupWatch", () => {

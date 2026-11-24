@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, mock, spyOn } from "bun:te
 import { createApi, type Activity } from "./api.ts";
 import { createAuth } from "./auth.ts";
 import { LucraError } from "./errors.ts";
+import { PRESENTATION_HINT } from "./frame.ts";
 import { createPresent, type LucraScreen } from "./present.ts";
 import { DEFAULT_TIMEOUTS, createSession, type Timeouts } from "./session.ts";
 import { createFakeFrame, type FakeFrame } from "./testing.ts";
@@ -807,6 +808,20 @@ describe("createPresent: presentation", () => {
     expect(count(frame, "presentation")).toBe(2);
   });
 
+  it("tells a restarted Lucra again while a bottom sheet waits for its height, then sizes it", async () => {
+    const { frame, present } = setup();
+    await connectLoggedIn(frame);
+    const shown = present.profile({ presentation: "bottomSheet" });
+    await tick();
+    frame.deliver("initialized", { success: true });
+    expect(count(frame, "presentation")).toBe(2);
+    expect(frame.lastPosted("presentation")?.body).toEqual({ presentation: "bottomSheet" });
+    frame.deliver("contentHeight", { height: 412 });
+    expect(frame.contentHeights).toEqual([412]);
+    present.dismiss();
+    await shown;
+  });
+
   it("tells Lucra for a login and a minigame too, and the login page's URL is unchanged", async () => {
     const loggedOut = setup();
     await connectLoggedOut(loggedOut.frame);
@@ -829,10 +844,16 @@ describe("createPresent: presentation", () => {
     await connectLoggedIn(frame);
     const game = present.minigame({ gameId: "g1", mode: "practice", presentation: "bottomSheet" });
     await tick();
-    expect(count(frame, "presentation")).toBe(0);
+    // Before the game starts, so Lucra lays it out for a bottom sheet.
+    const types: string[] = frame.posted.map((message) => message.type);
+    expect(types.indexOf("presentation")).toBeGreaterThanOrEqual(0);
+    expect(types.indexOf("presentation")).toBeLessThan(types.indexOf("presentMinigameRequest"));
+    expect(frame.lastPosted("presentation")?.body).toEqual({ presentation: "bottomSheet" });
     frame.answer("presentMinigameRequest", "presentMinigameResponse", { sessionId: "s1", matchupId: null });
     await tick();
+    // And again once it shows.
     expect(frame.presentations).toEqual(["bottomSheet"]);
+    expect(count(frame, "presentation")).toBe(2);
     expect(frame.lastPosted("presentation")?.body).toEqual({ presentation: "bottomSheet" });
     present.dismiss();
     await game;
@@ -866,21 +887,6 @@ describe("createPresent: presentation", () => {
     });
   }
 
-  it("ignores Lucra's height for a screen that is not a bottom sheet", async () => {
-    const { frame, present } = setup({}, { presentation: "sheet" });
-    await connectLoggedIn(frame);
-    const sheet = present.profile();
-    await tick();
-    frame.deliver("contentHeight", { height: 412 });
-    const fullScreen = present.wallet({ presentation: "fullScreen" });
-    await tick();
-    frame.deliver("contentHeight", { height: 412 });
-    present.dismiss();
-    await Promise.all([sheet, fullScreen]);
-    expect(frame.presentations).toEqual(["sheet", "fullScreen"]);
-    expect(frame.contentHeights).toEqual([]);
-  });
-
   for (const presentation of ["popup", null]) {
     it(`rejects ${presentation}, and leaves the screen on show alone`, async () => {
       const { frame, activity, present } = setup();
@@ -895,9 +901,7 @@ describe("createPresent: presentation", () => {
       ]) {
         const error = await caught(call());
         expect(error.code).toBe("INVALID_ARGUMENT");
-        expect(error.hint).toBe(
-          'presentation must be "fullScreen", "modal", "sheet", or "bottomSheet".'
-        );
+        expect(error.hint).toBe(PRESENTATION_HINT);
       }
       await tick();
       expect(present.getState()).toEqual({ screen: "wallet" });

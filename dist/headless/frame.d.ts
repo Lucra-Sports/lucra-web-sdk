@@ -31,4 +31,5 @@ export declare function hasDom(): boolean;
 export declare function pageOrigin(): string;
 export declare function createNullFrame(): Frame;
 export declare const PRESENTATIONS: readonly LucraPresentation[];
+export declare const PRESENTATION_HINT = "presentation must be \"fullScreen\", \"modal\", \"sheet\", or \"bottomSheet\".";
 export declare function createDomFrame(origin: string, fallbackMs?: number): Frame;

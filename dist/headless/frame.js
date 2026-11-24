@@ -31,6 +31,8 @@ export const PRESENTATIONS = [
     "sheet",
     "bottomSheet",
 ];
+// What a call or the client is told when its presentation is not one of them.
+export const PRESENTATION_HINT = 'presentation must be "fullScreen", "modal", "sheet", or "bottomSheet".';
 // How long a bottom sheet stays hidden waiting for Lucra's height. A screen or
 // a Lucra app that never sends one still shows, at the full height of a sheet.
 const CONTENT_HEIGHT_FALLBACK_MS = 1000;
@@ -98,8 +100,10 @@ function layout(presentation, wide) {
 function bottomSheetLayout(height) {
     let heightCss;
     if (height === null) {
-        // Laid out at its real width so Lucra can measure itself, but not painted.
-        heightCss = `height:${SHEET_HEIGHT};visibility:hidden;`;
+        // Laid out at its real size so Lucra can measure itself, but not seen.
+        // Not visibility:hidden, which stops ResizeObserver and animation frames
+        // inside a cross-origin frame.
+        heightCss = `height:${SHEET_HEIGHT};opacity:0;pointer-events:none;`;
     }
     else if (height === "fallback") {
         heightCss = `height:${SHEET_HEIGHT};`;
@@ -227,15 +231,11 @@ export function createDomFrame(origin, fallbackMs = CONTENT_HEIGHT_FALLBACK_MS) 
                 overlayHost.style.cssText = css.host;
                 overlayFrame.style.cssText = css.iframe;
             };
-            // Shows a bottom sheet at `next`. A hidden frame cannot take focus, so it
-            // takes it now.
+            // Shows a bottom sheet at `next`.
             const resize = (next) => {
-                const hidden = height === null;
                 height = next;
                 clearTimeout(fallbackTimer);
                 fit();
-                if (hidden)
-                    overlayFrame.focus();
             };
             // It covers the page, or dims it behind a panel, so it is a modal dialog.
             fit();
@@ -243,10 +243,7 @@ export function createDomFrame(origin, fallbackMs = CONTENT_HEIGHT_FALLBACK_MS) 
             overlayHost.setAttribute("role", "dialog");
             overlayHost.setAttribute("aria-modal", "true");
             overlayHost.setAttribute("aria-label", "Lucra");
-            if (bottomSheet)
-                fallbackTimer = setTimeout(() => resize("fallback"), fallbackMs);
-            else
-                overlayFrame.focus();
+            overlayFrame.focus();
             const close = () => {
                 // Only the overlay on show can close. A late close of an older one does nothing.
                 if (closeOverlay !== close)
@@ -262,6 +259,12 @@ export function createDomFrame(origin, fallbackMs = CONTENT_HEIGHT_FALLBACK_MS) 
                 previousFocus?.focus?.();
             };
             closeOverlay = close;
+            if (bottomSheet) {
+                fallbackTimer = setTimeout(() => {
+                    if (closeOverlay === close)
+                        resize("fallback");
+                }, fallbackMs);
+            }
             return {
                 close,
                 setContentHeight(contentHeight) {
