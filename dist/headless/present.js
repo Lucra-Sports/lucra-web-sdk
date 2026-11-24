@@ -136,6 +136,12 @@ export function createPresent(options) {
                 // Dismissed, replaced, or aborted while waiting.
                 if (done)
                     return;
+                if (screen.load) {
+                    await screen.load();
+                    // Dismissed, replaced, or aborted while Lucra loaded.
+                    if (done)
+                        return;
+                }
                 if (screen.start) {
                     starting = true;
                     try {
@@ -185,10 +191,10 @@ export function createPresent(options) {
                 const enableExit = () => session.post(MessageTypeToLucraClient.enableExitLucra, true);
                 cleanups.push(session.onConnected(enableExit));
                 enableExit();
-                // Lucra may start over while the screen shows: login always does, and
-                // the page can reload itself. If it cannot start again, the screen
-                // will never come back, so close it with the reason. finish does
-                // nothing once this screen is done, so a late failure cannot touch it.
+                // Lucra may start over while the screen shows: the page can reload
+                // itself. If it cannot start again, the screen will never come back,
+                // so close it with the reason. finish does nothing once this screen
+                // is done, so a late failure cannot touch it.
                 const closeIfLucraFails = () => {
                     session.whenConnected().catch((error) => finish({ error }));
                 };
@@ -257,13 +263,18 @@ export function createPresent(options) {
                         user: (auth.getState().user ?? {}),
                     };
                 },
-                // Loading the login screen restarts Lucra. `loginOnly` makes it return
-                // to its blank home route after the login instead of its own home screen.
-                show: () => session.restart(buildUrl(urls, "", {
-                    login: "true",
-                    loginOnly: "true",
-                    loginHint: phoneNumber,
-                })),
+                // Restarts Lucra at its login page. The screen opens once Lucra has
+                // started there, so the user never sees the page reload. `loginOnly`
+                // makes it return to its blank home route after the login instead of
+                // its own home screen.
+                load: () => {
+                    session.restart(buildUrl(urls, "", {
+                        login: "true",
+                        loginOnly: "true",
+                        loginHint: phoneNumber,
+                    }));
+                    return session.whenConnected();
+                },
                 completeOn: LucraClientMessageType.loginSuccess,
                 completed: (data) => ({
                     status: "completed",

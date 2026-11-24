@@ -242,24 +242,24 @@ describe("createPresent: screens", () => {
 });
 
 describe("createPresent: login", () => {
-  it("restarts Lucra at its login screen and completes on loginSuccess", async () => {
+  it("restarts Lucra at its login screen, shows it once Lucra starts there, and completes on loginSuccess", async () => {
     const { frame, auth, present } = setup();
     await connectLoggedOut(frame);
     const login = present.login({ phoneNumber: "5551234567" });
     await tick();
-    expect(frame.overlayOpen).toBe(true);
     const url = new URL(frame.urls[frame.urls.length - 1]);
     expect(url.pathname).toBe("/");
     expect(url.searchParams.get("login")).toBe("true");
     expect(url.searchParams.get("loginOnly")).toBe("true");
     expect(url.searchParams.get("loginHint")).toBe("5551234567");
     expect(url.searchParams.get("apiKey")).toBe("key-1");
-    const exits = count(frame, "enableExitLucra");
-    frame.deliver("initialized", { success: true });
-    expect(count(frame, "enableExitLucra")).toBe(exits + 1);
-    frame.answer("isLoggedInRequest", "isLoggedInResponse", { isLoggedIn: false });
-    await tick();
+    // Nothing shows while Lucra reloads.
+    expect(frame.overlaysOpened).toBe(0);
+    expect(present.getState().screen).toBeNull();
+    await connectLoggedOut(frame);
     expect(frame.overlayOpen).toBe(true);
+    expect(present.getState().screen).toBe("login");
+    expect(count(frame, "enableExitLucra")).toBe(1);
     frame.deliver("loginSuccess", USER);
     expect(await login).toEqual({ status: "completed", user: USER });
     expect(frame.overlayOpen).toBe(false);
@@ -305,41 +305,124 @@ describe("createPresent: login", () => {
     await connectLoggedOut(frame);
     const first = present.login();
     await tick();
+    await connectLoggedOut(frame);
     frame.deliver("exitLucra", true);
     expect(await first).toEqual({ status: "dismissed", reason: "exit" });
     expect(frame.overlayOpen).toBe(false);
-    // Lucra finishes loading its login page, still logged out.
-    frame.deliver("initialized", { success: true });
-    frame.answer("isLoggedInRequest", "isLoggedInResponse", { isLoggedIn: false });
-    await tick();
     const second = present.login();
     await tick();
-    expect(frame.overlayOpen).toBe(true);
     expect(frame.urls.length).toBe(3);
+    await connectLoggedOut(frame);
+    expect(frame.overlayOpen).toBe(true);
     frame.deliver("loginSuccess", USER);
     expect((await second).status).toBe("completed");
   });
 
-  it("closes with the error when the login screen never starts", async () => {
+  it("opens nothing until the reloaded page starts, then opens once", async () => {
+    const { frame, present } = setup();
+    await connectLoggedOut(frame);
+    const changes: unknown[] = [];
+    present.subscribe((state) => changes.push(state.screen));
+    const login = present.login({ phoneNumber: "5551234567" });
+    await tick();
+    expect(frame.urls.length).toBe(2);
+    await tick();
+    expect(frame.overlaysOpened).toBe(0);
+    expect(changes).toEqual([null]);
+    frame.deliver("initialized", { success: true });
+    await tick();
+    expect(frame.overlaysOpened).toBe(1);
+    expect(changes).toEqual([null, "login"]);
+    frame.answer("isLoggedInRequest", "isLoggedInResponse", { isLoggedIn: false });
+    await tick();
+    expect(frame.overlaysOpened).toBe(1);
+    frame.deliver("loginSuccess", USER);
+    expect(await login).toEqual({ status: "completed", user: USER });
+  });
+
+  for (const how of ["dismiss()", "the signal"] as const) {
+    it(`ended by ${how} while Lucra reloads: resolves at once and never shows`, async () => {
+      const { frame, activity, present } = setup();
+      await connectLoggedOut(frame);
+      const controller = new AbortController();
+      let result: unknown = null;
+      const login = present.login({ signal: controller.signal }).then((value) => (result = value));
+      await tick();
+      expect(frame.urls.length).toBe(2);
+      if (how === "dismiss()") present.dismiss();
+      else controller.abort();
+      await tick();
+      // Before the page has started.
+      expect(result).toEqual({
+        status: "dismissed",
+        reason: how === "dismiss()" ? "dismissed" : "aborted",
+      });
+      expect(activity.screenOpen).toBe(false);
+      await connectLoggedOut(frame);
+      await login;
+      expect(frame.overlaysOpened).toBe(0);
+      expect(present.getState().screen).toBeNull();
+      expect(count(frame, "navigate")).toBe(0);
+      expect(count(frame, "enableExitLucra")).toBe(0);
+    });
+  }
+
+  it("replaced while Lucra reloads: never shows, and the new login shows once its page starts", async () => {
+    const { frame, activity, present } = setup();
+    await connectLoggedOut(frame);
+    const first = present.login({ phoneNumber: "5551234567", presentation: "sheet" });
+    await tick();
+    const second = present.login({ phoneNumber: "5559876543", presentation: "modal" });
+    expect(await first).toEqual({ status: "dismissed", reason: "replaced" });
+    expect(activity.screenOpen).toBe(true);
+    // The first page starts. The second call loads its own.
+    await connectLoggedOut(frame);
+    expect(frame.overlaysOpened).toBe(0);
+    expect(frame.urls.length).toBe(3);
+    const url = new URL(frame.urls[frame.urls.length - 1]);
+    expect(url.searchParams.get("loginHint")).toBe("5559876543");
+    await connectLoggedOut(frame);
+    expect(frame.presentations).toEqual(["modal"]);
+    expect(present.getState().screen).toBe("login");
+    expect(count(frame, "enableExitLucra")).toBe(1);
+    frame.deliver("loginSuccess", USER);
+    expect(await second).toEqual({ status: "completed", user: USER });
+  });
+
+  it("restarts nothing when dismissed before the waits are over", async () => {
+    const { frame, present } = setup();
+    await connectLoggedOut(frame);
+    const login = present.login();
+    present.dismiss();
+    expect(await login).toEqual({ status: "dismissed", reason: "dismissed" });
+    await tick();
+    expect(frame.urls.length).toBe(1);
+    expect(frame.overlaysOpened).toBe(0);
+    expect(count(frame, "enableExitLucra")).toBe(0);
+  });
+
+  it("rejects without showing when Lucra never loads its login page", async () => {
     const { frame, activity, present } = setup({ connectMs: 20 });
     await connectLoggedOut(frame);
     const login = caught(present.login());
     await tick();
-    expect(frame.overlayOpen).toBe(true);
+    expect(frame.urls.length).toBe(2);
     expect((await login).code).toBe("CONNECTION_TIMEOUT");
-    expect(frame.overlayOpen).toBe(false);
+    expect(frame.overlaysOpened).toBe(0);
     expect(activity.screenOpen).toBe(false);
+    expect(present.getState().screen).toBeNull();
   });
 
-  it("closes with the error when the login screen cannot start", async () => {
+  it("rejects without showing when Lucra cannot load its login page", async () => {
     const { frame, activity, present } = setup();
     await connectLoggedOut(frame);
     const login = caught(present.login());
     await tick();
     frame.deliver("initialized", { success: false });
     expect((await login).code).toBe("CONNECTION_FAILED");
-    expect(frame.overlayOpen).toBe(false);
+    expect(frame.overlaysOpened).toBe(0);
     expect(activity.screenOpen).toBe(false);
+    expect(present.getState().screen).toBeNull();
   });
 
   it("sends a pending read again once login has restarted Lucra", async () => {
@@ -669,6 +752,7 @@ describe("createPresent: presentation", () => {
     await connectLoggedOut(loggedOut.frame);
     const login = loggedOut.present.login({ presentation: "sheet" });
     await tick();
+    await connectLoggedOut(loggedOut.frame);
     expect(loggedOut.frame.presentations).toEqual(["sheet"]);
     loggedOut.present.dismiss();
     await login;
@@ -763,6 +847,9 @@ describe("createPresent: state", () => {
     await connectLoggedOut(frame);
     const login = present.login();
     await tick();
+    // Null while Lucra reloads at its login page.
+    expect(screenOf(present)).toBeNull();
+    await connectLoggedOut(frame);
     expect(screenOf(present)).toBe("login");
     frame.deliver("loginSuccess", USER);
     await login;
@@ -920,18 +1007,6 @@ describe("createPresent: a listener that acts as a screen shows", () => {
     expect(activity.screenOpen).toBe(false);
     expect(present.getState()).toEqual({ screen: null });
     await reconnect(frame);
-    expect(count(frame, "enableExitLucra")).toBe(0);
-  });
-
-  it("dismissing login does not restart Lucra at its login screen", async () => {
-    const { frame, present } = setup();
-    await connectLoggedOut(frame);
-    present.subscribe((state) => {
-      if (state.screen === "login") present.dismiss();
-    });
-    expect(await present.login()).toEqual({ status: "dismissed", reason: "dismissed" });
-    await tick();
-    expect(frame.urls.length).toBe(1);
     expect(count(frame, "enableExitLucra")).toBe(0);
   });
 
@@ -1769,8 +1844,8 @@ describe("createPresent: minigame", () => {
       await connectLoggedOut(login.frame);
       const shown = track(login.present.login());
       await tick();
+      await connectLoggedOut(login.frame);
       expect(login.present.getState()).toEqual({ screen: "login" });
-      // Showing the login screen restarts Lucra.
       login.frame.deliver("initialized", { success: true });
       await tick();
       expect(shown.settled).toBe(false);

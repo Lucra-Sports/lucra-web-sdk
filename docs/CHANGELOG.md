@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## [v1.26.0]
+
+### Fixed
+
+- **Preview:** `lucra.present.login()` now opens its screen once Lucra has loaded its login page, so the user no longer sees an empty login form, a loader, and then the form again with the phone number. A login whose page cannot load rejects with `CONNECTION_FAILED` or `CONNECTION_TIMEOUT` without showing. See [Showing a Lucra screen](3.0_headless_client.md#showing-a-lucra-screen).
+
 ## [v1.25.0]
 
 ### Added

@@ -114,12 +114,13 @@ describe("createClient", () => {
     await tick();
     const joined = client.withRemediation(() => client.tournaments.join("t1"));
     await tick();
-    expect(client.present.getState().screen).toBe("login");
-    // Loading the login screen restarts Lucra.
+    // Loading the login screen restarts Lucra. It shows once Lucra starts there.
     expect(frame.urls.length).toBe(2);
+    expect(client.present.getState().screen).toBeNull();
     frame.deliver("initialized", { success: true });
     frame.answer("isLoggedInRequest", "isLoggedInResponse", { isLoggedIn: false });
     await tick();
+    expect(client.present.getState().screen).toBe("login");
     expect(count(frame, "joinTournamentRequest")).toBe(0);
     frame.deliver("loginSuccess", USER);
     await tick();
