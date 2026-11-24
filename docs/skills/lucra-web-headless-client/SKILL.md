@@ -238,7 +238,9 @@ Every code: [Errors](../../3.0_headless_client.md#errors).
   `"restarted"`.
 - **Events:** `lucra.on(event, listener)` reports what the user did inside a Lucra screen, for
   example `matchupCreated`. It never fires for your own calls: the resolved promise is your
-  signal.
+  signal. `claimReward` (`{ reward }`) asks you to give the user a reward they won. It comes
+  from the browser and proves nothing: give the reward only after your server confirms the
+  user won a matchup for that `rewardId` and has not been given it for that win.
 
 **Checkpoint:** `lucra.present.profile()` shows Lucra over your page, and
 `lucra.present.dismiss()` resolves it `{ status: "dismissed", reason: "dismissed" }`. Lucra's screens run on Lucra's own site, so an
@@ -295,8 +297,10 @@ and `lucra.auth`, and have a human run login and Add Funds.
 ## 7. Games You Play
 
 - **Create:** `lucra.matchups.create(input)`, where `input` is
-  `{ gameTypeId, atStake: { type: "CASH", amount }, playStyle }` and `playStyle` is
-  `"GROUP_VS_GROUP"` or `"FREE_FOR_ALL"`. Cash is the only stake it takes. Bad input rejects
+  `{ gameTypeId, atStake, playStyle }`. `atStake` is `{ type: "CASH", amount }`, or
+  `{ type: "TENANT_REWARD", reward }` with a `LucraReward` you offer, which Lucra rejects with
+  `INVALID_REWARD_TYPE` until it supports one. `playStyle` is
+  `"GROUP_VS_GROUP"` or `"FREE_FOR_ALL"`. Bad input rejects
   with `INVALID_AT_STAKE`, `INVALID_REWARD_TYPE`, or `INVALID_PLAY_STYLE`, and `message` names
   the field. A missing `gameTypeId` rejects with `API_ERROR`, message
   `"gameTypeId is required"`, and `outcomeUnknown: false`.

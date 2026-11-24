@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## [v1.25.0]
+
+### Added
+
+- **Preview:** the headless client passes Lucra's `claimReward` event to `lucra.on`, with `{ reward }`, when the user taps Redeem on a reward they won in a Lucra screen. Give the user the reward yourself, only after your server confirms the win: the event comes from the browser and proves nothing. See [Events](3.0_headless_client.md#events).
+- **Preview:** `lucra.matchups.create()` and `client.api.createRecreationalGame()` take a reward stake, `{ type: "TENANT_REWARD", reward }`, as well as cash. Until Lucra supports it, a reward stake rejects with `INVALID_REWARD_TYPE`. See [Creating a game](2.2_gyp_headless.md#creating-a-game).
+
+### Changed
+
+- `LucraCreateRecreationalGameInput.atStake` is now `LucraAtStake` instead of `LucraCashStake`. TypeScript code that reads `atStake.amount` from a value of this type must check `atStake.type === "CASH"` first.
+
 ## [v1.24.0]
 
 ### Added

@@ -2,6 +2,7 @@ import type {
   LucraEnvironment,
   LucraMatchupDetails,
   LucraMinigameMode,
+  LucraReward,
   SDKClientUser,
   SDKLucraUser,
 } from "../types/types.js";
@@ -181,4 +182,5 @@ export type LucraHeadlessEventMap = {
   activeMatchupStarted: { matchupId: string };
   tournamentJoined: { matchupId: string };
   autoJoinedTournaments: { matchupIds: string[] };
+  claimReward: { reward: LucraReward };
 };

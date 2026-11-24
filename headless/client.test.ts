@@ -272,6 +272,27 @@ describe("createClient", () => {
     }
   });
 
+  it("passes Lucra's claimReward with the reward to lucra.on listeners", async () => {
+    const { frame, client } = setup();
+    await connectLoggedIn(frame);
+    const reward = {
+      rewardId: "r1",
+      title: "Free drink",
+      descriptor: "One drink",
+      iconUrl: "https://host.example/icon.png",
+      bannerIconUrl: "https://host.example/banner.png",
+      disclaimer: "",
+      metadata: { sku: "drink" },
+    };
+    const listener = mock(() => {});
+    const off = client.on("claimReward", listener);
+    frame.deliver("claimReward", { reward });
+    expect(listener).toHaveBeenCalledWith({ reward });
+    off();
+    frame.deliver("claimReward", { reward });
+    expect(listener).toHaveBeenCalledTimes(1);
+  });
+
   it("does not pass on messages that are not public events", async () => {
     const { frame, client } = setup();
     await connectLoggedIn(frame);

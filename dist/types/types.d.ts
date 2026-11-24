@@ -538,7 +538,7 @@ export type LucraMatchupDetails = {
 };
 export type LucraCreateRecreationalGameInput = {
     gameTypeId: string;
-    atStake: LucraCashStake;
+    atStake: LucraAtStake;
     playStyle: LucraPlayStyle;
 };
 export type LucraRecreationalGameResult = {

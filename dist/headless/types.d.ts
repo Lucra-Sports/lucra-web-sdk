@@ -1,4 +1,4 @@
-import type { LucraEnvironment, LucraMatchupDetails, LucraMinigameMode, SDKClientUser, SDKLucraUser } from "../types/types.js";
+import type { LucraEnvironment, LucraMatchupDetails, LucraMinigameMode, LucraReward, SDKClientUser, SDKLucraUser } from "../types/types.js";
 import type { LucraError } from "./errors.js";
 export type { LucraEnvironment, LucraAchievement, LucraTournament, LucraTournamentDetail, LucraTournamentLeaderboard, LucraLeaderboardRow, LucraLeaderboardColumn, LucraLeaderboardPagination, LucraTournamentTimer, LucraTournamentGame, LucraTournamentHowToPlayStep, LucraTournamentConfirmationTerm, LucraTournamentNotice, LucraTournamentAttemptScores, LucraTournamentAttemptData, LucraTournamentCatalogReward, LucraTournamentEarnedReward, LucraTournamentPayoutReward, LucraTournamentPayoutStructure, LucraJoinTournamentResponse, LucraAutoJoinedTournamentsBody, LucraMatchup, LucraMatchupStatus, LucraPlayStyle, LucraAtStake, LucraCashStake, LucraRecreationalGame, LucraMatchupParticipantGroup, LucraMatchupDetails, LucraMatchupGroup, LucraMatchupParticipant, LucraMatchupParticipantScore, LucraCreateRecreationalGameInput, LucraRecreationalGameResult, LucraCancelRecreationalGameResult, LucraSearchMatchupsByMetadataInput, LucraUserMatchups, LucraUserMatchupsGroup, LucraUserMatchupsPage, LucraUserMatchup, LucraUserMatchupType, LucraUserMatchupStatus, LucraUserMatchupsInput, LucraUserMatchupsByTypeStatusInput, LucraUserTournamentReward, LucraReward, LucraMinigameMode, LucraMinigame, LucraMinigameOption, } from "../types/types.js";
 export type LucraUser = SDKLucraUser;
@@ -95,5 +95,8 @@ export type LucraHeadlessEventMap = {
     };
     autoJoinedTournaments: {
         matchupIds: string[];
+    };
+    claimReward: {
+        reward: LucraReward;
     };
 };

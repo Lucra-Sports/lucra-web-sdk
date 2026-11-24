@@ -698,7 +698,6 @@ export type LucraMatchupStatus =
 export type LucraCashStake = { type: "CASH"; amount: number };
 
 // What a matchup is played for. `reward` reuses LucraReward (the availableRewards item).
-// Read side only: headless create accepts LucraCashStake.
 export type LucraAtStake =
   | LucraCashStake
   | { type: "TENANT_REWARD"; reward: LucraReward };
@@ -756,7 +755,7 @@ export type LucraMatchupDetails = {
 
 export type LucraCreateRecreationalGameInput = {
   gameTypeId: string;
-  atStake: LucraCashStake;
+  atStake: LucraAtStake;
   playStyle: LucraPlayStyle;
 };
 
