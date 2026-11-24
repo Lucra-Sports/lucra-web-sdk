@@ -70,7 +70,9 @@ export type LucraUpdateUserInput = SDKClientUser;
 // How Lucra screens show. "fullScreen" covers the page. "modal" is a panel in
 // the middle of the dimmed page, and full screen on a narrow window. "sheet" is
 // a panel at the right edge, or from the bottom on a narrow window.
-export type LucraPresentation = "fullScreen" | "modal" | "sheet";
+// "bottomSheet" is a panel up from the bottom at every width, sized to the
+// height Lucra reports for the screen.
+export type LucraPresentation = "fullScreen" | "modal" | "sheet" | "bottomSheet";
 
 export type LucraClientConfig = {
   apiKey: string;
@@ -138,7 +140,7 @@ export type LucraMinigameInput = {
   // call lucra.tournaments.join() for that play.
   matchupId?: string;
   signal?: AbortSignal;
-  // As in LucraPresentOptions. Like the signal, it is not sent to Lucra.
+  // As in LucraPresentOptions. Like the signal, it is not part of the game's request.
   presentation?: LucraPresentation;
 };
 

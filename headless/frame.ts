@@ -22,7 +22,12 @@ export type InboundMessage = {
   requestId?: string;
 };
 
-export type Overlay = { close(): void };
+export type Overlay = {
+  close(): void;
+  // Sizes a bottom sheet to Lucra's content, `height` CSS pixels without the
+  // safe area, and shows it. Other presentations ignore it.
+  setContentHeight(height: number): void;
+};
 
 // An open popup window. `focus` brings it in front of the page and returns
 // true. When the window is already closed, it closes the handle and returns false.
@@ -56,6 +61,9 @@ export function pageOrigin(): string {
   return window.location.origin;
 }
 
+// An overlay that shows nothing.
+const NO_OVERLAY: Overlay = { close() {}, setContentHeight() {} };
+
 // Stands in for the frame where there is no page. It does nothing.
 export function createNullFrame(): Frame {
   return {
@@ -63,7 +71,7 @@ export function createNullFrame(): Frame {
     reload() {},
     post() {},
     onMessage: () => () => {},
-    openOverlay: () => ({ close() {} }),
+    openOverlay: () => NO_OVERLAY,
     openPopup() {
       throw new Error("No browser");
     },
@@ -72,7 +80,15 @@ export function createNullFrame(): Frame {
 }
 
 // Every LucraPresentation, to check a value at run time.
-export const PRESENTATIONS: readonly LucraPresentation[] = ["fullScreen", "modal", "sheet"];
+export const PRESENTATIONS: readonly LucraPresentation[] = [
+  "fullScreen",
+  "modal",
+  "sheet",
+  "bottomSheet",
+];
+// How long a bottom sheet stays hidden waiting for Lucra's height. A screen or
+// a Lucra app that never sends one still shows, at the full height of a sheet.
+const CONTENT_HEIGHT_FALLBACK_MS = 1000;
 
 const HOST_ID = "lucra-headless-host";
 // Same permissions the existing client grants its frame. The last three are for
@@ -99,9 +115,17 @@ const BACKDROP_CSS = COVER_CSS + "box-sizing:border-box;background:rgba(0,0,0,.5
 const PANEL_CSS = "display:block;flex:none;border:0;background:#000;";
 // The width of the Add Funds window, a size Lucra screens already show at.
 const PANEL_WIDTH = `width:min(${POPUP_WIDTH}px,100%);`;
+// A panel up from the bottom reaches the bottom edge. Its own padding keeps
+// Lucra above the iOS home indicator.
+const BOTTOM_HOST_CSS = BACKDROP_CSS + "flex-direction:column;justify-content:flex-end;";
+const BOTTOM_HOST_PADDING =
+  "padding:env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);";
+// 96px is the gap the bottom drawer in Lucra's web app leaves above it (6rem
+// there). Pixels, because rem would follow the host page's font size.
+const SHEET_HEIGHT = "calc(100% - 96px)";
 
 // The host and frame styles for a presentation on a wide or a narrow window.
-function layout(presentation: LucraPresentation, wide: boolean) {
+function layout(presentation: Exclude<LucraPresentation, "bottomSheet">, wide: boolean) {
   if (presentation === "modal" && wide) {
     return {
       host: BACKDROP_CSS + SAFE_AREA_CSS + "align-items:center;justify-content:center;",
@@ -122,18 +146,11 @@ function layout(presentation: LucraPresentation, wide: boolean) {
     };
   }
   if (presentation === "sheet") {
-    // The panel reaches the bottom edge. Its own padding keeps Lucra above the
-    // iOS home indicator.
     return {
-      host:
-        BACKDROP_CSS +
-        "flex-direction:column;justify-content:flex-end;" +
-        "padding:env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);",
+      host: BOTTOM_HOST_CSS + BOTTOM_HOST_PADDING,
       iframe:
         PANEL_CSS +
-        // 96px is the gap the bottom drawer in Lucra's web app leaves above it
-        // (6rem there). Pixels, because rem would follow the host page's font size.
-        "box-sizing:border-box;width:100%;height:calc(100% - 96px);" +
+        `box-sizing:border-box;width:100%;height:${SHEET_HEIGHT};` +
         "padding-bottom:env(safe-area-inset-bottom);",
     };
   }
@@ -141,10 +158,43 @@ function layout(presentation: LucraPresentation, wide: boolean) {
   return { host: OVERLAY_CSS, iframe: IFRAME_CSS };
 }
 
-// The frame lives in the body. Each screen shows full screen, or as a modal or
-// sheet over the dimmed page. Only styles change, never where the frame is,
-// since moving it would reload Lucra.
-export function createDomFrame(origin: string): Frame {
+// The bottom sheet's height: Lucra's content height in CSS pixels, "fallback"
+// when Lucra never sent one, or null while it waits for one.
+type SheetHeight = number | "fallback" | null;
+
+// The bottom sheet is the same at every width: up from the bottom, as wide as
+// the Add Funds window, and no taller than a sheet.
+function bottomSheetLayout(height: SheetHeight) {
+  let heightCss: string;
+  if (height === null) {
+    // Laid out at its real width so Lucra can measure itself, but not painted.
+    heightCss = `height:${SHEET_HEIGHT};visibility:hidden;`;
+  } else if (height === "fallback") {
+    heightCss = `height:${SHEET_HEIGHT};`;
+  } else {
+    // The padding below Lucra's content adds the safe area.
+    heightCss = `height:calc(${height}px + env(safe-area-inset-bottom));`;
+  }
+  return {
+    host: BOTTOM_HOST_CSS + "align-items:center;" + BOTTOM_HOST_PADDING,
+    iframe:
+      PANEL_CSS +
+      "box-sizing:border-box;" +
+      PANEL_WIDTH +
+      `max-height:${SHEET_HEIGHT};` +
+      "padding-bottom:env(safe-area-inset-bottom);border-radius:24px 24px 0 0;" +
+      heightCss,
+  };
+}
+
+// The frame lives in the body. Each screen shows full screen, or as a modal, a
+// sheet, or a bottom sheet over the dimmed page. Only styles change, never
+// where the frame is, since moving it would reload Lucra. Tests pass a short
+// `fallbackMs`.
+export function createDomFrame(
+  origin: string,
+  fallbackMs = CONTENT_HEIGHT_FALLBACK_MS
+): Frame {
   let host: HTMLDivElement | null = null;
   let iframe: HTMLIFrameElement | null = null;
   let destroyed = false;
@@ -230,16 +280,32 @@ export function createDomFrame(origin: string): Frame {
 
     openOverlay(presentation) {
       closeOverlay?.();
-      if (!host || !iframe) return { close() {} };
+      if (!host || !iframe) return NO_OVERLAY;
       const overlayHost = host;
       const overlayFrame = iframe;
       const previousFocus = document.activeElement as HTMLElement | null;
-      // A modal and a sheet change shape with the window width. Full screen does not.
-      const media = presentation === "fullScreen" ? null : window.matchMedia(WIDE_QUERY);
+      const bottomSheet = presentation === "bottomSheet";
+      // A modal and a sheet change shape with the window width. Full screen and
+      // the bottom sheet do not.
+      const media =
+        presentation === "fullScreen" || bottomSheet ? null : window.matchMedia(WIDE_QUERY);
+      let height: SheetHeight = null;
+      let fallbackTimer: ReturnType<typeof setTimeout> | undefined;
       const fit = () => {
-        const css = layout(presentation, media?.matches === true);
+        const css = bottomSheet
+          ? bottomSheetLayout(height)
+          : layout(presentation, media?.matches === true);
         overlayHost.style.cssText = css.host;
         overlayFrame.style.cssText = css.iframe;
+      };
+      // Shows a bottom sheet at `next`. A hidden frame cannot take focus, so it
+      // takes it now.
+      const resize = (next: number | "fallback") => {
+        const hidden = height === null;
+        height = next;
+        clearTimeout(fallbackTimer);
+        fit();
+        if (hidden) overlayFrame.focus();
       };
 
       // It covers the page, or dims it behind a panel, so it is a modal dialog.
@@ -248,12 +314,14 @@ export function createDomFrame(origin: string): Frame {
       overlayHost.setAttribute("role", "dialog");
       overlayHost.setAttribute("aria-modal", "true");
       overlayHost.setAttribute("aria-label", "Lucra");
-      overlayFrame.focus();
+      if (bottomSheet) fallbackTimer = setTimeout(() => resize("fallback"), fallbackMs);
+      else overlayFrame.focus();
 
       const close = () => {
         // Only the overlay on show can close. A late close of an older one does nothing.
         if (closeOverlay !== close) return;
         closeOverlay = null;
+        clearTimeout(fallbackTimer);
         media?.removeEventListener("change", fit);
         overlayHost.style.cssText = HIDDEN_CSS;
         overlayFrame.style.cssText = IFRAME_CSS;
@@ -263,7 +331,12 @@ export function createDomFrame(origin: string): Frame {
         previousFocus?.focus?.();
       };
       closeOverlay = close;
-      return { close };
+      return {
+        close,
+        setContentHeight(contentHeight) {
+          if (bottomSheet && closeOverlay === close) resize(contentHeight);
+        },
+      };
     },
 
     openPopup(url) {

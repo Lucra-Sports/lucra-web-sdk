@@ -455,6 +455,115 @@ describe("createDomFrame: modal and sheet", () => {
     expect(styles()).toEqual(FULL_SCREEN);
     expect(dom.matchMedia).toHaveBeenCalledTimes(0);
   });
+
+  describe("bottom sheet", () => {
+    const FALLBACK_MS = 20;
+    const BOTTOM_SHEET_HOST =
+      BACKDROP +
+      "flex-direction:column;justify-content:flex-end;align-items:center;" +
+      "padding:env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);";
+    const BOTTOM_SHEET_PANEL =
+      PANEL +
+      "box-sizing:border-box;width:min(430px,100%);max-height:calc(100% - 96px);" +
+      "padding-bottom:env(safe-area-inset-bottom);border-radius:24px 24px 0 0;";
+    const WAITING = {
+      host: BOTTOM_SHEET_HOST,
+      iframe: BOTTOM_SHEET_PANEL + "height:calc(100% - 96px);visibility:hidden;",
+    };
+    const FALLBACK = {
+      host: BOTTOM_SHEET_HOST,
+      iframe: BOTTOM_SHEET_PANEL + "height:calc(100% - 96px);",
+    };
+    const sized = (height: number) => ({
+      host: BOTTOM_SHEET_HOST,
+      iframe: BOTTOM_SHEET_PANEL + `height:calc(${height}px + env(safe-area-inset-bottom));`,
+    });
+    const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+    const afterFallback = () => sleep(FALLBACK_MS * 3);
+    const sheetFrame = () => {
+      const frame = createDomFrame(ORIGIN, FALLBACK_MS);
+      frame.mount(URL_1);
+      return frame;
+    };
+
+    it("waits hidden at its real width, then fits each height Lucra sends", () => {
+      const overlay = sheetFrame().openOverlay("bottomSheet");
+      expect(styles()).toEqual(WAITING);
+      expect(host().attributes).toEqual({
+        role: "dialog",
+        "aria-modal": "true",
+        "aria-label": "Lucra",
+      });
+      // A hidden frame cannot take focus.
+      expect(iframe().focus).toHaveBeenCalledTimes(0);
+      overlay.setContentHeight(412);
+      expect(styles()).toEqual(sized(412));
+      expect(iframe().focus).toHaveBeenCalledTimes(1);
+      overlay.setContentHeight(500.5);
+      expect(styles()).toEqual(sized(500.5));
+      expect(iframe().focus).toHaveBeenCalledTimes(1);
+    });
+
+    it("is the same at every width and never asks for it", () => {
+      dom.media.matches = false;
+      const overlay = sheetFrame().openOverlay("bottomSheet");
+      expect(styles()).toEqual(WAITING);
+      overlay.setContentHeight(412);
+      expect(styles()).toEqual(sized(412));
+      expect(dom.matchMedia).toHaveBeenCalledTimes(0);
+    });
+
+    it("shows at the full height of a sheet when no height arrives, and a later one still fits it", async () => {
+      const overlay = sheetFrame().openOverlay("bottomSheet");
+      await afterFallback();
+      expect(styles()).toEqual(FALLBACK);
+      expect(iframe().focus).toHaveBeenCalledTimes(1);
+      overlay.setContentHeight(300);
+      expect(styles()).toEqual(sized(300));
+      expect(iframe().focus).toHaveBeenCalledTimes(1);
+    });
+
+    it("keeps Lucra's height once one arrives before the wait ends", async () => {
+      const overlay = sheetFrame().openOverlay("bottomSheet");
+      overlay.setContentHeight(412);
+      await afterFallback();
+      expect(styles()).toEqual(sized(412));
+      expect(iframe().focus).toHaveBeenCalledTimes(1);
+    });
+
+    it("hides on close and gives focus back, and a late height or wait does nothing", async () => {
+      const overlay = sheetFrame().openOverlay("bottomSheet");
+      overlay.close();
+      expect(styles()).toEqual(HIDDEN);
+      expect(host().attributes).toEqual({});
+      expect(dom.focused.focus).toHaveBeenCalledTimes(1);
+      overlay.setContentHeight(412);
+      await afterFallback();
+      expect(styles()).toEqual(HIDDEN);
+      expect(iframe().focus).toHaveBeenCalledTimes(0);
+    });
+
+    it("stops waiting when another overlay replaces it or the frame is destroyed", async () => {
+      const frame = sheetFrame();
+      const first = frame.openOverlay("bottomSheet");
+      frame.openOverlay("fullScreen");
+      first.setContentHeight(412);
+      await afterFallback();
+      expect(styles()).toEqual(FULL_SCREEN);
+
+      const second = sheetFrame();
+      second.openOverlay("bottomSheet");
+      const secondFrame = dom.body.children[1].children[0];
+      second.destroy();
+      await afterFallback();
+      expect(secondFrame.focus).toHaveBeenCalledTimes(0);
+    });
+
+    it("other presentations ignore a height", () => {
+      mounted().openOverlay("sheet").setContentHeight(412);
+      expect(styles()).toEqual(SHEET_WIDE);
+    });
+  });
 });
 
 describe("createDomFrame: destroy", () => {
@@ -541,6 +650,7 @@ describe("page helpers", () => {
     frame.post({ type: MessageTypeToLucraClient.enableExitLucra, body: true });
     frame.onMessage(() => {})();
     frame.openOverlay("fullScreen").close();
+    frame.openOverlay("bottomSheet").setContentHeight(412);
     frame.destroy();
     expect(() => frame.openPopup(URL_1)).toThrow();
   });

@@ -115,7 +115,7 @@ function createLiveClient(config) {
     const { presentation } = config;
     if (presentation !== undefined && !PRESENTATIONS.includes(presentation)) {
         throw new LucraError(LucraErrorCode.INVALID_CONFIG, undefined, {
-            hint: 'presentation must be "fullScreen", "modal", or "sheet".',
+            hint: 'presentation must be "fullScreen", "modal", "sheet", or "bottomSheet".',
         });
     }
     // Throws INVALID_CONFIG before anything is added to the page.

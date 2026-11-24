@@ -482,7 +482,9 @@ describe("createLucraClient", () => {
       for (const presentation of ["popup", null]) {
         const error = thrown(() => createLucraClient({ ...config, presentation } as never));
         expect(error.code).toBe("INVALID_CONFIG");
-        expect(error.hint).toBe('presentation must be "fullScreen", "modal", or "sheet".');
+        expect(error.hint).toBe(
+          'presentation must be "fullScreen", "modal", "sheet", or "bottomSheet".'
+        );
       }
       // Nothing was remembered, so a good config still makes a client.
       createLucraClient(config).destroy();
@@ -498,6 +500,15 @@ describe("createLucraClient", () => {
       ]) {
         expect(thrown(() => createLucraClient(other)).code).toBe("INVALID_CONFIG");
       }
+      first.destroy();
+    });
+
+    it("takes bottomSheet as the client's presentation", () => {
+      const first = createLucraClient({ ...config, presentation: "bottomSheet" });
+      expect(createLucraClient({ ...config, presentation: "bottomSheet" })).toBe(first);
+      expect(thrown(() => createLucraClient({ ...config, presentation: "sheet" })).code).toBe(
+        "INVALID_CONFIG"
+      );
       first.destroy();
     });
 

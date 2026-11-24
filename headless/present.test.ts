@@ -769,6 +769,118 @@ describe("createPresent: presentation", () => {
     await game;
   });
 
+  it("tells Lucra how each screen shows once it opens, before it navigates", async () => {
+    const { frame, present } = setup({}, { presentation: "bottomSheet" });
+    await connectLoggedIn(frame);
+    const shown: Promise<unknown>[] = [];
+    for (const presentation of ["fullScreen", "modal", "sheet", "bottomSheet", undefined] as const) {
+      frame.posted.length = 0;
+      shown.push(present.profile({ presentation }));
+      await tick();
+      // The screen it replaced may have sent Lucra home first.
+      const types: string[] = frame.posted.map((message) => message.type);
+      expect(types.slice(-3)).toEqual(["presentation", "enableExitLucra", "navigate"]);
+      expect(frame.lastPosted("navigate")?.body).toEqual({ pathname: `/app/profile?${PARENT}` });
+      expect(count(frame, "presentation")).toBe(1);
+      // Without its own, the client's.
+      expect(frame.lastPosted("presentation")?.body).toEqual({
+        presentation: presentation ?? "bottomSheet",
+      });
+    }
+    present.dismiss();
+    await Promise.all(shown);
+    expect(count(frame, "presentation")).toBe(1);
+  });
+
+  it("tells Lucra again after it restarts while the screen shows", async () => {
+    const { frame, present } = setup();
+    await connectLoggedIn(frame);
+    const shown = present.wallet({ presentation: "bottomSheet" });
+    await tick();
+    expect(count(frame, "presentation")).toBe(1);
+    frame.deliver("initialized", { success: true });
+    expect(count(frame, "presentation")).toBe(2);
+    expect(frame.lastPosted("presentation")?.body).toEqual({ presentation: "bottomSheet" });
+    frame.deliver("exitLucra", true);
+    await shown;
+    frame.deliver("initialized", { success: true });
+    expect(count(frame, "presentation")).toBe(2);
+  });
+
+  it("tells Lucra for a login and a minigame too, and the login page's URL is unchanged", async () => {
+    const loggedOut = setup();
+    await connectLoggedOut(loggedOut.frame);
+    const login = loggedOut.present.login({ phoneNumber: "5551234567", presentation: "bottomSheet" });
+    await tick();
+    expect(loggedOut.frame.urls[loggedOut.frame.urls.length - 1]).toBe(
+      buildUrl(urls, "", { login: "true", loginOnly: "true", loginHint: "5551234567" })
+    );
+    // Nothing shows while Lucra loads its login page.
+    expect(count(loggedOut.frame, "presentation")).toBe(0);
+    await connectLoggedOut(loggedOut.frame);
+    expect(loggedOut.frame.presentations).toEqual(["bottomSheet"]);
+    expect(loggedOut.frame.lastPosted("presentation")?.body).toEqual({
+      presentation: "bottomSheet",
+    });
+    loggedOut.present.dismiss();
+    await login;
+
+    const { frame, present } = setup();
+    await connectLoggedIn(frame);
+    const game = present.minigame({ gameId: "g1", mode: "practice", presentation: "bottomSheet" });
+    await tick();
+    expect(count(frame, "presentation")).toBe(0);
+    frame.answer("presentMinigameRequest", "presentMinigameResponse", { sessionId: "s1", matchupId: null });
+    await tick();
+    expect(frame.presentations).toEqual(["bottomSheet"]);
+    expect(frame.lastPosted("presentation")?.body).toEqual({ presentation: "bottomSheet" });
+    present.dismiss();
+    await game;
+  });
+
+  const INVALID_HEIGHTS = [0, -5, Number.NaN, Number.POSITIVE_INFINITY, "400", null, undefined];
+
+  for (const name of ["profile", "login"] as const) {
+    it(`sizes a ${name} bottom sheet to each valid height Lucra sends while it shows`, async () => {
+      const { frame, present } = setup();
+      if (name === "login") await connectLoggedOut(frame);
+      else await connectLoggedIn(frame);
+      const shown = present[name]({ presentation: "bottomSheet" });
+      // Before it shows, a height is not for it.
+      frame.deliver("contentHeight", { height: 300 });
+      await tick();
+      if (name === "login") await connectLoggedOut(frame);
+      expect(frame.overlayOpen).toBe(true);
+      expect(frame.contentHeights).toEqual([]);
+      frame.deliver("contentHeight", { height: 412 });
+      for (const height of INVALID_HEIGHTS) frame.deliver("contentHeight", { height });
+      frame.deliver("contentHeight", null);
+      frame.deliver("contentHeight", 412);
+      frame.deliver("contentHeight", { height: 500.5 });
+      expect(frame.contentHeights).toEqual([412, 500.5]);
+      frame.deliver("exitLucra", true);
+      await shown;
+      // Closed: no longer listening.
+      frame.deliver("contentHeight", { height: 600 });
+      expect(frame.contentHeights).toEqual([412, 500.5]);
+    });
+  }
+
+  it("ignores Lucra's height for a screen that is not a bottom sheet", async () => {
+    const { frame, present } = setup({}, { presentation: "sheet" });
+    await connectLoggedIn(frame);
+    const sheet = present.profile();
+    await tick();
+    frame.deliver("contentHeight", { height: 412 });
+    const fullScreen = present.wallet({ presentation: "fullScreen" });
+    await tick();
+    frame.deliver("contentHeight", { height: 412 });
+    present.dismiss();
+    await Promise.all([sheet, fullScreen]);
+    expect(frame.presentations).toEqual(["sheet", "fullScreen"]);
+    expect(frame.contentHeights).toEqual([]);
+  });
+
   for (const presentation of ["popup", null]) {
     it(`rejects ${presentation}, and leaves the screen on show alone`, async () => {
       const { frame, activity, present } = setup();
@@ -783,7 +895,9 @@ describe("createPresent: presentation", () => {
       ]) {
         const error = await caught(call());
         expect(error.code).toBe("INVALID_ARGUMENT");
-        expect(error.hint).toBe('presentation must be "fullScreen", "modal", or "sheet".');
+        expect(error.hint).toBe(
+          'presentation must be "fullScreen", "modal", "sheet", or "bottomSheet".'
+        );
       }
       await tick();
       expect(present.getState()).toEqual({ screen: "wallet" });

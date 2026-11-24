@@ -13,6 +13,7 @@ export type InboundMessage = {
 };
 export type Overlay = {
     close(): void;
+    setContentHeight(height: number): void;
 };
 export type Popup = LucraPopupHandle & {
     focus(): boolean;
@@ -30,4 +31,4 @@ export declare function hasDom(): boolean;
 export declare function pageOrigin(): string;
 export declare function createNullFrame(): Frame;
 export declare const PRESENTATIONS: readonly LucraPresentation[];
-export declare function createDomFrame(origin: string): Frame;
+export declare function createDomFrame(origin: string, fallbackMs?: number): Frame;

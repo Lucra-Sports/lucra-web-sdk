@@ -55,7 +55,7 @@ export function createPresent(options) {
             }));
         }
         if (presentation !== undefined && !PRESENTATIONS.includes(presentation)) {
-            return invalid('presentation must be "fullScreen", "modal", or "sheet".');
+            return invalid('presentation must be "fullScreen", "modal", "sheet", or "bottomSheet".');
         }
         // Aborted already: show nothing, and leave any screen on show alone.
         if (signal?.aborted) {
@@ -166,7 +166,9 @@ export function createPresent(options) {
                     }
                 }
                 // The call's own presentation, or the client's.
-                overlay = frame.openOverlay(presentation ?? options.presentation);
+                const shownAs = presentation ?? options.presentation;
+                const opened = frame.openOverlay(shownAs);
+                overlay = opened;
                 // This screen takes over Lucra's page.
                 gameOutOfSight = false;
                 setScreen(screen.name);
@@ -187,10 +189,24 @@ export function createPresent(options) {
                             finish({ result });
                     }));
                 }
-                // Lucra forgets this setting each time it restarts.
-                const enableExit = () => session.post(MessageTypeToLucraClient.enableExitLucra, true);
-                cleanups.push(session.onConnected(enableExit));
-                enableExit();
+                if (shownAs === "bottomSheet") {
+                    // Lucra sends its content's height each time it changes.
+                    cleanups.push(session.on(LucraClientMessageType.contentHeight, (data) => {
+                        const height = data?.height;
+                        if (typeof height === "number" && Number.isFinite(height) && height > 0) {
+                            opened.setContentHeight(height);
+                        }
+                    }));
+                }
+                // Lucra lays the screen out for its presentation, and shows its exit
+                // control. It forgets both each time it restarts.
+                const tellLucra = () => {
+                    const body = { presentation: shownAs };
+                    session.post(MessageTypeToLucraClient.presentation, body);
+                    session.post(MessageTypeToLucraClient.enableExitLucra, true);
+                };
+                cleanups.push(session.onConnected(tellLucra));
+                tellLucra();
                 // Lucra may start over while the screen shows: the page can reload
                 // itself. If it cannot start again, the screen will never come back,
                 // so close it with the reason. finish does nothing once this screen
@@ -352,7 +368,7 @@ export function createPresent(options) {
             if (mode !== "tournament" && matchupId !== undefined) {
                 return invalid('matchupId is only for mode "tournament". Leave it out for other modes.');
             }
-            // Only the fields given. The signal and presentation are not sent.
+            // Only the fields given. The signal and presentation are not part of it.
             const body = { gameId, mode };
             if (amount !== undefined)
                 body.amount = amount;

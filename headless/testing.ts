@@ -23,6 +23,8 @@ export type FakeFrame = Frame & {
   overlaysOpened: number;
   // What each openOverlay() was given, in order.
   presentations: LucraPresentation[];
+  // Every height passed to an overlay's setContentHeight(), open or not, in order.
+  contentHeights: number[];
   popups: FakePopup[];
   // When true, openPopup throws like a blocked popup.
   blockPopups: boolean;
@@ -46,6 +48,7 @@ export function createFakeFrame(): FakeFrame {
     overlayOpen: false,
     overlaysOpened: 0,
     presentations: [],
+    contentHeights: [],
     popups: [],
     blockPopups: false,
     destroyed: false,
@@ -74,6 +77,9 @@ export function createFakeFrame(): FakeFrame {
           if (currentOverlay !== overlay) return;
           currentOverlay = null;
           frame.overlayOpen = false;
+        },
+        setContentHeight(height) {
+          frame.contentHeights.push(height);
         },
       };
       currentOverlay = overlay;
