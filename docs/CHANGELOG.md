@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## [v1.26.0]
+
+### Changed
+
+- **Preview:** Lucra now takes a reward stake in `lucra.matchups.create()` and `client.api.createRecreationalGame()`. A reward with no `rewardId`, a text field that is not a string, or `metadata` that cannot convert to JSON rejects with `INVALID_AT_STAKE`. When free to play is not enabled for the tenant, a reward stake rejects with `INVALID_REWARD_TYPE`. See [Creating a game](2.2_gyp_headless.md#creating-a-game).
+- **Preview:** the `claimReward` docs no longer say how to check a redeem before giving the reward. The reward is yours, so how you match and deduplicate redeems is up to you. See [Events](3.0_headless_client.md#events).
+
 ## [v1.25.0]
 
 ### Added
