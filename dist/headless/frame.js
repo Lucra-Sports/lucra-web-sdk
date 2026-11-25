@@ -25,16 +25,11 @@ export function createNullFrame() {
     };
 }
 // Every LucraPresentation, to check a value at run time.
-export const PRESENTATIONS = [
-    "fullScreen",
-    "modal",
-    "sheet",
-    "bottomSheet",
-];
+export const PRESENTATIONS = ["fullScreen", "modal", "sheet"];
 // What a call or the client is told when its presentation is not one of them.
-export const PRESENTATION_HINT = 'presentation must be "fullScreen", "modal", "sheet", or "bottomSheet".';
-// How long a bottom sheet stays hidden waiting for Lucra's height. A screen or
-// a Lucra app that never sends one still shows, at the full height of a sheet.
+export const PRESENTATION_HINT = 'presentation must be "fullScreen", "modal", or "sheet".';
+// How long a sheet stays unseen waiting for Lucra's height. A screen or a Lucra
+// app that never sends one still shows, at the sheet's full height.
 const CONTENT_HEIGHT_FALLBACK_MS = 1000;
 const HOST_ID = "lucra-headless-host";
 // Same permissions the existing client grants its frame. The last three are for
@@ -57,14 +52,10 @@ const BACKDROP_CSS = COVER_CSS + "box-sizing:border-box;background:rgba(0,0,0,.5
 const PANEL_CSS = "display:block;flex:none;border:0;background:#000;";
 // The width of the Add Funds window, a size Lucra screens already show at.
 const PANEL_WIDTH = `width:min(${POPUP_WIDTH}px,100%);`;
-// A panel up from the bottom reaches the bottom edge. Its own padding keeps
-// Lucra above the iOS home indicator.
-const BOTTOM_HOST_CSS = BACKDROP_CSS + "flex-direction:column;justify-content:flex-end;";
-const BOTTOM_HOST_PADDING = "padding:env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);";
 // 96px is the gap the bottom drawer in Lucra's web app leaves above it (6rem
 // there). Pixels, because rem would follow the host page's font size.
 const SHEET_HEIGHT = "calc(100% - 96px)";
-// The host and frame styles for a presentation on a wide or a narrow window.
+// The host and frame styles for full screen or a modal, on a wide or a narrow window.
 function layout(presentation, wide) {
     if (presentation === "modal" && wide) {
         return {
@@ -73,31 +64,13 @@ function layout(presentation, wide) {
             iframe: PANEL_CSS + PANEL_WIDTH + `height:min(${POPUP_HEIGHT}px,100%);`,
         };
     }
-    if (presentation === "sheet" && wide) {
-        // The panel reaches the top, right, and bottom edges. Its own padding keeps
-        // Lucra clear of the notch and the iOS home indicator.
-        return {
-            host: BACKDROP_CSS + "justify-content:flex-end;",
-            iframe: PANEL_CSS +
-                "box-sizing:border-box;" +
-                PANEL_WIDTH +
-                "height:100%;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) 0;",
-        };
-    }
-    if (presentation === "sheet") {
-        return {
-            host: BOTTOM_HOST_CSS + BOTTOM_HOST_PADDING,
-            iframe: PANEL_CSS +
-                `box-sizing:border-box;width:100%;height:${SHEET_HEIGHT};` +
-                "padding-bottom:env(safe-area-inset-bottom);",
-        };
-    }
     // Full screen, and a modal on a narrow window.
     return { host: OVERLAY_CSS, iframe: IFRAME_CSS };
 }
-// The bottom sheet is the same at every width: up from the bottom, as wide as
-// the Add Funds window, and no taller than a sheet.
-function bottomSheetLayout(height) {
+// The sheet is the same at every width: up from the bottom edge, as wide as the
+// Add Funds window, and no taller than the cap. Its own padding keeps Lucra
+// above the iOS home indicator.
+function sheetLayout(height) {
     let heightCss;
     if (height === null) {
         // Laid out at its real size so Lucra can measure itself, but not seen.
@@ -113,7 +86,9 @@ function bottomSheetLayout(height) {
         heightCss = `height:calc(${height}px + env(safe-area-inset-bottom));`;
     }
     return {
-        host: BOTTOM_HOST_CSS + "align-items:center;" + BOTTOM_HOST_PADDING,
+        host: BACKDROP_CSS +
+            "flex-direction:column;justify-content:flex-end;align-items:center;" +
+            "padding:env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);",
         iframe: PANEL_CSS +
             "box-sizing:border-box;" +
             PANEL_WIDTH +
@@ -122,10 +97,9 @@ function bottomSheetLayout(height) {
             heightCss,
     };
 }
-// The frame lives in the body. Each screen shows full screen, or as a modal, a
-// sheet, or a bottom sheet over the dimmed page. Only styles change, never
-// where the frame is, since moving it would reload Lucra. Tests pass a short
-// `fallbackMs`.
+// The frame lives in the body. Each screen shows full screen, or as a modal or
+// sheet over the dimmed page. Only styles change, never where the frame is,
+// since moving it would reload Lucra. Tests pass a short `fallbackMs`.
 export function createDomFrame(origin, fallbackMs = CONTENT_HEIGHT_FALLBACK_MS) {
     let host = null;
     let iframe = null;
@@ -218,20 +192,17 @@ export function createDomFrame(origin, fallbackMs = CONTENT_HEIGHT_FALLBACK_MS) 
             const overlayHost = host;
             const overlayFrame = iframe;
             const previousFocus = document.activeElement;
-            const bottomSheet = presentation === "bottomSheet";
-            // A modal and a sheet change shape with the window width. Full screen and
-            // the bottom sheet do not.
-            const media = presentation === "fullScreen" || bottomSheet ? null : window.matchMedia(WIDE_QUERY);
+            const sheet = presentation === "sheet";
+            // Only a modal changes shape with the window width.
+            const media = presentation === "modal" ? window.matchMedia(WIDE_QUERY) : null;
             let height = null;
             let fallbackTimer;
             const fit = () => {
-                const css = bottomSheet
-                    ? bottomSheetLayout(height)
-                    : layout(presentation, media?.matches === true);
+                const css = sheet ? sheetLayout(height) : layout(presentation, media?.matches === true);
                 overlayHost.style.cssText = css.host;
                 overlayFrame.style.cssText = css.iframe;
             };
-            // Shows a bottom sheet at `next`.
+            // Shows a sheet at `next`.
             const resize = (next) => {
                 height = next;
                 clearTimeout(fallbackTimer);
@@ -259,7 +230,7 @@ export function createDomFrame(origin, fallbackMs = CONTENT_HEIGHT_FALLBACK_MS) 
                 previousFocus?.focus?.();
             };
             closeOverlay = close;
-            if (bottomSheet) {
+            if (sheet) {
                 fallbackTimer = setTimeout(() => {
                     if (closeOverlay === close)
                         resize("fallback");
@@ -268,7 +239,7 @@ export function createDomFrame(origin, fallbackMs = CONTENT_HEIGHT_FALLBACK_MS) 
             return {
                 close,
                 setContentHeight(contentHeight) {
-                    if (bottomSheet && closeOverlay === close)
+                    if (sheet && closeOverlay === close)
                         resize(contentHeight);
                 },
             };

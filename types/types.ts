@@ -106,10 +106,10 @@ export type LucraNavigateRequest = {
 };
 // Sent by the headless client each time a screen opens, before a game starts,
 // and again after Lucra restarts while a screen shows: how the screen shows, so
-// Lucra can lay it out for it. As a bottom sheet, Lucra sends contentHeight.
-// The headless LucraPresentation is this union.
+// Lucra can lay it out for it. As a sheet, Lucra sends contentHeight. The
+// headless LucraPresentation is this union.
 export type LucraPresentationBody = {
-  presentation: "fullScreen" | "modal" | "sheet" | "bottomSheet";
+  presentation: "fullScreen" | "modal" | "sheet";
 };
 
 export type LucraAvailableRewards = {
@@ -133,9 +133,9 @@ export type LucraNavigationEventBody = { url: string; page?: LucraPage };
 export type LucraClaimRewardBody = { reward: LucraReward };
 export type LucraLoginSuccessBody = SDKLucraUser;
 export type LucraInitializedBody = { success: boolean };
-// Sent by Lucra while a screen shows as a bottom sheet, each time the height of
-// its content changes: CSS pixels, without the safe area. The SDK sizes the
-// sheet to it.
+// Sent by Lucra while a screen shows as a sheet, each time the height of its
+// content changes: CSS pixels, without the safe area. The SDK sizes the sheet
+// to it.
 export type LucraContentHeightBody = { height: number };
 
 // Sent to the web app when something fails on the SDK's side of the bridge, so it reaches

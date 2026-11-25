@@ -771,10 +771,10 @@ describe("createPresent: presentation", () => {
   });
 
   it("tells Lucra how each screen shows once it opens, before it navigates", async () => {
-    const { frame, present } = setup({}, { presentation: "bottomSheet" });
+    const { frame, present } = setup({}, { presentation: "sheet" });
     await connectLoggedIn(frame);
     const shown: Promise<unknown>[] = [];
-    for (const presentation of ["fullScreen", "modal", "sheet", "bottomSheet", undefined] as const) {
+    for (const presentation of ["fullScreen", "modal", "sheet", undefined] as const) {
       frame.posted.length = 0;
       shown.push(present.profile({ presentation }));
       await tick();
@@ -785,7 +785,7 @@ describe("createPresent: presentation", () => {
       expect(count(frame, "presentation")).toBe(1);
       // Without its own, the client's.
       expect(frame.lastPosted("presentation")?.body).toEqual({
-        presentation: presentation ?? "bottomSheet",
+        presentation: presentation ?? "sheet",
       });
     }
     present.dismiss();
@@ -796,26 +796,26 @@ describe("createPresent: presentation", () => {
   it("tells Lucra again after it restarts while the screen shows", async () => {
     const { frame, present } = setup();
     await connectLoggedIn(frame);
-    const shown = present.wallet({ presentation: "bottomSheet" });
+    const shown = present.wallet({ presentation: "sheet" });
     await tick();
     expect(count(frame, "presentation")).toBe(1);
     frame.deliver("initialized", { success: true });
     expect(count(frame, "presentation")).toBe(2);
-    expect(frame.lastPosted("presentation")?.body).toEqual({ presentation: "bottomSheet" });
+    expect(frame.lastPosted("presentation")?.body).toEqual({ presentation: "sheet" });
     frame.deliver("exitLucra", true);
     await shown;
     frame.deliver("initialized", { success: true });
     expect(count(frame, "presentation")).toBe(2);
   });
 
-  it("tells a restarted Lucra again while a bottom sheet waits for its height, then sizes it", async () => {
+  it("tells a restarted Lucra again while a sheet waits for its height, then sizes it", async () => {
     const { frame, present } = setup();
     await connectLoggedIn(frame);
-    const shown = present.profile({ presentation: "bottomSheet" });
+    const shown = present.profile({ presentation: "sheet" });
     await tick();
     frame.deliver("initialized", { success: true });
     expect(count(frame, "presentation")).toBe(2);
-    expect(frame.lastPosted("presentation")?.body).toEqual({ presentation: "bottomSheet" });
+    expect(frame.lastPosted("presentation")?.body).toEqual({ presentation: "sheet" });
     frame.deliver("contentHeight", { height: 412 });
     expect(frame.contentHeights).toEqual([412]);
     present.dismiss();
@@ -825,7 +825,7 @@ describe("createPresent: presentation", () => {
   it("tells Lucra for a login and a minigame too, and the login page's URL is unchanged", async () => {
     const loggedOut = setup();
     await connectLoggedOut(loggedOut.frame);
-    const login = loggedOut.present.login({ phoneNumber: "5551234567", presentation: "bottomSheet" });
+    const login = loggedOut.present.login({ phoneNumber: "5551234567", presentation: "sheet" });
     await tick();
     expect(loggedOut.frame.urls[loggedOut.frame.urls.length - 1]).toBe(
       buildUrl(urls, "", { login: "true", loginOnly: "true", loginHint: "5551234567" })
@@ -833,28 +833,26 @@ describe("createPresent: presentation", () => {
     // Nothing shows while Lucra loads its login page.
     expect(count(loggedOut.frame, "presentation")).toBe(0);
     await connectLoggedOut(loggedOut.frame);
-    expect(loggedOut.frame.presentations).toEqual(["bottomSheet"]);
-    expect(loggedOut.frame.lastPosted("presentation")?.body).toEqual({
-      presentation: "bottomSheet",
-    });
+    expect(loggedOut.frame.presentations).toEqual(["sheet"]);
+    expect(loggedOut.frame.lastPosted("presentation")?.body).toEqual({ presentation: "sheet" });
     loggedOut.present.dismiss();
     await login;
 
     const { frame, present } = setup();
     await connectLoggedIn(frame);
-    const game = present.minigame({ gameId: "g1", mode: "practice", presentation: "bottomSheet" });
+    const game = present.minigame({ gameId: "g1", mode: "practice", presentation: "sheet" });
     await tick();
-    // Before the game starts, so Lucra lays it out for a bottom sheet.
+    // Before the game starts, so Lucra lays it out for a sheet.
     const types: string[] = frame.posted.map((message) => message.type);
     expect(types.indexOf("presentation")).toBeGreaterThanOrEqual(0);
     expect(types.indexOf("presentation")).toBeLessThan(types.indexOf("presentMinigameRequest"));
-    expect(frame.lastPosted("presentation")?.body).toEqual({ presentation: "bottomSheet" });
+    expect(frame.lastPosted("presentation")?.body).toEqual({ presentation: "sheet" });
     frame.answer("presentMinigameRequest", "presentMinigameResponse", { sessionId: "s1", matchupId: null });
     await tick();
     // And again once it shows.
-    expect(frame.presentations).toEqual(["bottomSheet"]);
+    expect(frame.presentations).toEqual(["sheet"]);
     expect(count(frame, "presentation")).toBe(2);
-    expect(frame.lastPosted("presentation")?.body).toEqual({ presentation: "bottomSheet" });
+    expect(frame.lastPosted("presentation")?.body).toEqual({ presentation: "sheet" });
     present.dismiss();
     await game;
   });
@@ -862,11 +860,11 @@ describe("createPresent: presentation", () => {
   const INVALID_HEIGHTS = [0, -5, Number.NaN, Number.POSITIVE_INFINITY, "400", null, undefined];
 
   for (const name of ["profile", "login"] as const) {
-    it(`sizes a ${name} bottom sheet to each valid height Lucra sends while it shows`, async () => {
+    it(`sizes a ${name} sheet to each valid height Lucra sends while it shows`, async () => {
       const { frame, present } = setup();
       if (name === "login") await connectLoggedOut(frame);
       else await connectLoggedIn(frame);
-      const shown = present[name]({ presentation: "bottomSheet" });
+      const shown = present[name]({ presentation: "sheet" });
       // Before it shows, a height is not for it.
       frame.deliver("contentHeight", { height: 300 });
       await tick();

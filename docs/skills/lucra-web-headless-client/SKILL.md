@@ -4,8 +4,8 @@ description: >
   Use for any work with Lucra's preview headless client: code that imports createLucraClient
   from lucra-web-sdk/headless, uses its client (lucra.auth, lucra.tournaments, lucra.matchups,
   lucra.present, LucraError), or migrates LucraClient code to it. Covers the preview status,
-  setup and config, how calls wait and fail, showing Lucra screens full screen, as a modal, as
-  a sheet, or as a bottom sheet, Add Funds, Games You Play create, accept, and cancel, and troubleshooting codes
+  setup and config, how calls wait and fail, showing Lucra screens full screen, as a modal, or
+  as a sheet, Add Funds, Games You Play create, accept, and cancel, and troubleshooting codes
   such as INVALID_CONFIG, CONNECTION_TIMEOUT, NOT_LOGGED_IN, IN_PROGRESS, SCREEN_OPEN,
   POPUP_BLOCKED, and TIMEOUT. A React app that uses lucra-web-sdk/react also loads
   lucra-web-react. Not for LucraClient (LucraClient.initialize,
@@ -72,7 +72,7 @@ is unchanged by the preview.
 | `env` | Required. `"sandbox"` or `"production"`, or another environment your Lucra contact names. Any other value throws `INVALID_CONFIG` |
 | `locationId` | Optional |
 | `autoJoin` | Optional, defaults to `true`. See [autoJoin](../../1.2_initialize_client.md#autojoin) |
-| `presentation` | Optional. `"fullScreen"` (default), `"modal"`, `"sheet"`, or `"bottomSheet"`: the default for screens. Each `present.*` call can pass its own. See [section 6](#6-screens) |
+| `presentation` | Optional. `"fullScreen"` (default), `"modal"`, or `"sheet"`: the default for screens. Each `present.*` call can pass its own. See [section 6](#6-screens) |
 
 - `createLucraClient` **throws `INVALID_CONFIG` synchronously**, before it adds anything to the
   page, for a missing `apiKey`, `tenantId`, or `env`, an unknown `env`, a `tenantId` that does
@@ -201,14 +201,13 @@ Every code: [Errors](../../3.0_headless_client.md#errors).
 
 - **Where it shows.** By default, a screen covers the whole page. With
   `presentation: "modal"` it is a panel up to 430 by 800px in the middle of the dimmed page, and
-  with `"sheet"` a panel up to 430px wide at the right edge. Under 640px wide a modal covers the
-  page and a sheet comes up from the bottom, leaving 96px of the page above it. With
-  `"bottomSheet"` it is a panel up to 430px wide at the bottom edge at every width, as tall as
-  the height Lucra reports for the screen and never closer than 96px to the top. If no height
-  arrives within a second, it shows at that maximum, and a later height still resizes it. The
-  dimmed page takes no clicks, and neither a click on it nor Escape closes the screen. Every screen but `addFunds()` takes `{ presentation }` for that screen only; the
-  client's is the default, also for screens `withRemediation()` shows. Lucra never shows inside
-  your own element. It is hidden before a screen shows and after it ends. See
+  covers the page under 640px wide. With `"sheet"` it is a panel up to 430px wide at the bottom
+  edge at every width, as tall as the height Lucra reports for the screen and never closer than
+  96px to the top. If no height arrives within a second, it shows at that maximum, and a later
+  height still resizes it. The dimmed page takes no clicks, and neither a click on it nor Escape
+  closes the screen. Every screen but `addFunds()` takes `{ presentation }` for that screen
+  only; the client's is the default, also for screens `withRemediation()` shows. Lucra never
+  shows inside your own element. It is hidden before a screen shows and after it ends. See
   [As a modal or a sheet](../../3.0_headless_client.md#as-a-modal-or-a-sheet).
 - **React to the screen on show from state, not by wrapping calls**, for example to pause your
   own media while a screen covers it. `lucra.present.getState()` returns `{ screen }`, the
@@ -216,9 +215,8 @@ Every code: [Errors](../../3.0_headless_client.md#errors).
   `lucra.present.subscribe(listener)` calls the listener now and on every change. They behave
   like `lucra.auth.getState()` and `subscribe()`. `screen` is set only while a screen is on
   show: not while it waits to connect, for a login, or for a write, and never for Add Funds. A
-  bottom sheet counts as on show while it waits for its height. A replacement goes to `null`
-  and then to the new screen, in the same task when nothing has to wait. Do not count open
-  screens.
+  sheet counts as on show while it waits for its height. A replacement goes to `null` and then
+  to the new screen, in the same task when nothing has to wait. Do not count open screens.
 - **The SDK draws no close control.** A screen ends with Lucra's own exit control,
   `lucra.present.dismiss()`, another `present.*` call other than `addFunds()` replacing it, the
   user logging out inside it, `lucra.destroy()`, its own `signal` being aborted, Lucra

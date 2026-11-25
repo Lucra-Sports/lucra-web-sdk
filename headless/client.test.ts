@@ -490,7 +490,7 @@ describe("createLucraClient", () => {
     });
 
     it("returns the same client for the same presentation, and throws for another", () => {
-      for (const presentation of ["sheet", "bottomSheet"] as const) {
+      for (const presentation of ["sheet", "modal"] as const) {
         const first = createLucraClient({ ...config, presentation });
         expect(createLucraClient({ ...config, presentation })).toBe(first);
         const others = PRESENTATIONS.filter((other) => other !== presentation);

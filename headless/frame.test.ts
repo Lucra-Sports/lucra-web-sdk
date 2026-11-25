@@ -340,22 +340,6 @@ describe("createDomFrame: modal and sheet", () => {
     host: BACKDROP + SAFE_AREA + "align-items:center;justify-content:center;",
     iframe: PANEL + "width:min(430px,100%);height:min(800px,100%);",
   };
-  const SHEET_WIDE = {
-    host: BACKDROP + "justify-content:flex-end;",
-    iframe:
-      PANEL +
-      "box-sizing:border-box;width:min(430px,100%);height:100%;" +
-      "padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) 0;",
-  };
-  const SHEET_NARROW = {
-    host:
-      BACKDROP +
-      "flex-direction:column;justify-content:flex-end;" +
-      "padding:env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);",
-    iframe:
-      PANEL +
-      "box-sizing:border-box;width:100%;height:calc(100% - 96px);padding-bottom:env(safe-area-inset-bottom);",
-  };
   const HIDDEN = { host: "display:none;", iframe: FULL_SCREEN.iframe };
 
   const styles = () => ({ host: host().style.cssText, iframe: iframe().style.cssText });
@@ -371,31 +355,26 @@ describe("createDomFrame: modal and sheet", () => {
     return frame;
   };
 
-  for (const [presentation, wide, narrow] of [
-    ["modal", MODAL_WIDE, FULL_SCREEN],
-    ["sheet", SHEET_WIDE, SHEET_NARROW],
-  ] as const) {
-    it(`shows a ${presentation} as a dialog that follows the window width`, () => {
-      mounted().openOverlay(presentation);
-      expect(dom.matchMedia).toHaveBeenCalledWith("(min-width: 640px)");
-      expect(host().attributes.role).toBe("dialog");
-      expect(host().attributes["aria-modal"]).toBe("true");
-      expect(styles()).toEqual(wide);
-      resize(false);
-      expect(styles()).toEqual(narrow);
-      resize(true);
-      expect(styles()).toEqual(wide);
-    });
+  it("shows a modal as a dialog that follows the window width", () => {
+    mounted().openOverlay("modal");
+    expect(dom.matchMedia).toHaveBeenCalledWith("(min-width: 640px)");
+    expect(host().attributes.role).toBe("dialog");
+    expect(host().attributes["aria-modal"]).toBe("true");
+    expect(styles()).toEqual(MODAL_WIDE);
+    resize(false);
+    expect(styles()).toEqual(FULL_SCREEN);
+    resize(true);
+    expect(styles()).toEqual(MODAL_WIDE);
+  });
 
-    it(`opens a ${presentation} on a narrow window in its narrow shape`, () => {
-      dom.media.matches = false;
-      mounted().openOverlay(presentation);
-      expect(styles()).toEqual(narrow);
-    });
-  }
+  it("opens a modal on a narrow window covering the page", () => {
+    dom.media.matches = false;
+    mounted().openOverlay("modal");
+    expect(styles()).toEqual(FULL_SCREEN);
+  });
 
   it("stops following the window once it closes", () => {
-    const overlay = mounted().openOverlay("sheet");
+    const overlay = mounted().openOverlay("modal");
     expect(changeListeners()).toBe(1);
     overlay.close();
     expect(changeListeners()).toBe(0);
@@ -422,7 +401,7 @@ describe("createDomFrame: modal and sheet", () => {
       expect(firstFrame.src).toBe(URL_1);
       expect(firstFrame.contentWindow?.location.replace).toHaveBeenCalledTimes(0);
     };
-    const overlay = frame.openOverlay("sheet");
+    const overlay = frame.openOverlay("modal");
     check();
     resize(false);
     check();
@@ -430,21 +409,21 @@ describe("createDomFrame: modal and sheet", () => {
     check();
     overlay.close();
     check();
-    frame.openOverlay("modal");
+    frame.openOverlay("sheet").setContentHeight(412);
     check();
   });
 
   it("shows each open in its own presentation, and a late close of an older one does nothing", () => {
     const frame = mounted();
-    const first = frame.openOverlay("modal");
-    frame.openOverlay("sheet");
-    expect(styles()).toEqual(SHEET_WIDE);
+    const first = frame.openOverlay("sheet");
+    frame.openOverlay("modal");
+    expect(styles()).toEqual(MODAL_WIDE);
     expect(changeListeners()).toBe(1);
     first.close();
-    expect(styles()).toEqual(SHEET_WIDE);
+    expect(styles()).toEqual(MODAL_WIDE);
     expect(changeListeners()).toBe(1);
     resize(false);
-    expect(styles()).toEqual(SHEET_NARROW);
+    expect(styles()).toEqual(FULL_SCREEN);
     frame.openOverlay("fullScreen");
     expect(styles()).toEqual(FULL_SCREEN);
     expect(changeListeners()).toBe(0);
@@ -456,27 +435,27 @@ describe("createDomFrame: modal and sheet", () => {
     expect(dom.matchMedia).toHaveBeenCalledTimes(0);
   });
 
-  describe("bottom sheet", () => {
+  describe("sheet", () => {
     const FALLBACK_MS = 20;
-    const BOTTOM_SHEET_HOST =
+    const SHEET_HOST =
       BACKDROP +
       "flex-direction:column;justify-content:flex-end;align-items:center;" +
       "padding:env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);";
-    const BOTTOM_SHEET_PANEL =
+    const SHEET_PANEL =
       PANEL +
       "box-sizing:border-box;width:min(430px,100%);max-height:calc(100% - 96px);" +
       "padding-bottom:env(safe-area-inset-bottom);border-radius:24px 24px 0 0;";
     const WAITING = {
-      host: BOTTOM_SHEET_HOST,
-      iframe: BOTTOM_SHEET_PANEL + "height:calc(100% - 96px);opacity:0;pointer-events:none;",
+      host: SHEET_HOST,
+      iframe: SHEET_PANEL + "height:calc(100% - 96px);opacity:0;pointer-events:none;",
     };
     const FALLBACK = {
-      host: BOTTOM_SHEET_HOST,
-      iframe: BOTTOM_SHEET_PANEL + "height:calc(100% - 96px);",
+      host: SHEET_HOST,
+      iframe: SHEET_PANEL + "height:calc(100% - 96px);",
     };
     const sized = (height: number) => ({
-      host: BOTTOM_SHEET_HOST,
-      iframe: BOTTOM_SHEET_PANEL + `height:calc(${height}px + env(safe-area-inset-bottom));`,
+      host: SHEET_HOST,
+      iframe: SHEET_PANEL + `height:calc(${height}px + env(safe-area-inset-bottom));`,
     });
     const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
     const afterFallback = () => sleep(FALLBACK_MS * 3);
@@ -488,7 +467,7 @@ describe("createDomFrame: modal and sheet", () => {
 
     it("focuses at once, waits unseen at its real size, then fits each height Lucra sends", () => {
       dom.media.matches = false;
-      const overlay = sheetFrame().openOverlay("bottomSheet");
+      const overlay = sheetFrame().openOverlay("sheet");
       expect(styles()).toEqual(WAITING);
       expect(host().attributes).toEqual({
         role: "dialog",
@@ -505,8 +484,8 @@ describe("createDomFrame: modal and sheet", () => {
       expect(dom.matchMedia).toHaveBeenCalledTimes(0);
     });
 
-    it("shows at the full height of a sheet when no height arrives, and a later one still fits it", async () => {
-      const overlay = sheetFrame().openOverlay("bottomSheet");
+    it("shows at its full height when no height arrives, and a later one still fits it", async () => {
+      const overlay = sheetFrame().openOverlay("sheet");
       await afterFallback();
       expect(styles()).toEqual(FALLBACK);
       overlay.setContentHeight(300);
@@ -514,14 +493,14 @@ describe("createDomFrame: modal and sheet", () => {
     });
 
     it("keeps Lucra's height once one arrives before the wait ends", async () => {
-      const overlay = sheetFrame().openOverlay("bottomSheet");
+      const overlay = sheetFrame().openOverlay("sheet");
       overlay.setContentHeight(412);
       await afterFallback();
       expect(styles()).toEqual(sized(412));
     });
 
     it("hides on close and gives focus back, and a late height or wait does nothing", async () => {
-      const overlay = sheetFrame().openOverlay("bottomSheet");
+      const overlay = sheetFrame().openOverlay("sheet");
       overlay.close();
       expect(styles()).toEqual(HIDDEN);
       expect(host().attributes).toEqual({});
@@ -533,27 +512,27 @@ describe("createDomFrame: modal and sheet", () => {
 
     it("stops waiting when another overlay replaces it or the frame is destroyed", async () => {
       const frame = sheetFrame();
-      const first = frame.openOverlay("bottomSheet");
+      const first = frame.openOverlay("sheet");
       frame.openOverlay("fullScreen");
       first.setContentHeight(412);
       await afterFallback();
       expect(styles()).toEqual(FULL_SCREEN);
 
       const second = sheetFrame();
-      second.openOverlay("bottomSheet");
+      second.openOverlay("sheet");
       const secondFrame = dom.body.children[1].children[0];
       second.destroy();
       await afterFallback();
       expect(secondFrame.style.cssText).toBe(FULL_SCREEN.iframe);
     });
 
-    it("a bottom sheet that replaces a waiting one waits its own full time", async () => {
+    it("a sheet that replaces a waiting one waits its own full time", async () => {
       const waitMs = 200;
       const frame = createDomFrame(ORIGIN, waitMs);
       frame.mount(URL_1);
-      const first = frame.openOverlay("bottomSheet");
+      const first = frame.openOverlay("sheet");
       await sleep(waitMs * 0.6);
-      const second = frame.openOverlay("bottomSheet");
+      const second = frame.openOverlay("sheet");
       // Past the first one's wait, before the second one's.
       await sleep(waitMs * 0.6);
       expect(styles()).toEqual(WAITING);
@@ -566,8 +545,11 @@ describe("createDomFrame: modal and sheet", () => {
     });
 
     it("other presentations ignore a height", () => {
-      mounted().openOverlay("sheet").setContentHeight(412);
-      expect(styles()).toEqual(SHEET_WIDE);
+      const frame = mounted();
+      frame.openOverlay("modal").setContentHeight(412);
+      expect(styles()).toEqual(MODAL_WIDE);
+      frame.openOverlay("fullScreen").setContentHeight(412);
+      expect(styles()).toEqual(FULL_SCREEN);
     });
   });
 });
@@ -656,7 +638,7 @@ describe("page helpers", () => {
     frame.post({ type: MessageTypeToLucraClient.enableExitLucra, body: true });
     frame.onMessage(() => {})();
     frame.openOverlay("fullScreen").close();
-    frame.openOverlay("bottomSheet").setContentHeight(412);
+    frame.openOverlay("sheet").setContentHeight(412);
     frame.destroy();
     expect(() => frame.openPopup(URL_1)).toThrow();
   });

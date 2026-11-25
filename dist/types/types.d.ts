@@ -90,7 +90,7 @@ export type LucraNavigateRequest = {
     pathname: string;
 };
 export type LucraPresentationBody = {
-    presentation: "fullScreen" | "modal" | "sheet" | "bottomSheet";
+    presentation: "fullScreen" | "modal" | "sheet";
 };
 export type LucraAvailableRewards = {
     rewards: LucraReward[];

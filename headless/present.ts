@@ -309,8 +309,8 @@ export function createPresent(options: {
             })
           );
         }
-        // Lucra sends its content's height each time it changes. Only a bottom
-        // sheet uses it.
+        // Lucra sends its content's height each time it changes. Only a sheet
+        // uses it.
         cleanups.push(
           session.on(LucraClientMessageType.contentHeight, (data) => {
             const height = (data as Partial<LucraContentHeightBody> | null)?.height;

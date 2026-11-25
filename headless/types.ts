@@ -70,9 +70,8 @@ export type LucraUpdateUserInput = SDKClientUser;
 
 // How Lucra screens show. "fullScreen" covers the page. "modal" is a panel in
 // the middle of the dimmed page, and full screen on a narrow window. "sheet" is
-// a panel at the right edge, or from the bottom on a narrow window.
-// "bottomSheet" is a panel up from the bottom at every width, sized to the
-// height Lucra reports for the screen.
+// a panel up from the bottom at every width, sized to the height Lucra reports
+// for the screen.
 export type LucraPresentation = LucraPresentationBody["presentation"];
 
 export type LucraClientConfig = {
