@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## [v1.28.0]
+
+### Added
+
+- **Preview:** the `presentation` message carries `safeAreaInsetBottom`, the page's bottom safe area inset in CSS pixels, 0 when the page reports none. New field `LucraPresentationBody.safeAreaInsetBottom`.
+
+### Changed
+
+- **Preview:** a sheet no longer pads below Lucra's screen with a black strip. Lucra leaves the room for the page's bottom safe area, such as the iPhone home indicator, in its own colors, and the height it reports includes it. iOS reports that area only when your page's viewport meta tag includes `viewport-fit=cover`; without it, Lucra leaves room for the iPhone home indicator on any touch screen. It needs a lucra-web-app that leaves this room: an older one shows the screen flush with the bottom edge. See [As a modal or a sheet](3.0_headless_client.md#as-a-modal-or-a-sheet).
+
 ## [v1.27.0]
 
 ### Added

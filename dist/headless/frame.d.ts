@@ -25,6 +25,7 @@ export type Frame = {
     onMessage(listener: (message: InboundMessage) => void): () => void;
     openOverlay(presentation: LucraPresentation): Overlay;
     openPopup(url: string): Popup;
+    safeAreaInsetBottom(): number;
     destroy(): void;
 };
 export declare function hasDom(): boolean;

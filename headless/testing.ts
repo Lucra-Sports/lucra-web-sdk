@@ -28,6 +28,8 @@ export type FakeFrame = Frame & {
   popups: FakePopup[];
   // When true, openPopup throws like a blocked popup.
   blockPopups: boolean;
+  // What safeAreaInsetBottom() returns.
+  bottomInset: number;
   destroyed: boolean;
   // Simulates a message from the Lucra app.
   deliver(type: string, data?: unknown, requestId?: string): void;
@@ -51,6 +53,7 @@ export function createFakeFrame(): FakeFrame {
     contentHeights: [],
     popups: [],
     blockPopups: false,
+    bottomInset: 0,
     destroyed: false,
 
     mount(url) {
@@ -85,6 +88,7 @@ export function createFakeFrame(): FakeFrame {
       currentOverlay = overlay;
       return overlay;
     },
+    safeAreaInsetBottom: () => frame.bottomInset,
     openPopup(url) {
       if (frame.blockPopups) throw new Error("Popup blocked");
       const callbacks = new Set<(result?: LucraPopupResult) => void>();

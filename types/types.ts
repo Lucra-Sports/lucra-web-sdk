@@ -110,6 +110,11 @@ export type LucraNavigateRequest = {
 // headless LucraPresentation is this union.
 export type LucraPresentationBody = {
   presentation: "fullScreen" | "modal" | "sheet";
+  // The page's bottom safe area inset in CSS pixels, 0 when the page reports
+  // none. iOS reports one only when the page's viewport meta has
+  // viewport-fit=cover. A frame gets no inset of its own, so as a sheet Lucra
+  // leaves this much room below its content, in its own colors.
+  safeAreaInsetBottom: number;
 };
 
 export type LucraAvailableRewards = {
@@ -134,8 +139,8 @@ export type LucraClaimRewardBody = { reward: LucraReward };
 export type LucraLoginSuccessBody = SDKLucraUser;
 export type LucraInitializedBody = { success: boolean };
 // Sent by Lucra while a screen shows as a sheet, each time the height of its
-// content changes: CSS pixels, without the safe area. The SDK sizes the sheet
-// to it.
+// content changes: CSS pixels, including the room Lucra leaves for the bottom
+// safe area. The SDK sizes the sheet to it.
 export type LucraContentHeightBody = { height: number };
 
 // Sent to the web app when something fails on the SDK's side of the bridge, so it reaches

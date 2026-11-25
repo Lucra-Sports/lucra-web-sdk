@@ -21,6 +21,7 @@ type FakeElement = {
     location: { replace: ReturnType<typeof mock> };
   };
   focus: ReturnType<typeof mock>;
+  getBoundingClientRect(): { height: number };
   appendChild(child: FakeElement): void;
   remove(): void;
   setAttribute(name: string, value: string): void;
@@ -39,6 +40,14 @@ function makeElement(tag: string): FakeElement {
     children: [],
     parent: null,
     focus: mock(() => {}),
+    // Like a browser, only an element laid out in the body with the bottom
+    // inset as its height measures it.
+    getBoundingClientRect() {
+      const probe =
+        element.parent === dom.body &&
+        element.style.cssText.includes("height:env(safe-area-inset-bottom);");
+      return { height: probe ? dom.bottomInset : 0 };
+    },
     appendChild(child) {
       child.parent = element;
       element.children.push(child);
@@ -87,6 +96,8 @@ type FakeDom = {
   // list matchMedia returned keeps its own listeners, as in a browser.
   media: { matches: boolean; lists: Listeners[] };
   matchMedia: ReturnType<typeof mock>;
+  // The page's bottom safe area inset, in CSS pixels.
+  bottomInset: number;
 };
 
 const saved = {
@@ -125,7 +136,16 @@ beforeEach(() => {
     matchMedia,
   };
   (globalThis as { document?: unknown }).document = document;
-  dom = { body, focused, windowListeners, documentListeners, document, media, matchMedia };
+  dom = {
+    body,
+    focused,
+    windowListeners,
+    documentListeners,
+    document,
+    media,
+    matchMedia,
+    bottomInset: 0,
+  };
 });
 
 afterEach(() => {
@@ -443,8 +463,7 @@ describe("createDomFrame: modal and sheet", () => {
       "padding:env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);";
     const SHEET_PANEL =
       PANEL +
-      "box-sizing:border-box;width:min(430px,100%);max-height:calc(100% - 96px);" +
-      "padding-bottom:env(safe-area-inset-bottom);border-radius:24px 24px 0 0;";
+      "width:min(430px,100%);max-height:calc(100% - 96px);border-radius:24px 24px 0 0;";
     const WAITING = {
       host: SHEET_HOST,
       iframe: SHEET_PANEL + "height:calc(100% - 96px);opacity:0;pointer-events:none;",
@@ -455,7 +474,7 @@ describe("createDomFrame: modal and sheet", () => {
     };
     const sized = (height: number) => ({
       host: SHEET_HOST,
-      iframe: SHEET_PANEL + `height:calc(${height}px + env(safe-area-inset-bottom));`,
+      iframe: SHEET_PANEL + `height:${height}px;`,
     });
     const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
     const afterFallback = () => sleep(FALLBACK_MS * 3);
@@ -479,6 +498,8 @@ describe("createDomFrame: modal and sheet", () => {
       expect(styles()).toEqual(sized(412));
       overlay.setContentHeight(500.5);
       expect(styles()).toEqual(sized(500.5));
+      // Lucra leaves the room for the bottom inset itself.
+      expect(iframe().style.cssText).not.toContain("safe-area-inset-bottom");
       expect(iframe().focus).toHaveBeenCalledTimes(1);
       // The same at every width.
       expect(dom.matchMedia).toHaveBeenCalledTimes(0);
@@ -551,6 +572,29 @@ describe("createDomFrame: modal and sheet", () => {
       frame.openOverlay("fullScreen").setContentHeight(412);
       expect(styles()).toEqual(FULL_SCREEN);
     });
+  });
+});
+
+describe("createDomFrame: safeAreaInsetBottom", () => {
+  it("measures the page's bottom inset in whole CSS pixels and removes its probe", () => {
+    const frame = createDomFrame(ORIGIN);
+    frame.mount(URL_1);
+    dom.bottomInset = 33.2;
+    expect(frame.safeAreaInsetBottom()).toBe(34);
+    dom.bottomInset = 34;
+    expect(frame.safeAreaInsetBottom()).toBe(34);
+    expect(dom.body.children.length).toBe(1);
+  });
+
+  it("is 0 where the page reports no inset or has no body", () => {
+    const frame = createDomFrame(ORIGIN);
+    expect(frame.safeAreaInsetBottom()).toBe(0);
+    expect(dom.body.children.length).toBe(0);
+    dom.bottomInset = Number.NaN;
+    expect(frame.safeAreaInsetBottom()).toBe(0);
+    dom.bottomInset = 34;
+    dom.document.body = null;
+    expect(frame.safeAreaInsetBottom()).toBe(0);
   });
 });
 
@@ -639,6 +683,7 @@ describe("page helpers", () => {
     frame.onMessage(() => {})();
     frame.openOverlay("fullScreen").close();
     frame.openOverlay("sheet").setContentHeight(412);
+    expect(frame.safeAreaInsetBottom()).toBe(0);
     frame.destroy();
     expect(() => frame.openPopup(URL_1)).toThrow();
   });

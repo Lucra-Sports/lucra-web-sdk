@@ -21,6 +21,7 @@ export function createNullFrame() {
         openPopup() {
             throw new Error("No browser");
         },
+        safeAreaInsetBottom: () => 0,
         destroy() { },
     };
 }
@@ -55,6 +56,8 @@ const PANEL_WIDTH = `width:min(${POPUP_WIDTH}px,100%);`;
 // 96px is the gap the bottom drawer in Lucra's web app leaves above it (6rem
 // there). Pixels, because rem would follow the host page's font size.
 const SHEET_HEIGHT = "calc(100% - 96px)";
+// Measured for its height, the page's bottom safe area inset, then removed.
+const PROBE_CSS = "position:fixed;bottom:0;left:0;width:0;height:env(safe-area-inset-bottom);visibility:hidden;pointer-events:none;";
 // The host and frame styles for full screen or a modal, on a wide or a narrow window.
 function layout(presentation, wide) {
     if (presentation === "modal" && wide) {
@@ -68,8 +71,8 @@ function layout(presentation, wide) {
     return { host: OVERLAY_CSS, iframe: IFRAME_CSS };
 }
 // The sheet is the same at every width: up from the bottom edge, as wide as the
-// Add Funds window, and no taller than the cap. Its own padding keeps Lucra
-// above the iOS home indicator.
+// Add Funds window, and no taller than the cap. Lucra leaves room below its
+// content for the page's bottom safe area, which the SDK sends it.
 function sheetLayout(height) {
     let heightCss;
     if (height === null) {
@@ -82,18 +85,17 @@ function sheetLayout(height) {
         heightCss = `height:${SHEET_HEIGHT};`;
     }
     else {
-        // The padding below Lucra's content adds the safe area.
-        heightCss = `height:calc(${height}px + env(safe-area-inset-bottom));`;
+        // Lucra's height includes the room it leaves for the bottom safe area.
+        heightCss = `height:${height}px;`;
     }
     return {
         host: BACKDROP_CSS +
             "flex-direction:column;justify-content:flex-end;align-items:center;" +
             "padding:env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);",
         iframe: PANEL_CSS +
-            "box-sizing:border-box;" +
             PANEL_WIDTH +
             `max-height:${SHEET_HEIGHT};` +
-            "padding-bottom:env(safe-area-inset-bottom);border-radius:24px 24px 0 0;" +
+            "border-radius:24px 24px 0 0;" +
             heightCss,
     };
 }
@@ -264,6 +266,16 @@ export function createDomFrame(origin, fallbackMs = CONTENT_HEIGHT_FALLBACK_MS) 
                     return true;
                 },
             };
+        },
+        safeAreaInsetBottom() {
+            if (!document.body)
+                return 0;
+            const probe = document.createElement("div");
+            probe.style.cssText = PROBE_CSS;
+            document.body.appendChild(probe);
+            const height = probe.getBoundingClientRect().height;
+            probe.remove();
+            return Number.isFinite(height) && height > 0 ? Math.ceil(height) : 0;
         },
         destroy() {
             destroyed = true;

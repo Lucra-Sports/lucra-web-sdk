@@ -251,9 +251,13 @@ export function createPresent(options: {
 
         // The call's own presentation, or the client's.
         const shownAs = presentation ?? options.presentation;
-        // Lucra lays the screen out for its presentation.
+        // Lucra lays the screen out for its presentation. As a sheet it leaves
+        // room for the page's bottom inset, measured each time it is sent.
         const tellPresentation = () => {
-          const body: LucraPresentationBody = { presentation: shownAs };
+          const body: LucraPresentationBody = {
+            presentation: shownAs,
+            safeAreaInsetBottom: frame.safeAreaInsetBottom(),
+          };
           session.post(MessageTypeToLucraClient.presentation, body);
         };
 
