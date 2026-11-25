@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## [v1.27.0]
+
+### Added
+
+- **Preview:** new message types `presentation`, which the headless client sends each time a screen opens, before a game starts, and again after Lucra restarts, and `contentHeight`, which Lucra sends while a screen shows as a sheet. New types `LucraPresentationBody` and `LucraContentHeightBody`.
+
+### Changed
+
+- **Preview:** `presentation: "sheet"` is now a panel up from the bottom edge at every width, up to 430px wide, as tall as the height Lucra reports for the screen, and never closer than 96px to the top. On a wide window it is no longer a panel at the right edge. If no height arrives within a second, it shows at that maximum, and a later height still resizes it. It needs a lucra-web-app that reports heights: an older one shows the dimmed page for a second, then the screen at full height. See [As a modal or a sheet](3.0_headless_client.md#as-a-modal-or-a-sheet).
+
 ## [v1.26.0]
 
 ### Fixed

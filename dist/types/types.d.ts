@@ -6,6 +6,7 @@ export declare enum LucraClientMessageType {
     autoJoinedTournaments = "autoJoinedTournaments",
     autoJoinTournamentsError = "autoJoinTournamentsError",
     claimReward = "claimReward",
+    contentHeight = "contentHeight",
     deepLink = "deepLink",
     demographicComplete = "demographicComplete",
     exitLucra = "exitLucra",
@@ -57,6 +58,7 @@ export declare enum MessageTypeToLucraClient {
     matchupInviteUrlResponse = "matchupInviteUrlResponse",
     enableExitLucra = "enableExitLucra",
     navigate = "navigate",
+    presentation = "presentation",
     tournamentsRequest = "tournamentsRequest",
     tournamentRequest = "tournamentRequest",
     tournamentLeaderboardRequest = "tournamentLeaderboardRequest",
@@ -86,6 +88,9 @@ export type LucraDeepLinkResponse = {
 };
 export type LucraNavigateRequest = {
     pathname: string;
+};
+export type LucraPresentationBody = {
+    presentation: "fullScreen" | "modal" | "sheet";
 };
 export type LucraAvailableRewards = {
     rewards: LucraReward[];
@@ -129,6 +134,9 @@ export type LucraClaimRewardBody = {
 export type LucraLoginSuccessBody = SDKLucraUser;
 export type LucraInitializedBody = {
     success: boolean;
+};
+export type LucraContentHeightBody = {
+    height: number;
 };
 export type LucraSdkDiagnosticBody = {
     kind: "requestTimeout";

@@ -2,7 +2,7 @@ import { createApi } from "./api.js";
 import { createAuth } from "./auth.js";
 import { LucraError, LucraErrorCode, isLucraError } from "./errors.js";
 import { createEmitter } from "./events.js";
-import { PRESENTATIONS, createDomFrame, createNullFrame, hasDom, pageOrigin, } from "./frame.js";
+import { PRESENTATIONS, PRESENTATION_HINT, createDomFrame, createNullFrame, hasDom, pageOrigin, } from "./frame.js";
 import { createPresent } from "./present.js";
 import { createWithRemediation } from "./remediate.js";
 import { DEFAULT_TIMEOUTS, createSession } from "./session.js";
@@ -115,7 +115,7 @@ function createLiveClient(config) {
     const { presentation } = config;
     if (presentation !== undefined && !PRESENTATIONS.includes(presentation)) {
         throw new LucraError(LucraErrorCode.INVALID_CONFIG, undefined, {
-            hint: 'presentation must be "fullScreen", "modal", or "sheet".',
+            hint: PRESENTATION_HINT,
         });
     }
     // Throws INVALID_CONFIG before anything is added to the page.
