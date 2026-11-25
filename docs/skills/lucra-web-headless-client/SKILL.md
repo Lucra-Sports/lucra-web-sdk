@@ -204,8 +204,11 @@ Every code: [Errors](../../3.0_headless_client.md#errors).
   covers the page under 640px wide. With `"sheet"` it is a panel up to 430px wide at the bottom
   edge at every width, as tall as the height Lucra reports for the screen and never closer than
   96px to the top. If no height arrives within a second, it shows at that maximum, and a later
-  height still resizes it. The dimmed page takes no clicks, and neither a click on it nor Escape
-  closes the screen. Every screen but `addFunds()` takes `{ presentation }` for that screen
+  height still resizes it. Lucra leaves room below the screen for the page's bottom safe area,
+  such as the iPhone home indicator, which iOS reports only when the page's viewport meta tag
+  includes `viewport-fit=cover`; without it, Lucra leaves room for the home indicator on any
+  touch screen. The dimmed page takes no clicks, and neither a click on it nor Escape closes the
+  screen. Every screen but `addFunds()` takes `{ presentation }` for that screen
   only; the client's is the default, also for screens `withRemediation()` shows. Lucra never
   shows inside your own element. It is hidden before a screen shows and after it ends. See
   [As a modal or a sheet](../../3.0_headless_client.md#as-a-modal-or-a-sheet).

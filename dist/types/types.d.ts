@@ -91,6 +91,7 @@ export type LucraNavigateRequest = {
 };
 export type LucraPresentationBody = {
     presentation: "fullScreen" | "modal" | "sheet";
+    safeAreaInsetBottom: number;
 };
 export type LucraAvailableRewards = {
     rewards: LucraReward[];

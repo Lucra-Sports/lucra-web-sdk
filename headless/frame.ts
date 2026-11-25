@@ -24,8 +24,9 @@ export type InboundMessage = {
 
 export type Overlay = {
   close(): void;
-  // Sizes a sheet to Lucra's content, `height` CSS pixels without the safe
-  // area, and shows it. Other presentations ignore it.
+  // Sizes a sheet to Lucra's content, `height` CSS pixels, and shows it. Lucra
+  // leaves room below its content for the page's bottom safe area, which the
+  // SDK sends it. Other presentations ignore it.
   setContentHeight(height: number): void;
 };
 
@@ -48,6 +49,9 @@ export type Frame = {
   openOverlay(presentation: LucraPresentation): Overlay;
   // Opens a real popup window. Throws when the browser blocks it.
   openPopup(url: string): Popup;
+  // The page's bottom safe area inset in CSS pixels, 0 where the page reports
+  // none or there is no page.
+  safeAreaInsetBottom(): number;
   destroy(): void;
 };
 
@@ -75,6 +79,7 @@ export function createNullFrame(): Frame {
     openPopup() {
       throw new Error("No browser");
     },
+    safeAreaInsetBottom: () => 0,
     destroy() {},
   };
 }
@@ -115,6 +120,9 @@ const PANEL_WIDTH = `width:min(${POPUP_WIDTH}px,100%);`;
 // 96px is the gap the bottom drawer in Lucra's web app leaves above it (6rem
 // there). Pixels, because rem would follow the host page's font size.
 const SHEET_HEIGHT = "calc(100% - 96px)";
+// Measured for its height, the page's bottom safe area inset, then removed.
+const PROBE_CSS =
+  "position:fixed;bottom:0;left:0;width:0;height:env(safe-area-inset-bottom);visibility:hidden;pointer-events:none;";
 
 // The host and frame styles for full screen or a modal, on a wide or a narrow window.
 function layout(presentation: Exclude<LucraPresentation, "sheet">, wide: boolean) {
@@ -134,8 +142,8 @@ function layout(presentation: Exclude<LucraPresentation, "sheet">, wide: boolean
 type SheetHeight = number | "fallback" | null;
 
 // The sheet is the same at every width: up from the bottom edge, as wide as the
-// Add Funds window, and no taller than the cap. Its own padding keeps Lucra
-// above the iOS home indicator.
+// Add Funds window, and no taller than the cap. Lucra leaves room below its
+// content for the page's bottom safe area, which the SDK sends it.
 function sheetLayout(height: SheetHeight) {
   let heightCss: string;
   if (height === null) {
@@ -146,8 +154,8 @@ function sheetLayout(height: SheetHeight) {
   } else if (height === "fallback") {
     heightCss = `height:${SHEET_HEIGHT};`;
   } else {
-    // The padding below Lucra's content adds the safe area.
-    heightCss = `height:calc(${height}px + env(safe-area-inset-bottom));`;
+    // Lucra's height includes the room it leaves for the bottom safe area.
+    heightCss = `height:${height}px;`;
   }
   return {
     host:
@@ -156,10 +164,9 @@ function sheetLayout(height: SheetHeight) {
       "padding:env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);",
     iframe:
       PANEL_CSS +
-      "box-sizing:border-box;" +
       PANEL_WIDTH +
       `max-height:${SHEET_HEIGHT};` +
-      "padding-bottom:env(safe-area-inset-bottom);border-radius:24px 24px 0 0;" +
+      "border-radius:24px 24px 0 0;" +
       heightCss,
   };
 }
@@ -331,6 +338,16 @@ export function createDomFrame(
           return true;
         },
       };
+    },
+
+    safeAreaInsetBottom() {
+      if (!document.body) return 0;
+      const probe = document.createElement("div");
+      probe.style.cssText = PROBE_CSS;
+      document.body.appendChild(probe);
+      const height = probe.getBoundingClientRect().height;
+      probe.remove();
+      return Number.isFinite(height) && height > 0 ? Math.ceil(height) : 0;
     },
 
     destroy() {

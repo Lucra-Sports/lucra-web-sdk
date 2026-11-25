@@ -773,6 +773,7 @@ describe("createPresent: presentation", () => {
   it("tells Lucra how each screen shows once it opens, before it navigates", async () => {
     const { frame, present } = setup({}, { presentation: "sheet" });
     await connectLoggedIn(frame);
+    frame.bottomInset = 34;
     const shown: Promise<unknown>[] = [];
     for (const presentation of ["fullScreen", "modal", "sheet", undefined] as const) {
       frame.posted.length = 0;
@@ -786,6 +787,7 @@ describe("createPresent: presentation", () => {
       // Without its own, the client's.
       expect(frame.lastPosted("presentation")?.body).toEqual({
         presentation: presentation ?? "sheet",
+        safeAreaInsetBottom: 34,
       });
     }
     present.dismiss();
@@ -793,15 +795,24 @@ describe("createPresent: presentation", () => {
     expect(count(frame, "presentation")).toBe(1);
   });
 
-  it("tells Lucra again after it restarts while the screen shows", async () => {
+  it("tells Lucra again after it restarts while the screen shows, with the inset then", async () => {
     const { frame, present } = setup();
     await connectLoggedIn(frame);
+    frame.bottomInset = 34;
     const shown = present.wallet({ presentation: "sheet" });
     await tick();
     expect(count(frame, "presentation")).toBe(1);
+    expect(frame.lastPosted("presentation")?.body).toEqual({
+      presentation: "sheet",
+      safeAreaInsetBottom: 34,
+    });
+    frame.bottomInset = 20;
     frame.deliver("initialized", { success: true });
     expect(count(frame, "presentation")).toBe(2);
-    expect(frame.lastPosted("presentation")?.body).toEqual({ presentation: "sheet" });
+    expect(frame.lastPosted("presentation")?.body).toEqual({
+      presentation: "sheet",
+      safeAreaInsetBottom: 20,
+    });
     frame.deliver("exitLucra", true);
     await shown;
     frame.deliver("initialized", { success: true });
@@ -815,7 +826,7 @@ describe("createPresent: presentation", () => {
     await tick();
     frame.deliver("initialized", { success: true });
     expect(count(frame, "presentation")).toBe(2);
-    expect(frame.lastPosted("presentation")?.body).toEqual({ presentation: "sheet" });
+    expect(frame.lastPosted("presentation")?.body).toEqual({ presentation: "sheet", safeAreaInsetBottom: 0 });
     frame.deliver("contentHeight", { height: 412 });
     expect(frame.contentHeights).toEqual([412]);
     present.dismiss();
@@ -834,7 +845,7 @@ describe("createPresent: presentation", () => {
     expect(count(loggedOut.frame, "presentation")).toBe(0);
     await connectLoggedOut(loggedOut.frame);
     expect(loggedOut.frame.presentations).toEqual(["sheet"]);
-    expect(loggedOut.frame.lastPosted("presentation")?.body).toEqual({ presentation: "sheet" });
+    expect(loggedOut.frame.lastPosted("presentation")?.body).toEqual({ presentation: "sheet", safeAreaInsetBottom: 0 });
     loggedOut.present.dismiss();
     await login;
 
@@ -846,13 +857,13 @@ describe("createPresent: presentation", () => {
     const types: string[] = frame.posted.map((message) => message.type);
     expect(types.indexOf("presentation")).toBeGreaterThanOrEqual(0);
     expect(types.indexOf("presentation")).toBeLessThan(types.indexOf("presentMinigameRequest"));
-    expect(frame.lastPosted("presentation")?.body).toEqual({ presentation: "sheet" });
+    expect(frame.lastPosted("presentation")?.body).toEqual({ presentation: "sheet", safeAreaInsetBottom: 0 });
     frame.answer("presentMinigameRequest", "presentMinigameResponse", { sessionId: "s1", matchupId: null });
     await tick();
     // And again once it shows.
     expect(frame.presentations).toEqual(["sheet"]);
     expect(count(frame, "presentation")).toBe(2);
-    expect(frame.lastPosted("presentation")?.body).toEqual({ presentation: "sheet" });
+    expect(frame.lastPosted("presentation")?.body).toEqual({ presentation: "sheet", safeAreaInsetBottom: 0 });
     present.dismiss();
     await game;
   });
